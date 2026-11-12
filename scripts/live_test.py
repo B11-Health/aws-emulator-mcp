@@ -1,104 +1,94 @@
 #!/usr/bin/env python3
-"""Real MCP protocol round trip against AWS's official emulator."""
+"""Live end-to-end MCP test against the official local AWS Emulator."""
+import datetime
 import json
 from pathlib import Path
 import subprocess
 import sys
-import time
 
 ROOT=Path(__file__).resolve().parents[1]
 SERVER=ROOT/"src"/"aws_emulator_mcp"/"server.py"
 sys.path.insert(0,str(ROOT/"src"))
 from aws_emulator_mcp import server as m
 
-def msg(i,name=None,args=None,method="tools/call"):
-    if method=="tools/call":
-        return {"jsonrpc":"2.0","id":i,"method":method,
-                "params":{"name":name,"arguments":args or {}}}
-    return {"jsonrpc":"2.0","id":i,"method":method,
-            "params":{"protocolVersion":"2025-06-18"} if method=="initialize" else {}}
+def legacy(i,method,params=None):
+    return {"jsonrpc":"2.0","id":i,"method":method,"params":params or {}}
 
-def verify(data,id_,name):
-    out=data[id_]
-    if "error" in out: raise AssertionError(f"{name}: {out['error']}")
-    if name=="initialize":
-        assert out["result"]["serverInfo"]["name"]=="aws-emulator-mcp"
-        return out["result"]
-    if name=="tools/list":
-        return out["result"]
-    result=out["result"]
-    if result.get("isError"): raise AssertionError(f"{name}: {result['content']}")
+def modern(i,method,params=None):
+    args=dict(params or {})
+    args["_meta"]={m.META_VERSION:"2026-07-28",m.META_CAPS:{},
+                   "io.modelcontextprotocol/clientInfo":{"name":"integration-test","version":"1.0"}}
+    return {"jsonrpc":"2.0","id":i,"method":method,"params":args}
+
+def rpc_tool(response):
+    if "error" in response:raise AssertionError(response["error"])
+    result=response["result"]
+    if result.get("isError"):raise AssertionError(result["content"])
     return json.loads(result["content"][0]["text"])
 
 def main():
-    print("AWS Official Emulator version check",flush=True)
-    installed=m.emulator_binary()
-    if not installed: raise RuntimeError("Signed official AWS emulator has not been installed")
-    version=subprocess.run([installed,"--version"],capture_output=True,text=True,timeout=6)
-    print("binary:",(version.stdout+version.stderr).strip(),flush=True)
-    if not m.health()["running"]:
-        started=m.start()
-        print("startup:",started,flush=True)
-    else:
-        print("reusing healthy emulator",flush=True)
-
-    stamp=str(int(time.time()))
-    bucket="mcp-e2e-"+stamp
-    table="mcp_e2e_"+stamp
-    item_id="item-1"
-    text="AWS Emulator via MCP: verified locally"
-    msgs=[
-        msg(1,method="initialize"),
+    binary=m.emulator_binary()
+    if not binary:raise RuntimeError("Official AWS Emulator binary not installed")
+    version=subprocess.run([binary,"--version"],capture_output=True,text=True,timeout=8)
+    if version.returncode:raise RuntimeError(version.stderr)
+    if not m.health()["running"]:print("Starting local emulator",flush=True);m.start()
+    if not m.health()["running"]:raise RuntimeError("Emulator failed health check")
+    requests=[
+        legacy(1,"initialize",{"protocolVersion":"2025-11-25"}),
         {"jsonrpc":"2.0","method":"notifications/initialized"},
-        msg(2,method="tools/list"),
-        msg(3,"emulator_status"),
-        msg(4,"emulator_health"),
-        msg(5,"emulator_identity"),
-        msg(6,"s3_create_bucket",{"bucket":bucket}),
-        msg(7,"s3_put_object",{"bucket":bucket,"key":"sample.txt","text":text}),
-        msg(8,"s3_get_object",{"bucket":bucket,"key":"sample.txt"}),
-        msg(9,"s3_list_buckets"),
-        msg(20,"s3_list_objects",{"bucket":bucket}),
-        msg(10,"dynamodb_create_table",{"table":table}),
-        msg(11,"dynamodb_put_item",{"table":table,"item_id":item_id,"message":"hello-local"}),
-        msg(12,"dynamodb_get_item",{"table":table,"item_id":item_id}),
-        msg(19,"dynamodb_describe_table",{"table":table}),
-        msg(13,"dynamodb_delete_table",{"table":table}),
-        msg(14,"s3_delete_object",{"bucket":bucket,"key":"sample.txt"}),
-        msg(21,"s3_delete_bucket",{"bucket":bucket}),
-        msg(22,"dynamodb_list_tables"),
+        legacy(2,"tools/list"),
+        modern(3,"server/discover"),
+        modern(4,"tools/list"),
+        modern(5,"tools/call",{"name":"emulator_identity","arguments":{}}),
+        modern(6,"tools/call",{"name":"emulator_self_test","arguments":{}}),
+        modern(7,"tools/call",{"name":"sqs_list_queues","arguments":{}}),
+        modern(8,"tools/call",{"name":"s3_list_buckets","arguments":{}}),
     ]
-    proc=subprocess.Popen([sys.executable,"-u",str(SERVER)],
-          stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
-    payload="".join(json.dumps(x)+"\n" for x in msgs)
-    stdout,stderr=proc.communicate(payload,timeout=45)
+    payload="".join(json.dumps(x,separators=(",",":"))+"\n" for x in requests)
+    # Include a malformed final message to verify that parsing failures are JSON-RPC errors.
+    payload+='this is not JSON\n'
+    proc=subprocess.run([sys.executable,"-u",str(SERVER)],input=payload,
+                        capture_output=True,text=True,timeout=70)
     if proc.returncode:
-        raise RuntimeError(f"stdio server exited {proc.returncode}: {stderr}")
-    data={r["id"]:r for line in stdout.splitlines() if (r:=json.loads(line)).get("id") is not None}
-    labels={1:"initialize",2:"tools/list",3:"status",4:"health",5:"identity",
-            6:"s3 create",7:"s3 put",8:"s3 get",9:"s3 list",
-            10:"dynamodb create",11:"dynamodb put",12:"dynamodb get",
-            13:"dynamodb delete",14:"s3 delete",19:"dynamodb describe",
-            20:"s3 list objects",21:"s3 delete bucket",22:"dynamodb list tables"}
-    values={i:verify(data,i,name) for i,name in labels.items()}
-    assert values[4]["running"], values[4]
-    assert values[5]["Account"]=="000000000000",values[5]
-    assert values[8]["text"]==text,values[8]
-    assert bucket in values[9]["buckets"],values[9]
-    assert "sample.txt" in values[20]["keys"], values[20]
-    assert values[19]["Table"]["TableStatus"]=="ACTIVE",values[19]
-    assert table not in values[22].get("TableNames",[]), values[22]
-    assert values[21]["deleted"],values[21]
-    assert values[12]["Item"]["id"]["S"]==item_id,values[12]
-    assert values[12]["Item"]["message"]["S"]=="hello-local"
-    print(json.dumps({"result":"PASS","tests":len(labels),
-         "tools":len(values[2]["tools"]),"bucket":bucket,"table":table,
-         "account":values[5]["Account"],"endpoint":m.ENDPOINT,
-         "sample":values[8]["text"]},indent=2),flush=True)
+        raise RuntimeError("MCP subprocess failed: "+proc.stderr[-600:])
+    results=[json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
+    by_id={r["id"]:r for r in results if r.get("id") is not None}
+    assert len(by_id)==8,("expected responses",by_id.keys(),proc.stderr)
+    assert len(results)==9,("unexpected JSON-RPC response count",len(results))
+    assert results[-1]["error"]["code"]==-32700
+    assert by_id[1]["result"]["protocolVersion"]=="2025-11-25"
+    assert len(by_id[2]["result"]["tools"])==25
+    assert "2026-07-28" in by_id[3]["result"]["supportedVersions"]
+    assert by_id[3]["result"]["resultType"]=="complete"
+    assert by_id[4]["result"]["resultType"]=="complete"
+    assert len(by_id[4]["result"]["tools"])==25
+    assert by_id[4]["result"]["cacheScope"]=="public"
+    identity=rpc_tool(by_id[5])
+    assert identity["Account"]=="000000000000"
+    tested=rpc_tool(by_id[6])
+    assert tested["passed"],tested
+    assert len(tested["checks"])>=13 and all(x["passed"] for x in tested["checks"])
+    assert len(tested["cleanup"])==4 and all(x["passed"] for x in tested["cleanup"])
+    assert isinstance(rpc_tool(by_id[7])["queues"],list)
+    assert isinstance(rpc_tool(by_id[8])["buckets"],list)
+    out={"result":"PASS","revision":"0.2.0",
+         "recorded_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+         "emulator_version":(version.stdout+version.stderr).strip(),
+         "endpoint":m.ENDPOINT,"account":identity["Account"],
+         "tool_count":len(by_id[4]["result"]["tools"]),
+         "rpc_responses":len(results),
+         "protocol_versions_tested":["2025-11-25","2026-07-28"],
+         "service_checks":len(tested["checks"]),"resource_cleanup":len(tested["cleanup"]),
+         "selftest_ms":tested["elapsed_ms"],
+         "selftest":tested}
+    dest=ROOT/"reports"
+    dest.mkdir(exist_ok=True)
+    (dest/"latest_live.json").write_text(json.dumps(out,indent=2),encoding="utf-8")
+    print(json.dumps({k:v for k,v in out.items() if k!="selftest"},indent=2),flush=True)
     return 0
 
 if __name__=="__main__":
-    try: sys.exit(main())
-    except Exception as e:
-        print("LIVE_TEST_FAILED",repr(e),file=sys.stderr,flush=True)
+    try:sys.exit(main())
+    except Exception as exc:
+        print("LIVE_TEST_FAILED",repr(exc),file=sys.stderr,flush=True)
         sys.exit(1)

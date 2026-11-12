@@ -6,7 +6,7 @@ import configparser, datetime, hashlib, hmac, json, os, re, shutil, signal, ssl,
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
-from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler
+from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler, HTTPRedirectHandler
 from xml.etree import ElementTree as ET
 
 PORT=int(os.environ.get("AWS_EMULATOR_PORT","9297"))
@@ -19,6 +19,15 @@ REGION="us-east-1"
 MAX_BYTES=1_048_576
 
 class LocalError(RuntimeError): pass
+
+class RejectRedirects(HTTPRedirectHandler):
+    """Never forward AWS request headers, signatures, or data to another URL."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+def _local_opener(context):
+    return build_opener(ProxyHandler({}), HTTPSHandler(context=context), RejectRedirects)
+
 
 def ssl_context():
     pem=CREDDIR/"ca.pem"
@@ -71,7 +80,7 @@ def request(method,path="/",service=None,body=b"",headers=None,query=None):
     url=ENDPOINT+urlpath+("?"+urlquery if urlquery else "")
     req=Request(url,data=body if method in ("POST","PUT") else None,headers=hdr,method=method)
     try:
-        with build_opener(ProxyHandler({}), HTTPSHandler(context=context)).open(req,timeout=8) as r:
+        with _local_opener(context).open(req,timeout=8) as r:
             content=r.read(MAX_BYTES+1)
             if len(content)>MAX_BYTES: raise LocalError("Response exceeds 1 MiB limit")
             return {"status":r.status,"headers":dict(r.headers),"body":content}
@@ -248,6 +257,150 @@ def dynamodb_describe_table(table):
     check_table(table)
     return dynamo("DescribeTable",{"TableName":table})
 
+# SQS is deliberately accessed only through the emulator's signed loopback URL.
+def check_queue(name):
+    if not isinstance(name,str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}",name):
+        raise LocalError("Invalid SQS standard queue name")
+    return name
+
+def _sqs_queue_url(queue):
+    check_queue(queue)
+    return f"{ENDPOINT}/000000000000/{queue}"
+
+def sqs_query(action,arguments=None):
+    # AWS Emulator implements the AWS JSON 1.0 protocol for SQS.
+    body=json.dumps(arguments or {},separators=(",",":")).encode("utf-8")
+    r=request("POST","/",service="sqs",body=body,
+              headers={"content-type":"application/x-amz-json-1.0",
+                       "x-amz-target":"AmazonSQS."+action})
+    return json.loads(r["body"]) if r["body"] else {}
+
+def sqs_create_queue(queue):
+    check_queue(queue)
+    result=sqs_query("CreateQueue",{"QueueName":queue})
+    if not result.get("QueueUrl"): raise LocalError("SQS did not return QueueUrl")
+    return {"queue":queue,"created":True,"queue_url":_sqs_queue_url(queue)}
+
+def sqs_list_queues():
+    # Emulator may return AWS-hosted URLs. Never expose them as usable endpoints.
+    from urllib.parse import urlsplit
+    result=sqs_query("ListQueues")
+    names=[]
+    for url in result.get("QueueUrls",[]):
+        path=urlsplit(url).path.split("/")
+        if len(path)==3 and path[1]=="000000000000":
+            try: names.append(check_queue(path[2]))
+            except LocalError: continue
+    return {"queues":names}
+
+def sqs_send_message(queue,message):
+    check_queue(queue)
+    if not isinstance(message,str) or not message or len(message.encode("utf-8"))>65536:
+        raise LocalError("SQS message must be 1-65536 bytes")
+    result=sqs_query("SendMessage",{"QueueUrl":_sqs_queue_url(queue),"MessageBody":message})
+    if not result.get("MessageId"): raise LocalError("SQS did not return MessageId")
+    return {"queue":queue,"message_id":result["MessageId"]}
+
+def sqs_receive_messages(queue):
+    check_queue(queue)
+    result=sqs_query("ReceiveMessage",{"QueueUrl":_sqs_queue_url(queue),
+                                       "MaxNumberOfMessages":1,"WaitTimeSeconds":0})
+    messages=[]
+    for m in result.get("Messages",[]):
+        messages.append({k:m.get(k) for k in ("MessageId","Body","ReceiptHandle")})
+    return {"queue":queue,"messages":messages}
+
+def sqs_delete_message(queue,receipt_handle):
+    check_queue(queue)
+    if not isinstance(receipt_handle,str) or not 1<=len(receipt_handle)<=4096:
+        raise LocalError("Invalid SQS receipt handle")
+    sqs_query("DeleteMessage",{"QueueUrl":_sqs_queue_url(queue),"ReceiptHandle":receipt_handle})
+    return {"queue":queue,"deleted":True}
+
+def sqs_delete_queue(queue):
+    check_queue(queue)
+    sqs_query("DeleteQueue",{"QueueUrl":_sqs_queue_url(queue)})
+    return {"queue":queue,"deleted":True}
+
+def emulator_self_test():
+    """Run isolated S3, DynamoDB and SQS checks; clean up only minted resources."""
+    import secrets
+    suffix=secrets.token_hex(5)
+    bucket="mcp-selftest-"+suffix
+    table="mcp_selftest_"+suffix
+    queue="mcp_selftest_"+suffix
+    began=time.perf_counter()
+    checks=[]
+    cleanup=[]
+    observed_account=None
+    created={"bucket":False,"table":False,"queue":False}
+    def check(name,fn):
+        tick=time.perf_counter()
+        try:
+            value=fn()
+        except Exception:
+            checks.append({"check":name,"passed":False,
+                           "latency_ms":round(1000*(time.perf_counter()-tick),1)})
+            raise
+        checks.append({"check":name,"passed":True,
+                       "latency_ms":round(1000*(time.perf_counter()-tick),1)})
+        return value
+    error=None
+    try:
+        state=check("health",health)
+        if not state["running"]: raise LocalError("Emulator not healthy")
+        ident=check("STS identity",identity)
+        observed_account=ident.get("Account")
+        if observed_account!="000000000000":
+            raise LocalError("Unexpected emulator account")
+        check("S3 create bucket",lambda:s3_create_bucket(bucket))
+        created["bucket"]=True
+        check("S3 put object",lambda:s3_put_object(bucket,"selftest.txt","checked-local"))
+        item=check("S3 get object",lambda:s3_get_object(bucket,"selftest.txt"))
+        if item["text"]!="checked-local":raise LocalError("S3 content mismatch")
+        listed=check("S3 list objects",lambda:s3_list_objects(bucket))
+        if "selftest.txt" not in listed["keys"]:raise LocalError("S3 list mismatch")
+        check("DynamoDB create and wait",lambda:dynamodb_create_table(table))
+        created["table"]=True
+        check("DynamoDB put item",lambda:dynamodb_put_item(table,"check","ok"))
+        row=check("DynamoDB get item",lambda:dynamodb_get_item(table,"check"))
+        if row.get("Item",{}).get("message",{}).get("S")!="ok":
+            raise LocalError("DynamoDB item mismatch")
+        check("SQS create queue",lambda:sqs_create_queue(queue))
+        created["queue"]=True
+        check("SQS send message",lambda:sqs_send_message(queue,"safe-message"))
+        messages=[]
+        for retry in range(5):
+            result=check("SQS receive message",lambda:sqs_receive_messages(queue))
+            messages=result["messages"]
+            if messages:break
+            time.sleep(.1)
+        if not messages or messages[0]["Body"]!="safe-message":
+            raise LocalError("SQS message mismatch")
+        check("SQS delete message",lambda:sqs_delete_message(queue,messages[0]["ReceiptHandle"]))
+    except Exception as exc:
+        error=str(exc) if isinstance(exc,(LocalError,ValueError)) else "Unexpected self-test failure"
+    finally:
+        # Only act on names minted in this call; never on caller resources.
+        jobs=[]
+        if created["queue"]: jobs.append(("SQS delete queue",lambda:sqs_delete_queue(queue)))
+        if created["table"]: jobs.append(("DynamoDB delete table",lambda:dynamodb_delete_table(table)))
+        if created["bucket"]:
+            jobs.append(("S3 delete test object",lambda:s3_delete_object(bucket,"selftest.txt")))
+            jobs.append(("S3 delete bucket",lambda:s3_delete_bucket(bucket)))
+        for name,fn in jobs:
+            try:
+                fn()
+                cleanup.append({"check":name,"passed":True})
+            except Exception as exc:
+                cleanup.append({"check":name,"passed":False,
+                                "detail":str(exc)[:240]})
+    passed=error is None and all(x["passed"] for x in cleanup)
+    return {"passed":passed,"endpoint":ENDPOINT,"account":observed_account,
+            "elapsed_ms":round(1000*(time.perf_counter()-began),1),
+            "checks":checks,"cleanup":cleanup,
+            "error":error if error else None}
+
 def spec(name,description,properties=None,required=()):
     return {"name":name,"description":description,
       "inputSchema":{"type":"object","properties":properties or {},
@@ -266,6 +419,14 @@ TOOLS=[
     spec("s3_get_object","Read UTF-8 text from emulated S3",{"bucket":STR,"key":STR},("bucket","key")),
     spec("s3_delete_object","Delete emulated S3 object",{"bucket":STR,"key":STR},("bucket","key")),
     spec("s3_delete_bucket","Delete empty emulated S3 bucket",{"bucket":STR},("bucket",)),
+    spec("sqs_create_queue","Create emulated SQS standard queue",{"queue":STR},("queue",)),
+    spec("sqs_list_queues","List emulated SQS queue names"),
+    spec("sqs_send_message","Send text message to emulated SQS",{"queue":STR,"message":STR},("queue","message")),
+    spec("sqs_receive_messages","Receive up to one emulated SQS message",{"queue":STR},("queue",)),
+    spec("sqs_delete_message","Delete emulated SQS message by receipt handle",
+         {"queue":STR,"receipt_handle":STR},("queue","receipt_handle")),
+    spec("sqs_delete_queue","Delete an emulated SQS queue",{"queue":STR},("queue",)),
+    spec("emulator_self_test","Run isolated local S3, DynamoDB, and SQS round trips, with cleanup"),
     spec("dynamodb_list_tables","List emulated DynamoDB tables"),
     spec("dynamodb_describe_table","Describe emulated DynamoDB table",{"table":STR},("table",)),
     spec("dynamodb_create_table","Create DynamoDB table with string id key",{"table":STR},("table",)),
@@ -273,6 +434,25 @@ TOOLS=[
     spec("dynamodb_get_item","Read DynamoDB item",{"table":STR,"item_id":STR},("table","item_id")),
     spec("dynamodb_delete_table","Delete emulated DynamoDB table",{"table":STR},("table",)),
 ]
+READ_ONLY_TOOLS={
+    "emulator_status","emulator_health","emulator_identity",
+    "s3_list_buckets","s3_list_objects","s3_get_object",
+    "dynamodb_list_tables","dynamodb_describe_table","dynamodb_get_item",
+    "sqs_list_queues",
+}
+DESTRUCTIVE_TOOLS={
+    "emulator_stop","s3_delete_object","s3_delete_bucket",
+    "dynamodb_delete_table","sqs_delete_message","sqs_delete_queue",
+}
+for tool in TOOLS:
+    name=tool["name"]
+    tool["annotations"]={
+        "readOnlyHint":name in READ_ONLY_TOOLS,
+        "destructiveHint":name in DESTRUCTIVE_TOOLS,
+        "idempotentHint":name in READ_ONLY_TOOLS,
+        "openWorldHint":False,
+    }
+
 FUNCTIONS=dict(emulator_status=status,emulator_start=start,emulator_stop=stop,
     emulator_health=health,emulator_identity=identity,
     s3_create_bucket=s3_create_bucket,s3_list_buckets=s3_list_buckets,
@@ -280,44 +460,155 @@ FUNCTIONS=dict(emulator_status=status,emulator_start=start,emulator_stop=stop,
     s3_put_object=s3_put_object,s3_get_object=s3_get_object,s3_delete_object=s3_delete_object,
     dynamodb_create_table=dynamodb_create_table,dynamodb_put_item=dynamodb_put_item,
     dynamodb_list_tables=dynamodb_list_tables,dynamodb_describe_table=dynamodb_describe_table,
-    dynamodb_get_item=dynamodb_get_item,dynamodb_delete_table=dynamodb_delete_table)
+    dynamodb_get_item=dynamodb_get_item,dynamodb_delete_table=dynamodb_delete_table,
+    sqs_create_queue=sqs_create_queue,sqs_list_queues=sqs_list_queues,
+    sqs_send_message=sqs_send_message,sqs_receive_messages=sqs_receive_messages,
+    sqs_delete_message=sqs_delete_message,sqs_delete_queue=sqs_delete_queue,
+    emulator_self_test=emulator_self_test)
 
-def handle(msg):
-    method=msg.get("method")
-    rid=msg.get("id")
-    if rid is None: return None
-    if method=="initialize":
-        offered=(msg.get("params") or {}).get("protocolVersion")
-        version=offered if offered in ("2025-03-26","2025-06-18","2025-11-25") else "2025-06-18"
-        result={"protocolVersion":version,"capabilities":{"tools":{"listChanged":False}},
-                "serverInfo":{"name":"aws-emulator-mcp","version":"0.1.0"}}
-    elif method=="ping": result={}
-    elif method=="tools/list": result={"tools":TOOLS}
-    elif method=="tools/call":
-        params=msg.get("params") or {}
-        name=params.get("name")
-        if name not in FUNCTIONS:
-            return {"jsonrpc":"2.0","id":rid,"error":{"code":-32602,"message":"Unknown tool"}}
-        args=params.get("arguments") or {}
-        schema=next(t["inputSchema"] for t in TOOLS if t["name"]==name)
-        if not isinstance(args,dict) or set(args)-set(schema["properties"]) or any(k not in args for k in schema["required"]):
-            return {"jsonrpc":"2.0","id":rid,"error":{"code":-32602,"message":"Invalid arguments"}}
-        try:
-            value=FUNCTIONS[name](**args)
-            result={"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],"isError":False}
-        except (LocalError,OSError,ValueError,TypeError,UnicodeError,ET.ParseError) as exc:
-            result={"content":[{"type":"text","text":str(exc)}],"isError":True}
-    else:
-        return {"jsonrpc":"2.0","id":rid,"error":{"code":-32601,"message":"Method not found"}}
+# Protocol dispatch supports both 2025 handshake clients and 2026-07-28
+# stateless per-request metadata (MCP modern era). No third-party packages.
+VERSION="0.2.0"
+PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
+SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
+SERVER_CAPS={"tools":{"listChanged":False}}
+META_VERSION="io.modelcontextprotocol/protocolVersion"
+META_CAPS="io.modelcontextprotocol/clientCapabilities"
+META_SERVER="io.modelcontextprotocol/serverInfo"
+MAX_LINE_BYTES=262144
+
+def _rpc_error(rid,code,message,data=None):
+    err={"code":code,"message":message}
+    if data is not None: err["data"]=data
+    return {"jsonrpc":"2.0","id":rid,"error":err}
+
+def _rpc_ok(rid,result):
     return {"jsonrpc":"2.0","id":rid,"result":result}
 
-def main():
-    for line in sys.stdin:
-        if not line.strip(): continue
+def _invalid_id(rid):
+    return isinstance(rid,bool) or (rid is not None and not isinstance(rid,(int,str)))
+
+def _tool_arguments_ok(name,args):
+    if not isinstance(args,dict): return False
+    schema=next(x["inputSchema"] for x in TOOLS if x["name"]==name)
+    properties=schema["properties"]
+    if set(args)-set(properties) or any(k not in args for k in schema["required"]):
+        return False
+    limits={"bucket":63,"key":1024,"text":65536,"table":255,
+            "item_id":1024,"message":65536,"queue":80,"receipt_handle":4096}
+    for k,value in args.items():
+        declared=properties[k]
+        if declared.get("type")=="string":
+            if not isinstance(value,str): return False
+            if len(value.encode("utf-8"))>limits.get(k,65536): return False
+            if k!="text" and not value: return False
+    return True
+
+def _modern_result(result,method):
+    result=dict(result)
+    result["resultType"]="complete"
+    result["_meta"]={META_SERVER:SERVER_INFO}
+    if method=="tools/list":
+        result["ttlMs"]=3600000
+        result["cacheScope"]="public"
+    return result
+
+def handle(msg):
+    # Distinguish absent id (notification) from explicit null id.
+    if not isinstance(msg,dict):
+        return _rpc_error(None,-32600,"Invalid Request")
+    rid=msg.get("id")
+    has_id="id" in msg
+    if msg.get("jsonrpc")!="2.0" or _invalid_id(rid):
+        return _rpc_error(None,-32600,"Invalid Request")
+    method=msg.get("method")
+    if method is None:
+        # Clients may send responses to server-side requests; none are emitted.
+        return None if not has_id else _rpc_error(rid,-32600,"Invalid Request")
+    if not isinstance(method,str) or not method:
+        return _rpc_error(rid if has_id else None,-32600,"Invalid Request")
+    if not has_id:
+        return None  # Notifications have no response by definition.
+    params=msg.get("params",{})
+    if not isinstance(params,dict):
+        return _rpc_error(rid,-32602,"Invalid params")
+    meta=params.get("_meta",{})
+    if not isinstance(meta,dict):
+        return _rpc_error(rid,-32602,"Invalid _meta")
+    requested=meta.get(META_VERSION)
+    if requested is not None and requested not in PROTOCOL_VERSIONS:
+        return _rpc_error(rid,-32022,"Unsupported protocol version",
+                          {"requested":requested,"supported":list(PROTOCOL_VERSIONS)})
+    modern=(requested=="2026-07-28")
+    if modern and not isinstance(meta.get(META_CAPS),dict):
+        return _rpc_error(rid,-32602,"Missing modern client capabilities")
+    if method=="server/discover":
+        result={"resultType":"complete",
+                "supportedVersions":list(PROTOCOL_VERSIONS),
+                "capabilities":SERVER_CAPS,
+                "instructions":"Local-only AWS Emulator adapter; never connect to real AWS. Do not use for production security validation.",
+                "_meta":{META_SERVER:SERVER_INFO},
+                "ttlMs":3600000,"cacheScope":"public"}
+        return _rpc_ok(rid,result)
+    if method=="initialize":
+        if modern: return _rpc_error(rid,-32601,"Method not supported by modern protocol")
+        offered=params.get("protocolVersion","2025-11-25")
+        if offered in PROTOCOL_VERSIONS and offered!="2026-07-28":
+            version=offered
+        else:
+            version="2025-11-25"
+        result={"protocolVersion":version,"capabilities":SERVER_CAPS,"serverInfo":SERVER_INFO}
+    elif method=="ping":
+        if modern: return _rpc_error(rid,-32601,"Method not supported by modern protocol")
+        result={}
+    elif method=="tools/list":
+        result={"tools":TOOLS}
+    elif method=="tools/call":
+        name=params.get("name")
+        if not isinstance(name,str) or name not in FUNCTIONS:
+            return _rpc_error(rid,-32602,"Unknown tool")
+        args=params.get("arguments",{})
+        if not _tool_arguments_ok(name,args):
+            return _rpc_error(rid,-32602,"Invalid tool arguments")
         try:
-            value=handle(json.loads(line))
-            if value is not None: print(json.dumps(value,ensure_ascii=False,separators=(",",":")),flush=True)
-        except Exception as exc:
-            print(f"[aws-emulator-mcp] protocol error: {exc}",file=sys.stderr,flush=True)
+            value=FUNCTIONS[name](**args)
+            failed_selftest=(name=="emulator_self_test" and
+                             isinstance(value,dict) and not value.get("passed",False))
+            result={"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],
+                    "isError":failed_selftest}
+        except (LocalError,OSError,ValueError,TypeError,UnicodeError,ET.ParseError) as exc:
+            result={"content":[{"type":"text","text":str(exc)}],"isError":True}
+        except Exception:
+            result={"content":[{"type":"text","text":"Unexpected local tool failure"}],"isError":True}
+    else:
+        return _rpc_error(rid,-32601,"Method not found")
+    if modern: result=_modern_result(result,method)
+    return _rpc_ok(rid,result)
+
+def parse_line(data):
+    if len(data)>MAX_LINE_BYTES:
+        return _rpc_error(None,-32600,"Request exceeds input size limit")
+    try:
+        msg=json.loads(data,parse_constant=lambda x: (_ for _ in ()).throw(ValueError(x)))
+    except (json.JSONDecodeError,ValueError,UnicodeError):
+        return _rpc_error(None,-32700,"Parse error")
+    return handle(msg)
+
+def main():
+    stream=sys.stdin.buffer
+    while True:
+        line=stream.readline(MAX_LINE_BYTES+1)
+        if not line: break
+        if len(line)>MAX_LINE_BYTES:
+            # Discard remaining bytes of an oversized message before next JSON line.
+            while line and not line.endswith(b"\n"):
+                line=stream.readline(65536)
+            reply=_rpc_error(None,-32600,"Request exceeds input size limit")
+        else:
+            if not line.strip(): continue
+            reply=parse_line(line)
+        if reply is not None:
+            sys.stdout.write(json.dumps(reply,ensure_ascii=False,separators=(",",":"))+"\n")
+            sys.stdout.flush()
 
 if __name__=="__main__": main()

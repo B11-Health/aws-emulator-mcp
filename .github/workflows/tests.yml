@@ -1,9 +1,12 @@
-name: Test MCP adapter
-on: [push, pull_request]
+name: MCP unit and security tests
+on:
+  push:
+  pull_request:
 jobs:
   unit:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.12"]
     steps:
@@ -11,4 +14,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m unittest discover -s tests -v
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+      - name: Run local, network-independent unit tests
+        run: python -m unittest discover -s tests -v

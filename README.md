@@ -1,79 +1,105 @@
 # AWS Emulator MCP
 
-An open-source Model Context Protocol (MCP) adapter for the official [AWS Emulator](https://github.com/aws/aws-emulator), launched by AWS on November 11, 2026. Control a local emulator and call supported AWS APIs through coding agents. No real AWS account or cloud deployment required.
+**An independent, local-first MCP adapter for the official [AWS Emulator](https://github.com/aws/aws-emulator).**
 
-This independent community adapter is MIT-licensed. The AWS Emulator itself is a separate CC0 project and its binary is not bundled here.
+This community adapter is MIT licensed. AWS Emulator is a separate AWS project, distributed under its own license and **not bundled** here. This project is not affiliated with or endorsed by AWS.
 
-## Available tools (18)
+**Release identities:** GitHub publisher: [B11-Health](https://github.com/B11-Health). LinkedIn publisher: [Code Gym](https://www.linkedin.com/company/codegympr). Neither link is itself evidence of a published repository for this project.
 
-- Runtime: emulator_status, emulator_start, emulator_stop, emulator_health
-- Identity: emulator_identity
-- S3: s3_create_bucket, s3_list_buckets, s3_list_objects, s3_put_object, s3_get_object, s3_delete_object, s3_delete_bucket
-- DynamoDB: dynamodb_create_table, dynamodb_put_item, dynamodb_get_item, dynamodb_delete_table, dynamodb_list_tables, dynamodb_describe_table
+## Capabilities: 25 local tools
 
-The DynamoDB helpers provision a PAY_PER_REQUEST table with a string id partition key, and read/write id and message strings.
+| Category | Tools |
+| --- | --- |
+| Runtime (4) | emulator_start, emulator_stop, emulator_status, emulator_health |
+| Identity (1) | emulator_identity |
+| S3 (7) | s3_create_bucket, s3_list_buckets, s3_list_objects, s3_put_object, s3_get_object, s3_delete_object, s3_delete_bucket |
+| DynamoDB (6) | dynamodb_create_table, dynamodb_list_tables, dynamodb_describe_table, dynamodb_put_item, dynamodb_get_item, dynamodb_delete_table |
+| SQS (6) | sqs_create_queue, sqs_list_queues, sqs_send_message, sqs_receive_messages, sqs_delete_message, sqs_delete_queue |
+| Verification (1) | emulator_self_test |
 
-## Architecture
+S3 helpers use UTF-8 text. DynamoDB helpers support a PAY_PER_REQUEST table with a string id key and a message string. SQS helpers support standard queues and text messages. These explicit schemas intentionally cover only a subset of each service.
 
-MCP client (stdio) → dependency-free Python bridge → local SigV4 + emulator-issued credentials → HTTPS 127.0.0.1:9297 → AWS official emulator.
+The self-test creates unique local-only resources, checks STS, S3, DynamoDB, and SQS, measures individual latencies, and cleans up only its temporary resources. Failures and incomplete cleanup are reported rather than hidden.
 
-## Windows + Ubuntu WSL2 setup
+## Quick start: Windows and Ubuntu WSL2
 
-AWS documents Docker on Windows. If Ubuntu WSL2 is already available, the included script can instead extract AWS's signed Debian package without root access:
+AWS officially documents Docker for Windows. If you already have Ubuntu WSL2, use the provided signed-package installer:
 
     cd /mnt/c/Users/codeg/mcp-shell-auth/workspace/aws-emulator-mcp
     bash scripts/install_wsl.sh
     python3 -m unittest discover -s tests -v
     python3 scripts/live_test.py
 
-The helper verifies the published AWS GPG signing key fingerprint and package signature before extracting to your home directory. The script is for AMD64 Ubuntu WSL2. For Docker or other architectures, see the AWS installation documentation.
+The installer uses a fresh package download to avoid mixing versions of the mutable AWS latest-release URL. It verifies the AWS signing-key fingerprint and detached signature *before* installing. Installation is rootless and side-by-side.
 
-## Windows MCP client configuration
+Start the emulator manually, or invoke the emulator_start MCP tool:
 
-Use the provided mcp-windows.json, updating its absolute path for your computer.
+    ~/.local/bin/aws-emulator --telemetry off
+
+The emulator is reachable exclusively at local HTTPS 127.0.0.1:9297. No request goes to real AWS.
+
+## Windows MCP client
+
+See the included mcp-windows.json, changing the absolute path as necessary:
 
     {
       "mcpServers": {
         "aws-emulator-local": {
           "command": "wsl.exe",
-          "args": [
-            "-d", "Ubuntu", "--", "bash",
-            "/mnt/c/Users/codeg/mcp-shell-auth/workspace/aws-emulator-mcp/scripts/serve_wsl.sh"
-          ]
+          "args": ["-d", "Ubuntu", "--", "bash",
+            "/mnt/c/Users/codeg/mcp-shell-auth/workspace/aws-emulator-mcp/scripts/serve_wsl.sh"]
         }
       }
     }
 
-This is a stdio MCP server. It exposes no HTTP port of its own; the emulator listens on local HTTPS port 9297.
+This **stdio transport** is the default. It does not open any additional port.
 
-## Verification
+## Optional authenticated HTTP mode
+
+For MCP clients requiring Streamable HTTP instead of stdio:
+
+    bash scripts/serve_http_wsl.sh
+
+This helper creates a random private bearer token if necessary. The token is stored only in the user's home directory at ~/.config/aws-emulator-mcp/http-token, with owner-only permissions. The listener binds to 127.0.0.1:8766, uses the /mcp path, and requires the token on every request. Nothing starts automatically.
+
+The HTTP transport rejects bad Host and Origin headers, non-JSON content, oversized bodies, and requests without proper authentication. It supports JSON responses and notifications with HTTP 202, not SSE subscriptions or event streams.
+
+**Do not expose this local listener through a public reverse proxy** without a separately audited authentication and authorization layer. ChatGPT web cannot directly reach your machine's localhost address. A secure remote MCP connector would require additional work.
+
+## MCP protocol compatibility
+
+- Handshake-era clients: 2025-03-26, 2025-06-18 and 2025-11-25.
+- Modern stateless clients: 2026-07-28, including server/discover, per-request metadata, cache hints, protocol version errors and modern result metadata.
+- Errors from malformed JSON-RPC, invalid tool input, unsupported methods and unsupported versions are returned as structured responses.
+- Input and output sizes are bounded. The catalog is static. Modern subscriptions and task extensions are not implemented.
+
+See the [MCP specification](https://modelcontextprotocol.io/specification) for version-dependent behavior.
+
+Tool metadata includes read-only and destructive-action annotations so MCP clients can present appropriate precautions. SQS ReceiveMessage is not marked read-only because it changes message visibility.\n\n## Verification
 
     python3 -m unittest discover -s tests -v
     python3 scripts/live_test.py
 
-The unit tests verify MCP tool discovery, argument rejection, credential isolation, SigV4 signing, and health behavior. The live tests make JSON-RPC tool calls through the MCP server for STS identity, S3 bucket/object round-trips, and DynamoDB table/item round-trips, including asynchronous readiness checks and cleanup.
+As of November 12, 2026, this project passed **50 local unit tests** and an AWS Emulator v1.0.322 integration test in WSL2. The live run exercises both modern and legacy MCP, then performs 13 service checks and four cleanup operations. The test records a dated JSON result under reports/latest_live.json.
 
-## Safety
+The tests validate only those exact behaviors, not production AWS parity or security.
 
-- All AWS API requests go to fixed loopback HTTPS, never an AWS hostname.
-- Only session credentials generated by the emulator are accepted (access keys begin with EMULATOR).
-- TLS verifies the emulator's generated CA file; certificate checks are never disabled.
-- The identity tool rejects an account other than 000000000000.
-- The stop tool verifies that the saved PID belongs to our local emulator.
-- Emulator telemetry is disabled by the runtime start tool.
-- Resource state is ephemeral; stopping the emulator loses created resources.
-- AWS Emulator fidelity varies, and it does not enforce IAM policies like real AWS. Never treat it as a production security test.
+## Security boundaries
 
-## Upstream and docs
+- All AWS API operations target HTTPS 127.0.0.1 only, with no endpoint override.
+- TLS verifies the per-emulator CA certificate.
+- HTTP redirects are denied, and environment proxy settings are ignored.
+- The bridge signs requests only with emulator-issued credentials, not your normal AWS profile.
+- STS identity verification requires the isolated emulator account 000000000000.
+- Tool arguments are validated by type and byte length.
+- Runtime stop operations verify their process ownership.
+- Adapter-managed emulator startup disables AWS telemetry.
+- Optional HTTP transport is loopback-only and bearer authenticated.
 
-- https://github.com/aws/aws-emulator
-- https://docs.aws.amazon.com/emulator/
-- https://modelcontextprotocol.io/specification
+AWS Emulator is **not for production security testing** and does not evaluate IAM or resource policies as real AWS does. Resource state is ephemeral. Fidelity varies by service and operation; consult AWS's own evaluation data.
 
-## Scope
+## References
 
-This release intentionally exposes a conservative set of S3, DynamoDB and STS operations. It is not a complete MCP wrapper for every AWS service. The separate official AWS Emulator supports many more AWS APIs; adding further MCP tools should be done with explicit schemas, tests and no endpoint override.
-
-## Validation on Windows WSL2
-
-The official AWS Emulator v1.0.322 Debian package passed AWS detached GPG signature verification against fingerprint 98BCF336A3BE53B734E967C52E5BF49BD940F624. The implementation passed 13 unit tests and 18 live MCP checks, and a Windows-to-WSL stdio handshake returned a healthy emulator result. These checks demonstrate functionality only for the listed operations, not production AWS fidelity or security.
+- AWS Emulator: https://github.com/aws/aws-emulator
+- AWS Emulator documentation: https://docs.aws.amazon.com/emulator/
+- MCP: https://modelcontextprotocol.io/specification
