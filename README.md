@@ -95,3 +95,11 @@ AWS Emulator does not enforce production IAM or resource policies. It has partia
 ## Publication status
 
 Public source is intended for **B11-Health on GitHub**, with the announcement from **Code Gym on LinkedIn**. A public repository URL, signed release archive, and independent clean install still need verification before announcement. Do not treat the README as evidence that a public release already exists.
+
+## Measurable release benchmark
+
+Run the local engineering gates (Python on Windows automatically routes to WSL):
+
+    python scripts/gtm_benchmark.py --repetitions 5
+
+This measures unit/security tests, independent MCP protocol compatibility, S3/DynamoDB/SQS/STS workflows, p95 order latency, scoped cleanup, and leaked resource inventory. Reports are written under reports/gtm_latest.json. A local pass is **not** public release approval. Independent cold installation, external client compatibility, public CI, security review and final Code Gym demo are separate gates in docs/RELEASE_GATES.md. See docs/COMPETITIVE_BENCHMARK.md for honest positioning against the official agent skill and LocalStack MCP.

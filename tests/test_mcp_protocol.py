@@ -58,7 +58,7 @@ class ProtocolTests(unittest.TestCase):
                 now=datetime.datetime(2026,11,11,tzinfo=datetime.timezone.utc)
                 headers,path,query=m.signed_headers("s3","PUT","/bucket/a b",{},b"sample",{"content-type":"text/plain"},now)
                 self.assertEqual(path,"/bucket/a%20b")
-                self.assertEqual(headers["host"],"127.0.0.1:9297")
+                self.assertEqual(headers["host"],f"127.0.0.1:{m.PORT}")
                 self.assertIn("EMULATORTEST/20261111/us-east-1/s3/aws4_request",headers["authorization"])
                 self.assertIn("Signature=",headers["authorization"])
                 self.assertEqual(headers["x-amz-date"],"20261111T000000Z")

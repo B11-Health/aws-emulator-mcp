@@ -202,4 +202,9 @@ class HardeningTests(unittest.TestCase):
         self.assertEqual(m.object_path("safe-bucket","receipts/order-123.json"),
                          "/safe-bucket/receipts/order-123.json")
 
+    def test_failing_order_demo_is_mcp_error(self):
+        with patch.dict(m.FUNCTIONS,{"emulator_order_demo":lambda:{"passed":False,"error":"injected"}}):
+            request=self.rpc("tools/call",{"name":"emulator_order_demo","arguments":{}})
+        self.assertTrue(request["result"]["isError"])
+
 if __name__=="__main__":unittest.main()

@@ -6,6 +6,8 @@ made reachable via this transport.
 """
 from __future__ import annotations
 import hmac
+import base64
+import binascii
 import json
 import os
 import sys
@@ -119,12 +121,33 @@ def create_server(port=None,token=None):
                 return
             name_header=self.headers.get("Mcp-Name")
             name_value=params.get("name") if isinstance(params,dict) else None
-            if name_header is not None and name_header!=name_value:
+            if name_header is not None and version!="2026-07-28" and name_header!=name_value:
                 self._send(400,m._rpc_error(msg.get("id"),-32602,
                            "MCP tool name header mismatch"))
                 return
             method_header=self.headers.get("Mcp-Method")
-            if method_header and method_header!=msg.get("method"):
+            if version=="2026-07-28":
+                if method_header!=msg.get("method"):
+                    self._send(400,m._rpc_error(msg.get("id"),-32020,
+                               "HeaderMismatch: Mcp-Method is missing or mismatched"))
+                    return
+                if msg.get("method")=="tools/call":
+                    if name_header is None:
+                        self._send(400,m._rpc_error(msg.get("id"),-32020,
+                                   "HeaderMismatch: Mcp-Name is required"))
+                        return
+                    if name_header.startswith("=?base64?") and name_header.endswith("?="):
+                        try:
+                            name_header=base64.b64decode(name_header[9:-2],validate=True).decode("utf-8")
+                        except (ValueError,UnicodeError,binascii.Error):
+                            self._send(400,m._rpc_error(msg.get("id"),-32020,
+                                       "HeaderMismatch: invalid Mcp-Name encoding"))
+                            return
+                    if name_header!=name_value:
+                        self._send(400,m._rpc_error(msg.get("id"),-32020,
+                                   "HeaderMismatch: Mcp-Name differs from request body"))
+                        return
+            elif method_header and method_header!=msg.get("method"):
                 self._send(400,m._rpc_error(msg.get("id"),-32602,
                            "MCP method header mismatch"))
                 return

@@ -13,3 +13,6 @@ build/
 generated/
 reports/launch_check_latest.json
 reports/order_demo_latest.json
+
+# Local machine evidence, not distributable artifacts
+reports/

@@ -8,7 +8,7 @@ Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publi
 
 - Official AWS Emulator: v1.0.322, isolated account 000000000000, HTTPS on 127.0.0.1:9297. The emulator binary originated from an AWS package that previously passed signature verification.
 - 27 MCP tools with no external Python runtime dependencies.
-- **86 unit and security tests passed on Windows Python 3.12 and Ubuntu WSL2 Python 3.12.** Includes 29 fixture-based tests from the Astra launch kit.
+- **94 unit and security tests passed on Windows Python 3.12 and Ubuntu WSL2 Python 3.12.** Includes 29 fixture-based tests from the Astra launch kit.
 - Independent launch checker: PASS with the actual server command for both legacy MCP 2025-11-25 and modern MCP 2026-07-28. A false negative in the kit's modern ping expectation was corrected to match the MCP specification.
 - Live integration: 13 STS/S3/DynamoDB/SQS service checks and four scoped cleanup operations passed.
 - New synthetic order demo: 12 successful workflow steps, two deterministic failure/recovery assertions, and four scoped cleanup operations passed against the official emulator.
@@ -32,3 +32,7 @@ Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publi
 4. Public source release **before** announcing the download URL. No GitHub publication or LinkedIn post is performed by this QA task.
 
 All examples and test data are synthetic; never run with production secrets. The output is an independent community integration, not an AWS product.
+
+## New local GTM evidence
+
+The automated benchmark ran on Ubuntu WSL with three isolated self-tests and three order workflows: 6/6 passed, order p95 7.45 seconds, four scoped cleanup actions in each run, and zero leaked order resources. The independent protocol checker and 94-unit-test suite passed. This is local evidence only; no public CI checks have yet run. The independent Amazon Linux host verified a newer AWS Emulator v1.0.336 RPM signature, but full cross-host application runtime QA remains gated.

@@ -116,4 +116,28 @@ class HttpTransportTests(unittest.TestCase):
         self.assertEqual(body["error"]["code"],-32602)
 
 
+    def test_modern_requires_method_header(self):
+        meta={"_meta":{m.META_VERSION:"2026-07-28",m.META_CAPS:{}}}
+        code,body,_=self.post({"jsonrpc":"2.0","id":4,"method":"tools/list","params":meta},
+            {"MCP-Protocol-Version":"2026-07-28"})
+        self.assertEqual(code,400)
+        self.assertEqual(body["error"]["code"],-32020)
+
+    def test_modern_requires_name_header_for_tool(self):
+        meta={"_meta":{m.META_VERSION:"2026-07-28",m.META_CAPS:{}},
+              "name":"emulator_health","arguments":{}}
+        code,body,_=self.post({"jsonrpc":"2.0","id":5,"method":"tools/call","params":meta},
+            {"MCP-Protocol-Version":"2026-07-28","Mcp-Method":"tools/call"})
+        self.assertEqual(code,400)
+        self.assertEqual(body["error"]["code"],-32020)
+
+    def test_modern_accepts_named_tool_call(self):
+        meta={"_meta":{m.META_VERSION:"2026-07-28",m.META_CAPS:{}},
+              "name":"emulator_status","arguments":{}}
+        code,body,_=self.post({"jsonrpc":"2.0","id":6,"method":"tools/call","params":meta},
+            {"MCP-Protocol-Version":"2026-07-28","Mcp-Method":"tools/call",
+             "Mcp-Name":"emulator_status"})
+        self.assertEqual(code,200)
+        self.assertFalse(body["result"]["isError"])
+
 if __name__=="__main__":unittest.main()

@@ -720,7 +720,7 @@ def handle(msg):
             return _rpc_error(rid,-32602,"Invalid tool arguments")
         try:
             value=FUNCTIONS[name](**args)
-            failed_selftest=(name=="emulator_self_test" and
+            failed_selftest=(name in ("emulator_self_test","emulator_order_demo") and
                              isinstance(value,dict) and not value.get("passed",False))
             result={"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],
                     "isError":failed_selftest}

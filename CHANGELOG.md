@@ -21,7 +21,7 @@
 - Improved tool metadata and release QA reporting.
 
 ### Validation
-- 86 unit tests passing on Windows and WSL2.
+- 94 unit tests passing on Windows and WSL2.
 - Independent launch checker passed legacy and modern protocols.
 - Live official AWS Emulator v1.0.322 checks passed for STS, S3, DynamoDB and SQS.
 - Warm Windows installer and separate demo both completed successfully.
