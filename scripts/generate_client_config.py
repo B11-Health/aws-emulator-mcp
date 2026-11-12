@@ -19,6 +19,10 @@ def render(root,target):
         raise ValueError("Unsupported target")
     return {
         "mcp": {"mcpServers":{"aws-emulator-local":launch}},
+        # The native Copilot harness uses mcpServers, not the legacy VS Code
+        # editor-managed servers format. VS Code is deprecating the latter.
+        "copilot": {"mcpServers":{"aws-emulator-local":{
+            "type":"stdio","command":launch["command"],"args":launch["args"]}}},
         "vscode": {"servers":{"aws-emulator-local":{
             "type":"stdio","command":launch["command"],"args":launch["args"]}}}
     }
@@ -33,6 +37,7 @@ def main():
     directory.mkdir(parents=True,exist_ok=True)
     payloads=render(args.root,args.target)
     names={"mcp":"mcp-client."+args.target+".json",
+           "copilot":"copilot-mcp."+args.target+".json",
            "vscode":"vscode-mcp."+args.target+".json"}
     for name,content in payloads.items():
         target=directory/names[name]

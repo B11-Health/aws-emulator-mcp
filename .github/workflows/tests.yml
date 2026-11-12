@@ -26,9 +26,10 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: ${{ matrix.python }}
-      - name: Compile and run all unit/security tests
+      - name: Compile, scan, and run all unit/security tests
         run: |
           python -m compileall -q src tests scripts
+          python scripts/release_scan.py
           python -m unittest discover -s tests -q
       - name: Independent legacy/modern MCP checker
         run: |
@@ -71,9 +72,34 @@ jobs:
           npm ci --prefix tests/external_clients --no-audit --no-fund --ignore-scripts
           node tests/external_clients/node_client.mjs
 
+  windows-source-preview:
+    name: Windows 2025 source and installer preview
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Unit and security suite on independent Windows
+        run: |
+          python scripts/release_scan.py
+          python -m unittest discover -s tests -q
+      - name: PowerShell syntax and non-mutating Windows installation preview
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path scripts/connect_copilot.ps1).Path,
+            [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            throw "Client connector PowerShell parse failed"
+          }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Preview
   live-official-aws:
     name: Signed AWS Emulator / real E2E
-    needs: [unit-and-protocol, client-sdk-interop]
+    needs: [unit-and-protocol, client-sdk-interop, windows-source-preview]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -86,7 +112,9 @@ jobs:
       - name: Run complete real MCP service test
         run: python scripts/live_test.py
       - name: Measure reliability, latency, and scoped cleanup
-        run: python scripts/gtm_benchmark.py --skip-unit --repetitions 5
+        run: |
+          python scripts/gtm_benchmark.py --skip-unit --repetitions 5
+          test -s reports/gtm_dashboard.html
       - name: Stop only the MCP-managed test process
         if: always()
         run: |

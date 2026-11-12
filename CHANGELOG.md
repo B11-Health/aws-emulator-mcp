@@ -21,13 +21,26 @@
 - Improved tool metadata and release QA reporting.
 
 ### Validation
-- 94 unit tests passing on Windows and WSL2.
+- 103 unit tests passing on Windows and WSL2.
 - Independent launch checker passed legacy and modern protocols.
 - Live official AWS Emulator v1.0.322 checks passed for STS, S3, DynamoDB and SQS.
 - Warm Windows installer and separate demo both completed successfully.
 
+### Native client onboarding
+- Generates native VS Code Copilot mcpServers format alongside the legacy editor-managed servers format.
+- Adds an opt-in Windows Copilot connector with preview, strict JSON parsing, conflict refusal, backup and idempotence.
+- Benchmark captures source commit, emulator version and binary SHA256 for evidence provenance.
+- A Code Gym video preview uses a real recorded dashboard rather than fabricated test footage.
+
+### Evidence-first release hardening
+- Strict MCP 2026 Streamable HTTP request header validation; failed order demo returns MCP tool error.
+- Official TypeScript v2.4.0 and Python v2.3.0 client interoperability checks, in both protocol eras, including authenticated HTTP for Python.
+- Five-run, fail-closed GTM benchmark and dependency-free offline HTML evidence dashboard.
+- Source credential heuristic scan, version consistency assertions, and pinned GitHub CI with official signed emulator installation.
+- Local benchmark 10/10 scenarios, p95 7.265 seconds, zero leaked demo resources; private GitHub Actions clean Linux run passed on AWS Emulator v1.0.336.
+
 ### Pending
-- Public GitHub release and independent cold installation verification.
+- Public GitHub release and independent cold Windows installation verification.
 - macOS/Docker quickstart and direct, authenticated remote MCP deployment.
 
 ## 0.2.0 — November 12, 2026

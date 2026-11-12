@@ -10,7 +10,13 @@ Requirements: Windows with Ubuntu WSL2 already configured, and internet access f
 
     wsl --install -d Ubuntu
 
-Extract the release ZIP, then **double-click install.cmd**. The installer:
+**Install from GitHub source, not a ZIP.** Once the B11-Health repository is public, open PowerShell:
+
+    git clone https://github.com/B11-Health/aws-emulator-mcp.git
+    cd aws-emulator-mcp
+    .\install.cmd
+
+Or clone in a Git desktop client and double-click install.cmd inside the checked-out folder. The installer:
 
 1. Copies the MCP project to a stable per-user folder under %LOCALAPPDATA%\CodeGym\AWS-Emulator-MCP\v0.3.0
 2. Reuses a valid local emulator or downloads and verifies the AWS-signed Linux package
@@ -18,13 +24,17 @@ Extract the release ZIP, then **double-click install.cmd**. The installer:
 4. Performs STS/S3/DynamoDB/SQS diagnostics, test resources, and scoped cleanup
 5. Runs an independent legacy + modern MCP protocol smoke test and creates client JSON configs
 
-The installed project stays usable after the Downloads folder or ZIP is removed. The installer **never silently edits an existing MCP client configuration**. First-time installation requires downloading the sizable official emulator package, so speed depends on the network.
+The installed project stays usable even if the original Git checkout is moved or deleted. The installer **never silently edits an existing MCP client configuration**. First-time installation requires downloading the sizable official emulator package, so speed depends on the network.
 
 The generated files are:
-- generated/mcp-client.windows-wsl.json â€” desktop MCP client
-- generated/vscode-mcp.windows-wsl.json â€” VS Code
 
-**Double-click demo.cmd** to run a full synthetic order scenario and inspect its report.
+- generated/copilot-mcp.windows-wsl.json — native VS Code Copilot configuration (recommended; mcpServers).
+- generated/mcp-client.windows-wsl.json — generic desktop MCP client.
+- generated/vscode-mcp.windows-wsl.json — deprecated editor-managed VS Code configuration (servers).
+
+For current **VS Code Copilot**, double-click **connect-copilot.cmd** after installation. This is an opt-in action separate from install.cmd. It adds only aws-emulator-local to the native Copilot user configuration (under %USERPROFILE%/.copilot/mcp-config.json or %COPILOT_HOME%/mcp-config.json), preserves other entries, and backs up the old file. Run connect-copilot.cmd -Preview to inspect the proposed change without modifying anything. Conflicts and unsupported JSONC are refused. For VS Code opened inside a remote WSL execution environment, use the Linux-native configuration instead of a Windows launcher.
+
+**Double-click demo.cmd** to run the synthetic order scenario and review the report.
 
 ## Linux quickstart
 
@@ -32,7 +42,7 @@ Supported and tested path: Debian/Ubuntu on amd64 or arm64, Python 3.10+, curl, 
 
     bash install.sh
 
-This uses a rootless, AWS-signature-verified emulator installation. It prints the generated Linux MCP client configuration. For the order demo:
+This uses a rootless, AWS-signature-verified emulator installation. It prints the generated Linux MCP client configurations, including native Copilot. For the order demo:
 
     bash scripts/order_demo_linux.sh
 
@@ -103,7 +113,7 @@ AWS Emulator does not enforce production IAM or resource policies. It has partia
 
 ## Publication status
 
-Public source is intended for **B11-Health on GitHub**, with the announcement from **Code Gym on LinkedIn**. A public repository URL, signed release archive, and independent clean install still need verification before announcement. Do not treat the README as evidence that a public release already exists.
+Public source is intended for **B11-Health on GitHub**, with the announcement from **Code Gym on LinkedIn**. A logged-out public source URL, current signed emulator installation, and independent Windows first-run verification still need confirmation before announcement. Do not treat the README as evidence that a public release already exists.
 
 ## Measurable release benchmark
 
@@ -111,4 +121,4 @@ Run the local engineering gates (Python on Windows automatically routes to WSL):
 
     python scripts/gtm_benchmark.py --repetitions 5
 
-This measures unit/security tests, independent MCP protocol compatibility, S3/DynamoDB/SQS/STS workflows, p95 order latency, scoped cleanup, and leaked resource inventory. Reports are written under reports/gtm_latest.json. A local pass is **not** public release approval. Independent cold installation, external client compatibility, public CI, security review and final Code Gym demo are separate gates in docs/RELEASE_GATES.md. See docs/COMPETITIVE_BENCHMARK.md for honest positioning against the official agent skill and LocalStack MCP.
+This measures unit/security tests, independent MCP protocol compatibility, S3/DynamoDB/SQS/STS workflows, p95 order latency, scoped cleanup, and leaked resource inventory. Reports are written under reports/gtm_latest.json and also rendered as a **self-contained, offline evidence dashboard** at reports/gtm_dashboard.html. Open the HTML in a browser to inspect actual scenario latencies, release gates, and cleanup outcomes. The dashboard does not contact external services or claim public release approval. A local pass is **not** public release approval. Independent Windows cold installation, real desktop-host UX, independent security review, public CI visibility and final Code Gym demo are separate gates in docs/RELEASE_GATES.md. See docs/COMPETITIVE_BENCHMARK.md for honest positioning against the official agent skill and LocalStack MCP.

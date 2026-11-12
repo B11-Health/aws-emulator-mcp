@@ -9,7 +9,7 @@ AWS's official agent skill already installs and connects AWS Emulator. Our edge 
 
 | Dimension | Release threshold |
 | --- | --- |
-| Unit and negative-security tests | 100% passing on Python 3.10 + 3.12, at least 90 cases |
+| Unit and negative-security tests | 100% passing on Python 3.10 + 3.12, at least 100 cases |
 | MCP interop | Legacy 2025-11-25 and modern 2026-07-28 independent checker passes |
 | Catalog | At least 27 stable, schema-validated tools with read-only/destructive annotations |
 | Credential isolation | HTTPS loopback only; only emulator credentials; STS account 000000000000 |
@@ -18,7 +18,7 @@ AWS's official agent skill already installs and connects AWS Emulator. Our edge 
 | No leaked test state | Run-created bucket, table and queue absent from final inventory |
 | HTTP security | Auth and Origin/Host validation; strict modern MCP header matching |
 | Supply chain | Official AWS package signature validated; reproducible wheel + clean commit |
-| Client UX | Official Python and TypeScript SDK v2 clients work in both eras; generated config needs separate host validation |
+| Client UX | Official Python and TypeScript SDKs work in both eras; native Copilot config and opt-in merge verified in Windows fixture; real desktop UX remains pending |
 
 ## Mandatory independent release gates
 

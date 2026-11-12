@@ -5,6 +5,8 @@ warm machine. It measures engineering performance and records independent gates.
 """
 from __future__ import annotations
 import argparse
+import hashlib
+import platform
 import datetime as dt
 import json
 import math
@@ -54,8 +56,8 @@ def benchmark(repetitions=3,include_unit=True):
         match=re.search(r"Ran (\d+) tests",unit.get("stderr_tail",""))
         unit["test_count"]=int(match.group(1)) if match else None
         details["unit"]=unit
-        gates.append(gate("unit_and_security_tests",unit["passed"] and (unit["test_count"] or 0)>=90,
-            unit["test_count"],"90+ passing"))
+        gates.append(gate("unit_and_security_tests",unit["passed"] and (unit["test_count"] or 0)>=100,
+            unit["test_count"],"100+ passing"))
     probe_path=ROOT/"reports"/"gtm_protocol.json"
     probe_path.parent.mkdir(exist_ok=True)
     protocol=command([sys.executable,str(ROOT/"scripts"/"mcp_launch_check.py"),
@@ -98,12 +100,30 @@ def benchmark(repetitions=3,include_unit=True):
             gates.append(gate(key,False,"emulator unavailable","required"))
     required_gates=[g for g in gates if g["required"]]
     engineering_pass=all(g["status"]=="PASS" for g in required_gates)
+    git_rev=command(["git","rev-parse","HEAD"],5)
+    git_status=command(["git","status","--porcelain","--untracked-files=no"],5)
+    emulator_executable=m.emulator_binary()
+    binary_sha256=None
+    if emulator_executable and Path(emulator_executable).is_file():
+        hasher=hashlib.sha256()
+        with open(emulator_executable,"rb") as binary:
+            for chunk in iter(lambda:binary.read(1024*1024),b""):
+                hasher.update(chunk)
+        binary_sha256=hasher.hexdigest()
+    provenance={
+        "git_commit":git_rev.get("stdout_tail","").strip() if git_rev["passed"] else None,
+        "git_clean":git_status["passed"] and not git_status.get("stdout_tail","").strip(),
+        "emulator_version":doctor.get("emulator_version"),
+        "emulator_binary_sha256":binary_sha256,
+        "python_version":platform.python_version(),
+        "protocol_versions":list(m.PROTOCOL_VERSIONS),
+    }
     pending=[
-        "Independent clean Windows/WSL first-install test on a new host",
-        "Independent native Linux installation and E2E test on current AWS Emulator",
-        "External MCP client interoperability and security review",
-        "GitHub Actions passing on public B11-Health repository",
-        "Public release link and final Code Gym launch video verified",
+        "Fresh Windows/WSL installation on a second independent Windows host",
+        "End-user desktop MCP application setup and usability test (not just SDK)",
+        "Independent security review and public source secret scan",
+        "Public B11-Health repository and green CI checked while logged out",
+        "Real Code Gym launch demonstration tied to exact released commit",
     ]
     report={
         "timestamp_utc":dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -112,6 +132,7 @@ def benchmark(repetitions=3,include_unit=True):
         "repetitions":repetitions,"duration_s":round(time.perf_counter()-started,3),
         "engineering_pass":engineering_pass,
         "public_release_approved":False,
+        "provenance":provenance,
         "gates":gates,"independent_release_blockers":pending,
         "measurements":details,
     }
@@ -142,10 +163,14 @@ def main():
     out=ROOT/"reports"/"gtm_latest.json"
     out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(result,indent=2),encoding="utf-8")
+    from render_report import render
+    html_path=out.parent/"gtm_dashboard.html"
+    html_path.write_text(render(result),encoding="utf-8")
     print(json.dumps({"engineering_pass":result["engineering_pass"],
         "public_release_approved":result["public_release_approved"],
         "gates":result["gates"],
-        "duration_s":result["duration_s"],"report":str(out)},indent=2))
+        "duration_s":result["duration_s"],"report":str(out),
+        "dashboard":str(html_path)},indent=2))
     return 0 if result["engineering_pass"] else 1
 
 if __name__=="__main__":

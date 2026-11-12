@@ -32,7 +32,7 @@ if (-not [string]::Equals($source, $target, [System.StringComparison]::OrdinalIg
     $entries = @(
         "src","scripts","tests","docs","examples",
         "README.md","LICENSE","SECURITY.md","RELEASE_QA.md","CHANGELOG.md","CONTRIBUTING.md",
-        "pyproject.toml","install.ps1","install.cmd","install.sh","demo.ps1","demo.cmd"
+        "pyproject.toml","install.ps1","install.cmd","install.sh","demo.ps1","demo.cmd","connect-copilot.cmd"
     )
     foreach ($name in $entries) {
         $from = Join-Path $source $name
@@ -68,6 +68,8 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "INSTALLATION VERIFIED" -ForegroundColor Green
 Write-Host "MCP config: $target\generated\mcp-client.windows-wsl.json"
-Write-Host "VS Code:   $target\generated\vscode-mcp.windows-wsl.json"
-Write-Host "No client settings were modified. Copy the appropriate generated server entry."
+Write-Host "VS Code Copilot (native): $target\generated\copilot-mcp.windows-wsl.json"
+Write-Host "VS Code legacy (deprecated): $target\generated\vscode-mcp.windows-wsl.json"
+Write-Host "For one-click opt-in Copilot setup, double-click connect-copilot.cmd."
+Write-Host "No client settings were modified by install.cmd."
 Write-Host "ChatGPT web cannot connect directly to WSL's local loopback server."

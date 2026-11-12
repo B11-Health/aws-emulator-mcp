@@ -8,7 +8,7 @@ Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publi
 
 - Official AWS Emulator: v1.0.322, isolated account 000000000000, HTTPS on 127.0.0.1:9297. The emulator binary originated from an AWS package that previously passed signature verification.
 - 27 MCP tools with no external Python runtime dependencies.
-- **94 unit and security tests passed on Windows Python 3.12 and Ubuntu WSL2 Python 3.12.** Includes 29 fixture-based tests from the Astra launch kit.
+- **103 unit and security tests passed on Windows Python 3.12 and Ubuntu WSL2 Python 3.12.** Includes 29 fixture-based tests from the Astra launch kit.
 - Independent launch checker: PASS with the actual server command for both legacy MCP 2025-11-25 and modern MCP 2026-07-28. A false negative in the kit's modern ping expectation was corrected to match the MCP specification.
 - Live integration: 13 STS/S3/DynamoDB/SQS service checks and four scoped cleanup operations passed.
 - New synthetic order demo: 12 successful workflow steps, two deterministic failure/recovery assertions, and four scoped cleanup operations passed against the official emulator.
@@ -35,4 +35,25 @@ All examples and test data are synthetic; never run with production secrets. The
 
 ## New local GTM evidence
 
-The automated benchmark ran on Ubuntu WSL with three isolated self-tests and three order workflows: 6/6 passed, order p95 7.45 seconds, four scoped cleanup actions in each run, and zero leaked order resources. The independent protocol checker and 94-unit-test suite passed. This is local evidence only; no public CI checks have yet run. The independent Amazon Linux host verified a newer AWS Emulator v1.0.336 RPM signature, but full cross-host application runtime QA remains gated.
+The automated benchmark ran on Ubuntu WSL with three isolated self-tests and three order workflows: 6/6 passed, order p95 7.45 seconds, four scoped cleanup actions in each run, and zero leaked order resources. The independent protocol checker and 103-unit-test suite passed. This is local evidence only; no public CI checks have yet run. The independent Amazon Linux host verified a newer AWS Emulator v1.0.336 RPM signature, but full cross-host application runtime QA remains gated.
+
+
+## Latest private GitHub Actions evidence
+
+- Repository: B11-Health/aws-emulator-mcp (PRIVATE, not yet released).
+- CI run 43287887580: all four jobs passed on clean hosted runners: Python 3.10 unit/protocol/wheel, Python 3.12 unit/protocol/wheel, official Python/TypeScript SDK clients, and signed official AWS Emulator live E2E + 5-run reliability benchmark.
+- Hosted Linux run verified AWS Emulator v1.0.336 GPG signature, installed it rootlessly, and confirmed emulated STS account 000000000000.
+- Local benchmark on Windows/WSL: 5/5 service self-tests plus 5/5 order workflows, order workflow p95 7.265 seconds, zero leaked order resources and complete scoped cleanup.
+- Latest local suite: 103/103 Windows and 103/103 Ubuntu WSL2.
+- Python SDK 2.3.0 additionally passed authenticated Streamable HTTP in legacy and modern modes. Optional localhost listener remains off by default.
+- The offline report viewer uses only sanitized benchmark fields and rejects malicious HTML data injection; no external assets.
+
+This is stronger engineering validation, but it still **does not approve publication**. Separate clean Windows first-install QA, a desktop-host UX test, independent security review, and a real matched Code Gym launch video remain outstanding.
+
+
+## New onboarding and provenance evidence
+
+- Current VS Code Copilot uses native mcpServers configuration; the older editor-managed servers format is deprecated. The generator now emits both.
+- Opt-in connect-copilot.cmd was exercised against a temporary Windows Copilot configuration: preview unchanged, unrelated servers preserved, backup present, and idempotent second apply. It is never run automatically by installation.
+- The engineering benchmark captures the exact git commit, dirty-worktree state, official emulator version and emulator binary SHA256. Local passing tests never authorize public release.
+- Code Gym preview: 118.3-second H.264/AAC video with actual dashboard browser capture and captions. It remains private pending a released-commit factual match.
