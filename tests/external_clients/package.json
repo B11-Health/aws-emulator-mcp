@@ -1,0 +1,11 @@
+{
+  "name": "codegym-mcp-interop-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node node_client.mjs"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0"
+  }
+}

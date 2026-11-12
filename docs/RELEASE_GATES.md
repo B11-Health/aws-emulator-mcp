@@ -18,7 +18,7 @@ AWS's official agent skill already installs and connects AWS Emulator. Our edge 
 | No leaked test state | Run-created bucket, table and queue absent from final inventory |
 | HTTP security | Auth and Origin/Host validation; strict modern MCP header matching |
 | Supply chain | Official AWS package signature validated; reproducible wheel + clean commit |
-| Client UX | Generated MCP client works in two real clients without editing other settings |
+| Client UX | Official Python and TypeScript SDK v2 clients work in both eras; generated config needs separate host validation |
 
 ## Mandatory independent release gates
 

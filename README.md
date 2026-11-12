@@ -21,8 +21,8 @@ Extract the release ZIP, then **double-click install.cmd**. The installer:
 The installed project stays usable after the Downloads folder or ZIP is removed. The installer **never silently edits an existing MCP client configuration**. First-time installation requires downloading the sizable official emulator package, so speed depends on the network.
 
 The generated files are:
-- generated/mcp-client.windows-wsl.json — desktop MCP client
-- generated/vscode-mcp.windows-wsl.json — VS Code
+- generated/mcp-client.windows-wsl.json â€” desktop MCP client
+- generated/vscode-mcp.windows-wsl.json â€” VS Code
 
 **Double-click demo.cmd** to run a full synthetic order scenario and inspect its report.
 
@@ -62,6 +62,15 @@ All tools target the fixed localhost emulator. The Python adapter uses only Pyth
 Use the generated JSON from the installer. Recommended default transport is **stdio** with no listener. An opt-in bearer-protected HTTP transport is included but binds to loopback only. **Do not publicly forward the local HTTP port.** ChatGPT web cannot directly connect to a localhost/WSL MCP server; a separately reviewed remote connector is necessary.
 
 Supported protocol eras: MCP 2025-03-26, 2025-06-18, 2025-11-25 and stateless 2026-07-28. Modern ping was removed from the protocol and is correctly rejected. More advanced extensions, streaming, and full AWS API fidelity are not claimed.
+
+## Independent official SDK interoperability
+
+The release pipeline runs both **official MCP SDK clients** against the real server process, not just synthetic fixtures:
+
+- Python SDK v2.3.0: legacy 2025-11-25 and modern 2026-07-28 negotiation, tools/list, and a local read-only tool call.
+- TypeScript SDK v2.4.0: legacy and modern negotiation, 27-tool discovery, and a local read-only tool call.
+
+These are **test-only dependencies** under tests/external_clients. The MCP adapter itself remains standard-library Python. Both test clients run without an emulator or AWS keys for protocol verification.
 
 ## Tests and independent verification
 

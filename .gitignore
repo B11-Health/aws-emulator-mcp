@@ -16,3 +16,6 @@ reports/order_demo_latest.json
 
 # Local machine evidence, not distributable artifacts
 reports/
+
+# External MCP SDK test dependencies (dev only)
+node_modules/
