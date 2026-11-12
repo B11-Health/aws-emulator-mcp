@@ -68,6 +68,12 @@ if (-not [string]::Equals($source, $target, [System.StringComparison]::OrdinalIg
             if (($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
                 throw "Refusing linked managed target entry: $name"
             }
+            if ($targetItem.PSIsContainer) {
+                $targetLinks = @(Get-ChildItem -LiteralPath $to -Recurse -Force -Attributes ReparsePoint)
+                if ($targetLinks.Count -gt 0) {
+                    throw "Refusing linked content inside managed target entry: $name"
+                }
+            }
         }
     }
     foreach ($name in $entries) {

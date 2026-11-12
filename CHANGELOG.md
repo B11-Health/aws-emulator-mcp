@@ -27,7 +27,7 @@
 - Warm Windows installer and separate demo both completed successfully.
 
 ### Install and runtime safety
-- Windows installer preflights managed paths and source content for symlinks and junctions before replacing any files.
+- Windows installer preflights managed paths, nested source entries and nested installed content for symlinks and junctions before replacing any files.
 - Linux quickstart validates AWS_EMULATOR_PORT and passes it to both detached and systemd startup modes.
 - Forces LF checkouts for Bash scripts on Windows so WSL launchers cannot break from CRLF conversion.
 - Adds a weekly signed-emulator compatibility CI run (no automatic release).

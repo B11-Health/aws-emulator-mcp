@@ -62,3 +62,4 @@ This is stronger engineering validation, but it still **does not approve publica
 - A Windows test created a junction redirecting the managed install into a separate test directory. Installer refused it before mutation and the sentinel file remained intact.
 - Linux quickstart validates port range and consistently passes the chosen port to AWS Emulator. Added negative tests for invalid values.
 - The new hosted Windows Actions job tests launcher syntax, source scan, and non-mutating installation preview on a clean Windows 2025 runner.
+- The nested-directory junction regression was also reproduced on Windows: the installer refused the redirect and preserved the sentinel outside the install tree.

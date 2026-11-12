@@ -34,5 +34,29 @@ class InstallerJunctionTests(unittest.TestCase):
             self.assertEqual(sentinel.read_text(),"preserve")
             self.assertFalse((victim/"v0.3.0").exists())
 
+    def test_nested_junction_in_existing_managed_target_is_refused(self):
+        with tempfile.TemporaryDirectory(prefix="codegym-nested-junction-") as tmp:
+            base=Path(tmp)
+            source_dir=base/"CodeGym"/"AWS-Emulator-MCP"/"v0.3.0"/"src"
+            source_dir.mkdir(parents=True)
+            victim=base/"keep-me"
+            victim.mkdir()
+            sentinel=victim/"keep.txt"
+            sentinel.write_text("untouched")
+            junction=source_dir/"linked"
+            quote=lambda value: "'"+str(value).replace("'","''")+"'"
+            command="New-Item -ItemType Junction -Path "+quote(junction)+" -Target "+quote(victim)+" -ErrorAction Stop | Out-Null"
+            created=subprocess.run(["powershell.exe","-NoProfile","-Command",command],
+                                   capture_output=True,text=True,timeout=12)
+            if created.returncode:
+                self.skipTest("Junction creation unavailable in this Windows runner")
+            env=dict(os.environ,LOCALAPPDATA=tmp)
+            result=subprocess.run(["powershell.exe","-NoProfile","-ExecutionPolicy",
+                                   "Bypass","-File",str(ROOT/"install.ps1")],
+                                  capture_output=True,text=True,env=env,timeout=17)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn("Refusing linked content inside managed target entry",result.stdout+result.stderr)
+            self.assertEqual(sentinel.read_text(),"untouched")
+
 if __name__=="__main__":
     unittest.main()
