@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -22,7 +23,9 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("emulator_start",names)
         self.assertIn("s3_put_object",names)
         self.assertIn("dynamodb_get_item",names)
-        self.assertEqual(len(names),14)
+        self.assertIn("s3_delete_bucket",names)
+        self.assertIn("dynamodb_list_tables",names)
+        self.assertEqual(len(names),18)
 
     def test_notifications_have_no_response(self):
         self.assertIsNone(m.handle({"jsonrpc":"2.0","method":"notifications/initialized"}))
@@ -68,5 +71,45 @@ class ProtocolTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             with patch.object(m,"CREDDIR",Path(root)):
                 self.assertFalse(m.health()["running"])
+
+    def test_stdio_process_roundtrip(self):
+        exe=Path(__file__).resolve().parents[1] / "src" / "aws_emulator_mcp" / "server.py"
+        requests=[
+          {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}},
+          {"jsonrpc":"2.0","method":"notifications/initialized"},
+          {"jsonrpc":"2.0","id":2,"method":"tools/list"},
+        ]
+        data="".join(json.dumps(x)+"\n" for x in requests)
+        p=subprocess.run([sys.executable,"-u",str(exe)],input=data,capture_output=True,text=True,timeout=5)
+        self.assertEqual(p.returncode,0,p.stderr)
+        output=[json.loads(x) for x in p.stdout.splitlines()]
+        self.assertEqual(len(output),2)
+        self.assertEqual(len(output[1]["result"]["tools"]),18)
+
+    def test_no_nonlocal_url_setting(self):
+        self.assertEqual(m.ENDPOINT,f"https://127.0.0.1:{m.PORT}")
+        self.assertNotIn("endpoint",m.TOOLS[0]["inputSchema"]["properties"])
+
+    def test_dynamodb_create_waits_until_active(self):
+        fake=[
+            {"TableDescription":{"TableStatus":"CREATING"}},
+            {"Table":{"TableStatus":"CREATING"}},
+            {"Table":{"TableStatus":"ACTIVE","TableName":"testtable"}},
+        ]
+        with patch.object(m,"dynamo",side_effect=fake) as call, patch.object(m.time,"sleep"):
+            result=m.dynamodb_create_table("testtable")
+        self.assertEqual(result["description"]["TableStatus"],"ACTIVE")
+        self.assertEqual(call.call_count,3)
+
+    def test_dynamodb_delete_waits_until_gone(self):
+        fake=[
+            {"TableDescription":{"TableStatus":"DELETING"}},
+            {"TableNames":["testtable"]},
+            {"TableNames":[]},
+        ]
+        with patch.object(m,"dynamo",side_effect=fake) as call, patch.object(m.time,"sleep"):
+            result=m.dynamodb_delete_table("testtable")
+        self.assertTrue(result["deleted"])
+        self.assertEqual(call.call_count,3)
 
 if __name__=="__main__": unittest.main()

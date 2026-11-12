@@ -58,11 +58,15 @@ def main():
         msg(7,"s3_put_object",{"bucket":bucket,"key":"sample.txt","text":text}),
         msg(8,"s3_get_object",{"bucket":bucket,"key":"sample.txt"}),
         msg(9,"s3_list_buckets"),
+        msg(20,"s3_list_objects",{"bucket":bucket}),
         msg(10,"dynamodb_create_table",{"table":table}),
         msg(11,"dynamodb_put_item",{"table":table,"item_id":item_id,"message":"hello-local"}),
         msg(12,"dynamodb_get_item",{"table":table,"item_id":item_id}),
+        msg(19,"dynamodb_describe_table",{"table":table}),
         msg(13,"dynamodb_delete_table",{"table":table}),
         msg(14,"s3_delete_object",{"bucket":bucket,"key":"sample.txt"}),
+        msg(21,"s3_delete_bucket",{"bucket":bucket}),
+        msg(22,"dynamodb_list_tables"),
     ]
     proc=subprocess.Popen([sys.executable,"-u",str(SERVER)],
           stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
@@ -74,12 +78,17 @@ def main():
     labels={1:"initialize",2:"tools/list",3:"status",4:"health",5:"identity",
             6:"s3 create",7:"s3 put",8:"s3 get",9:"s3 list",
             10:"dynamodb create",11:"dynamodb put",12:"dynamodb get",
-            13:"dynamodb delete",14:"s3 delete"}
+            13:"dynamodb delete",14:"s3 delete",19:"dynamodb describe",
+            20:"s3 list objects",21:"s3 delete bucket",22:"dynamodb list tables"}
     values={i:verify(data,i,name) for i,name in labels.items()}
     assert values[4]["running"], values[4]
     assert values[5]["Account"]=="000000000000",values[5]
     assert values[8]["text"]==text,values[8]
     assert bucket in values[9]["buckets"],values[9]
+    assert "sample.txt" in values[20]["keys"], values[20]
+    assert values[19]["Table"]["TableStatus"]=="ACTIVE",values[19]
+    assert table not in values[22].get("TableNames",[]), values[22]
+    assert values[21]["deleted"],values[21]
     assert values[12]["Item"]["id"]["S"]==item_id,values[12]
     assert values[12]["Item"]["message"]["S"]=="hello-local"
     print(json.dumps({"result":"PASS","tests":len(labels),

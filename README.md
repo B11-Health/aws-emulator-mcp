@@ -4,12 +4,12 @@ An open-source Model Context Protocol (MCP) adapter for the official [AWS Emulat
 
 This independent community adapter is MIT-licensed. The AWS Emulator itself is a separate CC0 project and its binary is not bundled here.
 
-## Available tools (14)
+## Available tools (18)
 
 - Runtime: emulator_status, emulator_start, emulator_stop, emulator_health
 - Identity: emulator_identity
-- S3: s3_create_bucket, s3_list_buckets, s3_put_object, s3_get_object, s3_delete_object
-- DynamoDB: dynamodb_create_table, dynamodb_put_item, dynamodb_get_item, dynamodb_delete_table
+- S3: s3_create_bucket, s3_list_buckets, s3_list_objects, s3_put_object, s3_get_object, s3_delete_object, s3_delete_bucket
+- DynamoDB: dynamodb_create_table, dynamodb_put_item, dynamodb_get_item, dynamodb_delete_table, dynamodb_list_tables, dynamodb_describe_table
 
 The DynamoDB helpers provision a PAY_PER_REQUEST table with a string id partition key, and read/write id and message strings.
 
@@ -51,7 +51,7 @@ This is a stdio MCP server. It exposes no HTTP port of its own; the emulator lis
     python3 -m unittest discover -s tests -v
     python3 scripts/live_test.py
 
-The unit tests verify MCP tool discovery, argument rejection, credential isolation, SigV4 signing, and health behavior. The live tests make JSON-RPC tool calls through the MCP server for STS identity, S3 bucket/object round-trips, and DynamoDB table/item round-trips.
+The unit tests verify MCP tool discovery, argument rejection, credential isolation, SigV4 signing, and health behavior. The live tests make JSON-RPC tool calls through the MCP server for STS identity, S3 bucket/object round-trips, and DynamoDB table/item round-trips, including asynchronous readiness checks and cleanup.
 
 ## Safety
 
@@ -69,3 +69,11 @@ The unit tests verify MCP tool discovery, argument rejection, credential isolati
 - https://github.com/aws/aws-emulator
 - https://docs.aws.amazon.com/emulator/
 - https://modelcontextprotocol.io/specification
+
+## Scope
+
+This release intentionally exposes a conservative set of S3, DynamoDB and STS operations. It is not a complete MCP wrapper for every AWS service. The separate official AWS Emulator supports many more AWS APIs; adding further MCP tools should be done with explicit schemas, tests and no endpoint override.
+
+## Validation on Windows WSL2
+
+The official AWS Emulator v1.0.322 Debian package passed AWS detached GPG signature verification against fingerprint 98BCF336A3BE53B734E967C52E5BF49BD940F624. The implementation passed 13 unit tests and 18 live MCP checks, and a Windows-to-WSL stdio handshake returned a healthy emulator result. These checks demonstrate functionality only for the listed operations, not production AWS fidelity or security.

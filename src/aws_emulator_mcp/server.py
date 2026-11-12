@@ -6,7 +6,7 @@ import configparser, datetime, hashlib, hmac, json, os, re, shutil, signal, ssl,
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler
 from xml.etree import ElementTree as ET
 
 PORT=int(os.environ.get("AWS_EMULATOR_PORT","9297"))
@@ -71,7 +71,7 @@ def request(method,path="/",service=None,body=b"",headers=None,query=None):
     url=ENDPOINT+urlpath+("?"+urlquery if urlquery else "")
     req=Request(url,data=body if method in ("POST","PUT") else None,headers=hdr,method=method)
     try:
-        with urlopen(req,context=context,timeout=8) as r:
+        with build_opener(ProxyHandler({}), HTTPSHandler(context=context)).open(req,timeout=8) as r:
             content=r.read(MAX_BYTES+1)
             if len(content)>MAX_BYTES: raise LocalError("Response exceeds 1 MiB limit")
             return {"status":r.status,"headers":dict(r.headers),"body":content}
@@ -167,6 +167,17 @@ def s3_list_buckets():
                     if field.tag.split("}")[-1]=="Name": buckets.append(field.text or "")
     return {"buckets":buckets}
 
+def s3_list_objects(bucket):
+    bucket=check_bucket(bucket)
+    r=request("GET",f"/{bucket}",service="s3",query={"list-type":"2"})
+    root=ET.fromstring(r["body"])
+    keys=[]
+    for node in root.iter():
+        if node.tag.split("}")[-1]=="Contents":
+            for field in node:
+                if field.tag.split("}")[-1]=="Key": keys.append(field.text or "")
+    return {"bucket":bucket,"keys":keys}
+
 def s3_put_object(bucket,key,text):
     if not isinstance(text,str) or len(text.encode())>65536:
         raise LocalError("text must be at most 64 KiB")
@@ -182,6 +193,11 @@ def s3_delete_object(bucket,key):
     r=request("DELETE",object_path(bucket,key),service="s3")
     return {"deleted":True,"status":r["status"]}
 
+def s3_delete_bucket(bucket):
+    bucket=check_bucket(bucket)
+    r=request("DELETE",f"/{bucket}",service="s3")
+    return {"bucket":bucket,"deleted":True,"status":r["status"]}
+
 def dynamo(operation,payload):
     body=json.dumps(payload,separators=(",",":")).encode()
     r=request("POST","/",service="dynamodb",body=body,headers={
@@ -195,7 +211,16 @@ def dynamodb_create_table(table):
         "AttributeDefinitions":[{"AttributeName":"id","AttributeType":"S"}],
         "KeySchema":[{"AttributeName":"id","KeyType":"HASH"}],
         "BillingMode":"PAY_PER_REQUEST"})
-    return {"table":table,"description":data.get("TableDescription",{})}
+    for attempt in range(40):
+        try:
+            described=dynamo("DescribeTable",{"TableName":table})
+            state=described.get("Table",{}).get("TableStatus")
+            if state=="ACTIVE":
+                return {"table":table,"description":described["Table"]}
+        except LocalError as exc:
+            if "ResourceNotFoundException" not in str(exc): raise
+        time.sleep(0.2)
+    raise LocalError(f"Emulated DynamoDB table {table} did not become ACTIVE")
 
 def dynamodb_put_item(table,item_id,message):
     check_table(table)
@@ -209,7 +234,19 @@ def dynamodb_get_item(table,item_id):
 
 def dynamodb_delete_table(table):
     check_table(table)
-    return dynamo("DeleteTable",{"TableName":table})
+    result=dynamo("DeleteTable",{"TableName":table})
+    for attempt in range(40):
+        names=dynamo("ListTables",{}).get("TableNames",[])
+        if table not in names: return {"deleted":True,"table":table,"result":result}
+        time.sleep(.2)
+    raise LocalError(f"Emulated DynamoDB table {table} did not finish deleting")
+
+def dynamodb_list_tables():
+    return dynamo("ListTables",{})
+
+def dynamodb_describe_table(table):
+    check_table(table)
+    return dynamo("DescribeTable",{"TableName":table})
 
 def spec(name,description,properties=None,required=()):
     return {"name":name,"description":description,
@@ -224,9 +261,13 @@ TOOLS=[
     spec("emulator_identity","Verify isolated STS account 000000000000"),
     spec("s3_create_bucket","Create emulated S3 bucket",{"bucket":STR},("bucket",)),
     spec("s3_list_buckets","List emulated S3 buckets"),
+    spec("s3_list_objects","List keys in emulated S3 bucket",{"bucket":STR},("bucket",)),
     spec("s3_put_object","Put UTF-8 text in emulated S3",{"bucket":STR,"key":STR,"text":STR},("bucket","key","text")),
     spec("s3_get_object","Read UTF-8 text from emulated S3",{"bucket":STR,"key":STR},("bucket","key")),
     spec("s3_delete_object","Delete emulated S3 object",{"bucket":STR,"key":STR},("bucket","key")),
+    spec("s3_delete_bucket","Delete empty emulated S3 bucket",{"bucket":STR},("bucket",)),
+    spec("dynamodb_list_tables","List emulated DynamoDB tables"),
+    spec("dynamodb_describe_table","Describe emulated DynamoDB table",{"table":STR},("table",)),
     spec("dynamodb_create_table","Create DynamoDB table with string id key",{"table":STR},("table",)),
     spec("dynamodb_put_item","Store id and message strings",{"table":STR,"item_id":STR,"message":STR},("table","item_id","message")),
     spec("dynamodb_get_item","Read DynamoDB item",{"table":STR,"item_id":STR},("table","item_id")),
@@ -235,8 +276,10 @@ TOOLS=[
 FUNCTIONS=dict(emulator_status=status,emulator_start=start,emulator_stop=stop,
     emulator_health=health,emulator_identity=identity,
     s3_create_bucket=s3_create_bucket,s3_list_buckets=s3_list_buckets,
+    s3_list_objects=s3_list_objects,s3_delete_bucket=s3_delete_bucket,
     s3_put_object=s3_put_object,s3_get_object=s3_get_object,s3_delete_object=s3_delete_object,
     dynamodb_create_table=dynamodb_create_table,dynamodb_put_item=dynamodb_put_item,
+    dynamodb_list_tables=dynamodb_list_tables,dynamodb_describe_table=dynamodb_describe_table,
     dynamodb_get_item=dynamodb_get_item,dynamodb_delete_table=dynamodb_delete_table)
 
 def handle(msg):
