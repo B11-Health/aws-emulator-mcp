@@ -1,6 +1,8 @@
 """Order workflow and local bootstrap QA; no live AWS calls."""
 from contextlib import ExitStack
 import json
+import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -109,6 +111,21 @@ class QuickstartTests(unittest.TestCase):
                 script.parent.mkdir();script.write_text("#!/bin/bash\n")
                 with self.assertRaisesRegex(ValueError,"inside WSL"):
                     generate_client_config.render(p,"windows-wsl")
+
+    @unittest.skipIf(sys.platform=="win32","Bash validation runs on Linux/WSL")
+    def test_quickstart_rejects_invalid_custom_port_before_install(self):
+        path=Path(__file__).resolve().parents[1]/"scripts"/"quickstart_linux.sh"
+        subprocess.run(["bash","-n",str(path)],check=True,timeout=4)
+        env=dict(os.environ,AWS_EMULATOR_PORT="80")
+        result=subprocess.run(["bash",str(path)],env=env,
+                              capture_output=True,text=True,timeout=4)
+        self.assertEqual(result.returncode,2)
+        self.assertIn("Invalid AWS_EMULATOR_PORT",result.stderr)
+
+    def test_quickstart_port_is_propagated_to_process_launch(self):
+        s=(Path(__file__).resolve().parents[1]/"scripts"/"quickstart_linux.sh").read_text(encoding="utf-8")
+        self.assertIn('PORT="$'+'{AWS_EMULATOR_PORT:-9297}"',s)
+        self.assertIn('"$BIN" -p "$PORT" --telemetry off',s)
 
     def test_rootless_installer_verifies_signature(self):
         p=Path(__file__).resolve().parents[1]/"scripts"/"install_wsl.sh"

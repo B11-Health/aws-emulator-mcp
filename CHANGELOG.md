@@ -26,6 +26,13 @@
 - Live official AWS Emulator v1.0.322 checks passed for STS, S3, DynamoDB and SQS.
 - Warm Windows installer and separate demo both completed successfully.
 
+### Install and runtime safety
+- Windows installer preflights managed paths and source content for symlinks and junctions before replacing any files.
+- Linux quickstart validates AWS_EMULATOR_PORT and passes it to both detached and systemd startup modes.
+- Forces LF checkouts for Bash scripts on Windows so WSL launchers cannot break from CRLF conversion.
+- Adds a weekly signed-emulator compatibility CI run (no automatic release).
+- Dedicated Windows junction fixture ensures unrelated files remain untouched when a malicious redirect is encountered.
+
 ### Native client onboarding
 - Generates native VS Code Copilot mcpServers format alongside the legacy editor-managed servers format.
 - Adds an opt-in Windows Copilot connector with preview, strict JSON parsing, conflict refusal, backup and idempotence.

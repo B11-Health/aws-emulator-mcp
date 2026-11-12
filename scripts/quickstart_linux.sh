@@ -10,6 +10,11 @@ fi
 ROOT="$(cd "$ROOT" && pwd)"
 cd "$ROOT"
 export PYTHONPATH="$ROOT/src"
+PORT="${AWS_EMULATOR_PORT:-9297}"
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || (( PORT < 1024 || PORT > 65535 )); then
+  echo "Invalid AWS_EMULATOR_PORT: expected 1024..65535" >&2
+  exit 2
+fi
 umask 077
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -38,15 +43,15 @@ fi
 
 echo "[2/5] Ensure emulator is running on local HTTPS"
 if python3 -c 'from aws_emulator_mcp import server;import sys;sys.exit(0 if server.health()["running"] else 1)' 2>/dev/null; then
-  echo "Reusing healthy emulator on 127.0.0.1:9297"
+  echo "Reusing healthy emulator on 127.0.0.1:$PORT"
 else
   LOG_DIR="$HOME/.local/share/aws-emulator-mcp"
   mkdir -p "$LOG_DIR"
   if command -v systemd-run >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
-    systemd-run --user --unit=aws-emulator-mcp-quickstart --collect "$BIN" --telemetry off ||
+    systemd-run --user --unit="aws-emulator-mcp-quickstart-$PORT" --collect "$BIN" -p "$PORT" --telemetry off ||
       { echo "Could not start via systemd user manager." >&2; exit 3; }
   else
-    nohup "$BIN" --telemetry off > "$LOG_DIR/quickstart-runtime.log" 2>&1 </dev/null &
+    nohup "$BIN" -p "$PORT" --telemetry off > "$LOG_DIR/quickstart-$PORT.log" 2>&1 </dev/null &
     echo "Started detached process PID=$! (may not survive WSL shutdown)"
   fi
   READY=0

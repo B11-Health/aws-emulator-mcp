@@ -26,7 +26,19 @@ if ($Preview) {
     exit 0
 }
 
-# Install to a stable per-user path. Deleting Downloads will not break MCP.
+# Refuse reparse-point/junction redirects before mutating the managed install.
+# The client may clone the project anywhere, but this installer must never
+# traverse linked install targets or linked source trees.
+foreach ($managedPath in @($targetBase, $target)) {
+    if (Test-Path -LiteralPath $managedPath) {
+        $attributes = (Get-Item -LiteralPath $managedPath -Force).Attributes
+        if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Refusing linked installation directory: $managedPath"
+        }
+    }
+}
+# Install to a stable per-user path. Deleting the source checkout does not
+# break the MCP server.
 New-Item -ItemType Directory -Path $target -Force | Out-Null
 if (-not [string]::Equals($source, $target, [System.StringComparison]::OrdinalIgnoreCase)) {
     $entries = @(
@@ -34,6 +46,30 @@ if (-not [string]::Equals($source, $target, [System.StringComparison]::OrdinalIg
         "README.md","LICENSE","SECURITY.md","RELEASE_QA.md","CHANGELOG.md","CONTRIBUTING.md",
         "pyproject.toml","install.ps1","install.cmd","install.sh","demo.ps1","demo.cmd","connect-copilot.cmd"
     )
+    # Preflight every managed entry before deleting anything. In particular,
+    # don't follow Windows junctions or symlinks into unrelated user files.
+    foreach ($name in $entries) {
+        $from = Join-Path $source $name
+        $to = Join-Path $target $name
+        if (Test-Path -LiteralPath $from) {
+            $sourceItem = Get-Item -LiteralPath $from -Force
+            if (($sourceItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing linked source entry: $name"
+            }
+            if ($sourceItem.PSIsContainer) {
+                $nestedLinks = @(Get-ChildItem -LiteralPath $from -Recurse -Force -Attributes ReparsePoint)
+                if ($nestedLinks.Count -gt 0) {
+                    throw "Refusing linked content inside source entry: $name"
+                }
+            }
+        }
+        if (Test-Path -LiteralPath $to) {
+            $targetItem = Get-Item -LiteralPath $to -Force
+            if (($targetItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing linked managed target entry: $name"
+            }
+        }
+    }
     foreach ($name in $entries) {
         $from = Join-Path $source $name
         $to = Join-Path $target $name

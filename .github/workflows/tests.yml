@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # Weekly, not daily: check upstream emulator compatibility with a bounded
+  # private-runner cost. Never auto-publish on a scheduled run.
+  schedule:
+    - cron: '31 13 * * 1'
 
 permissions:
   contents: read

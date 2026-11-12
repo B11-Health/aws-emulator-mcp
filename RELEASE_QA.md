@@ -57,3 +57,8 @@ This is stronger engineering validation, but it still **does not approve publica
 - Opt-in connect-copilot.cmd was exercised against a temporary Windows Copilot configuration: preview unchanged, unrelated servers preserved, backup present, and idempotent second apply. It is never run automatically by installation.
 - The engineering benchmark captures the exact git commit, dirty-worktree state, official emulator version and emulator binary SHA256. Local passing tests never authorize public release.
 - Code Gym preview: 118.3-second H.264/AAC video with actual dashboard browser capture and captions. It remains private pending a released-commit factual match.
+
+## Installer boundary and port regression
+- A Windows test created a junction redirecting the managed install into a separate test directory. Installer refused it before mutation and the sentinel file remained intact.
+- Linux quickstart validates port range and consistently passes the chosen port to AWS Emulator. Added negative tests for invalid values.
+- The new hosted Windows Actions job tests launcher syntax, source scan, and non-mutating installation preview on a clean Windows 2025 runner.
