@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "aws-emulator-local": {
-      "command": "wsl.exe",
-      "args": ["-d", "Ubuntu", "--", "bash", "/mnt/c/Users/codeg/mcp-shell-auth/workspace/aws-emulator-mcp/scripts/serve_wsl.sh"]
-    }
-  }
-}

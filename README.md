@@ -1,105 +1,97 @@
-# AWS Emulator MCP
+# AWS Emulator MCP v0.3.0
 
-**An independent, local-first MCP adapter for the official [AWS Emulator](https://github.com/aws/aws-emulator).**
+**Let your AI agent test AWS workflows locally, diagnose failures, and show the evidence before deployment.**
 
-This community adapter is MIT licensed. AWS Emulator is a separate AWS project, distributed under its own license and **not bundled** here. This project is not affiliated with or endorsed by AWS.
+Independent MIT-licensed MCP bridge for the official [AWS Emulator](https://github.com/aws/aws-emulator). GitHub publisher: **B11-Health**. LinkedIn announcement: [Code Gym](https://www.linkedin.com/company/codegympr/). Not affiliated with or endorsed by AWS.
 
-**Release identities:** GitHub publisher: [B11-Health](https://github.com/B11-Health). LinkedIn publisher: [Code Gym](https://www.linkedin.com/company/codegympr). Neither link is itself evidence of a published repository for this project.
+## Quickest install on Windows
 
-## Capabilities: 25 local tools
+Requirements: Windows with Ubuntu WSL2 already configured, and internet access for the first AWS Emulator download. No Docker or real AWS credentials needed. If WSL is missing, install it using an elevated terminal:
+
+    wsl --install -d Ubuntu
+
+Extract the release ZIP, then **double-click install.cmd**. The installer:
+
+1. Copies the MCP project to a stable per-user folder under %LOCALAPPDATA%\CodeGym\AWS-Emulator-MCP\v0.3.0
+2. Reuses a valid local emulator or downloads and verifies the AWS-signed Linux package
+3. Starts or checks local HTTPS and generated emulator-only credentials
+4. Performs STS/S3/DynamoDB/SQS diagnostics, test resources, and scoped cleanup
+5. Runs an independent legacy + modern MCP protocol smoke test and creates client JSON configs
+
+The installed project stays usable after the Downloads folder or ZIP is removed. The installer **never silently edits an existing MCP client configuration**. First-time installation requires downloading the sizable official emulator package, so speed depends on the network.
+
+The generated files are:
+- generated/mcp-client.windows-wsl.json — desktop MCP client
+- generated/vscode-mcp.windows-wsl.json — VS Code
+
+**Double-click demo.cmd** to run a full synthetic order scenario and inspect its report.
+
+## Linux quickstart
+
+Supported and tested path: Debian/Ubuntu on amd64 or arm64, Python 3.10+, curl, GPG, and dpkg-deb. From the extracted project:
+
+    bash install.sh
+
+This uses a rootless, AWS-signature-verified emulator installation. It prints the generated Linux MCP client configuration. For the order demo:
+
+    bash scripts/order_demo_linux.sh
+
+Official macOS setup relies on Docker. We have not verified a macOS one-click installer in this release.
+
+## A real end-to-end order workflow
+
+The MCP tool **emulator_order_demo** creates a fresh synthetic order and unique local resources. It stores the order in DynamoDB, enqueues its ID in SQS, initially fails to fetch a missing S3 receipt, repairs that by writing the receipt, validates the record and receipt, acknowledges the queue message, and removes only the resources it created. It reports steps, timings, assertions, recovery, and cleanup. This is an isolated synthetic test, not a claim that Lambda or EventBridge automatically executed.
+
+The **emulator_self_test** tool provides a shorter STS/S3/DynamoDB/SQS check with cleanup. The **emulator_doctor** tool checks the executable, credentials, CA, local HTTPS endpoint, and emulated STS identity, giving actionable fixes.
+
+## 27 MCP tools
 
 | Category | Tools |
 | --- | --- |
-| Runtime (4) | emulator_start, emulator_stop, emulator_status, emulator_health |
+| Runtime (5) | emulator_status, emulator_start, emulator_stop, emulator_health, emulator_doctor |
 | Identity (1) | emulator_identity |
 | S3 (7) | s3_create_bucket, s3_list_buckets, s3_list_objects, s3_put_object, s3_get_object, s3_delete_object, s3_delete_bucket |
 | DynamoDB (6) | dynamodb_create_table, dynamodb_list_tables, dynamodb_describe_table, dynamodb_put_item, dynamodb_get_item, dynamodb_delete_table |
 | SQS (6) | sqs_create_queue, sqs_list_queues, sqs_send_message, sqs_receive_messages, sqs_delete_message, sqs_delete_queue |
-| Verification (1) | emulator_self_test |
+| Workflows (2) | emulator_self_test, emulator_order_demo |
 
-S3 helpers use UTF-8 text. DynamoDB helpers support a PAY_PER_REQUEST table with a string id key and a message string. SQS helpers support standard queues and text messages. These explicit schemas intentionally cover only a subset of each service.
+All tools target the fixed localhost emulator. The Python adapter uses only Python standard-library runtime dependencies. S3 supports UTF-8 text; DynamoDB supports a simple id/message string schema; SQS supports standard queues and text messages.
 
-The self-test creates unique local-only resources, checks STS, S3, DynamoDB, and SQS, measures individual latencies, and cleans up only its temporary resources. Failures and incomplete cleanup are reported rather than hidden.
+## Connect to a compatible MCP client
 
-## Quick start: Windows and Ubuntu WSL2
+Use the generated JSON from the installer. Recommended default transport is **stdio** with no listener. An opt-in bearer-protected HTTP transport is included but binds to loopback only. **Do not publicly forward the local HTTP port.** ChatGPT web cannot directly connect to a localhost/WSL MCP server; a separately reviewed remote connector is necessary.
 
-AWS officially documents Docker for Windows. If you already have Ubuntu WSL2, use the provided signed-package installer:
+Supported protocol eras: MCP 2025-03-26, 2025-06-18, 2025-11-25 and stateless 2026-07-28. Modern ping was removed from the protocol and is correctly rejected. More advanced extensions, streaming, and full AWS API fidelity are not claimed.
 
-    cd /mnt/c/Users/codeg/mcp-shell-auth/workspace/aws-emulator-mcp
-    bash scripts/install_wsl.sh
-    python3 -m unittest discover -s tests -v
-    python3 scripts/live_test.py
+## Tests and independent verification
 
-The installer uses a fresh package download to avoid mixing versions of the mutable AWS latest-release URL. It verifies the AWS signing-key fingerprint and detached signature *before* installing. Installation is rootless and side-by-side.
-
-Start the emulator manually, or invoke the emulator_start MCP tool:
-
-    ~/.local/bin/aws-emulator --telemetry off
-
-The emulator is reachable exclusively at local HTTPS 127.0.0.1:9297. No request goes to real AWS.
-
-## Windows MCP client
-
-See the included mcp-windows.json, changing the absolute path as necessary:
-
-    {
-      "mcpServers": {
-        "aws-emulator-local": {
-          "command": "wsl.exe",
-          "args": ["-d", "Ubuntu", "--", "bash",
-            "/mnt/c/Users/codeg/mcp-shell-auth/workspace/aws-emulator-mcp/scripts/serve_wsl.sh"]
-        }
-      }
-    }
-
-This **stdio transport** is the default. It does not open any additional port.
-
-## Optional authenticated HTTP mode
-
-For MCP clients requiring Streamable HTTP instead of stdio:
-
-    bash scripts/serve_http_wsl.sh
-
-This helper creates a random private bearer token if necessary. The token is stored only in the user's home directory at ~/.config/aws-emulator-mcp/http-token, with owner-only permissions. The listener binds to 127.0.0.1:8766, uses the /mcp path, and requires the token on every request. Nothing starts automatically.
-
-The HTTP transport rejects bad Host and Origin headers, non-JSON content, oversized bodies, and requests without proper authentication. It supports JSON responses and notifications with HTTP 202, not SSE subscriptions or event streams.
-
-**Do not expose this local listener through a public reverse proxy** without a separately audited authentication and authorization layer. ChatGPT web cannot directly reach your machine's localhost address. A secure remote MCP connector would require additional work.
-
-## MCP protocol compatibility
-
-- Handshake-era clients: 2025-03-26, 2025-06-18 and 2025-11-25.
-- Modern stateless clients: 2026-07-28, including server/discover, per-request metadata, cache hints, protocol version errors and modern result metadata.
-- Errors from malformed JSON-RPC, invalid tool input, unsupported methods and unsupported versions are returned as structured responses.
-- Input and output sizes are bounded. The catalog is static. Modern subscriptions and task extensions are not implemented.
-
-See the [MCP specification](https://modelcontextprotocol.io/specification) for version-dependent behavior.
-
-Tool metadata includes read-only and destructive-action annotations so MCP clients can present appropriate precautions. SQS ReceiveMessage is not marked read-only because it changes message visibility.\n\n## Verification
+Run the complete local tests:
 
     python3 -m unittest discover -s tests -v
+
+Run the independent Astra-kit legacy + modern stdio checker:
+
+    python3 scripts/mcp_launch_check.py --out reports/mcp_launch_check.json --min-tools 27 -- python3 -u src/aws_emulator_mcp/server.py
+
+Run the live AWS Emulator integration suite:
+
     python3 scripts/live_test.py
 
-As of November 12, 2026, this project passed **50 local unit tests** and an AWS Emulator v1.0.322 integration test in WSL2. The live run exercises both modern and legacy MCP, then performs 13 service checks and four cleanup operations. The test records a dated JSON result under reports/latest_live.json.
+When executing from an uninstalled source tree, set PYTHONPATH=src or use the supplied install/demo scripts. The CLI entry point for packaged installs is **aws-emulator-mcp-cli**, with doctor, catalog, self-test, and order-demo actions.
 
-The tests validate only those exact behaviors, not production AWS parity or security.
+The protocol checker and its 29 synthetic-fixture tests were adapted from the GPT-6 Astra launch kit. The checker previously expected ping on MCP 2026-07-28, which the protocol removed. We fixed the **checker** rather than weakening the server. The unit suite, smoke checker, and live emulator test must all pass before publishing; see RELEASE_QA.md for exact evidence and remaining gates.
 
-## Security boundaries
+## Local-only security boundaries
 
-- All AWS API operations target HTTPS 127.0.0.1 only, with no endpoint override.
-- TLS verifies the per-emulator CA certificate.
-- HTTP redirects are denied, and environment proxy settings are ignored.
-- The bridge signs requests only with emulator-issued credentials, not your normal AWS profile.
-- STS identity verification requires the isolated emulator account 000000000000.
-- Tool arguments are validated by type and byte length.
-- Runtime stop operations verify their process ownership.
-- Adapter-managed emulator startup disables AWS telemetry.
-- Optional HTTP transport is loopback-only and bearer authenticated.
+- HTTPS endpoint fixed to 127.0.0.1; TLS verifies the emulator-generated CA.
+- Only emulator-generated credentials; never uses your production AWS profile.
+- Redirects denied and outbound proxy settings ignored for emulator API calls.
+- Explicit schemas, bounded inputs, read-only and destructive tool annotations.
+- No public HTTP listener by default; optional HTTP requires a long bearer token.
+- Demo and self-test only delete unique resources minted in the current run.
 
-AWS Emulator is **not for production security testing** and does not evaluate IAM or resource policies as real AWS does. Resource state is ephemeral. Fidelity varies by service and operation; consult AWS's own evaluation data.
+AWS Emulator does not enforce production IAM or resource policies. It has partial API fidelity and in-memory state. Successful emulator tests cannot replace cloud integration or production security testing. Read SECURITY.md and the [AWS Emulator docs](https://docs.aws.amazon.com/emulator/latest/userguide/getting-started.html).
 
-## References
+## Publication status
 
-- AWS Emulator: https://github.com/aws/aws-emulator
-- AWS Emulator documentation: https://docs.aws.amazon.com/emulator/
-- MCP: https://modelcontextprotocol.io/specification
+Public source is intended for **B11-Health on GitHub**, with the announcement from **Code Gym on LinkedIn**. A public repository URL, signed release archive, and independent clean install still need verification before announcement. Do not treat the README as evidence that a public release already exists.

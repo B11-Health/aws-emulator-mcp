@@ -43,6 +43,7 @@ def main():
         modern(6,"tools/call",{"name":"emulator_self_test","arguments":{}}),
         modern(7,"tools/call",{"name":"sqs_list_queues","arguments":{}}),
         modern(8,"tools/call",{"name":"s3_list_buckets","arguments":{}}),
+        modern(9,"tools/call",{"name":"emulator_order_demo","arguments":{}}),
     ]
     payload="".join(json.dumps(x,separators=(",",":"))+"\n" for x in requests)
     # Include a malformed final message to verify that parsing failures are JSON-RPC errors.
@@ -53,15 +54,15 @@ def main():
         raise RuntimeError("MCP subprocess failed: "+proc.stderr[-600:])
     results=[json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
     by_id={r["id"]:r for r in results if r.get("id") is not None}
-    assert len(by_id)==8,("expected responses",by_id.keys(),proc.stderr)
-    assert len(results)==9,("unexpected JSON-RPC response count",len(results))
+    assert len(by_id)==9,("expected responses",by_id.keys(),proc.stderr)
+    assert len(results)==10,("unexpected JSON-RPC response count",len(results))
     assert results[-1]["error"]["code"]==-32700
     assert by_id[1]["result"]["protocolVersion"]=="2025-11-25"
-    assert len(by_id[2]["result"]["tools"])==25
+    assert len(by_id[2]["result"]["tools"])==27
     assert "2026-07-28" in by_id[3]["result"]["supportedVersions"]
     assert by_id[3]["result"]["resultType"]=="complete"
     assert by_id[4]["result"]["resultType"]=="complete"
-    assert len(by_id[4]["result"]["tools"])==25
+    assert len(by_id[4]["result"]["tools"])==27
     assert by_id[4]["result"]["cacheScope"]=="public"
     identity=rpc_tool(by_id[5])
     assert identity["Account"]=="000000000000"
@@ -71,7 +72,12 @@ def main():
     assert len(tested["cleanup"])==4 and all(x["passed"] for x in tested["cleanup"])
     assert isinstance(rpc_tool(by_id[7])["queues"],list)
     assert isinstance(rpc_tool(by_id[8])["buckets"],list)
-    out={"result":"PASS","revision":"0.2.0",
+    order=rpc_tool(by_id[9])
+    assert order["passed"],order
+    assert len(order["recovery"])==2 and all(x["passed"] for x in order["recovery"])
+    assert len(order["cleanup"])==4 and all(x["passed"] for x in order["cleanup"])
+    assert len(order["steps"])>=12 and all(x["passed"] for x in order["steps"])
+    out={"result":"PASS","revision":"0.3.0",
          "recorded_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
          "emulator_version":(version.stdout+version.stderr).strip(),
          "endpoint":m.ENDPOINT,"account":identity["Account"],
@@ -80,7 +86,12 @@ def main():
          "protocol_versions_tested":["2025-11-25","2026-07-28"],
          "service_checks":len(tested["checks"]),"resource_cleanup":len(tested["cleanup"]),
          "selftest_ms":tested["elapsed_ms"],
-         "selftest":tested}
+         "order_demo_checks":len(order["steps"]),
+         "order_demo_recovery":len(order["recovery"]),
+         "order_demo_cleanup":len(order["cleanup"]),
+         "order_demo_ms":order["duration_ms"],
+         "selftest":tested,
+         "order_demo":order}
     dest=ROOT/"reports"
     dest.mkdir(exist_ok=True)
     (dest/"latest_live.json").write_text(json.dumps(out,indent=2),encoding="utf-8")

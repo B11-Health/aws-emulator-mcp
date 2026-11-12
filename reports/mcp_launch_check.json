@@ -1,0 +1,175 @@
+{
+  "scope": "Two fresh stdio processes; legacy and modern smoke checks",
+  "passed": true,
+  "runs": [
+    {
+      "checker_version": "0.1.0",
+      "checked_at_utc": "2026-11-12T18:09:21.341928+00:00",
+      "scope": "MCP 2025-11-25 stdio smoke checks; no tool calls",
+      "server_tested": true,
+      "checks": [
+        {
+          "name": "legacy_initialization",
+          "status": "pass",
+          "duration_ms": 287.75,
+          "details": {
+            "protocol_version": "2025-11-25"
+          }
+        },
+        {
+          "name": "tool_catalog",
+          "status": "pass",
+          "duration_ms": 1.67,
+          "details": {
+            "tool_count": 25,
+            "catalog_utf8_bytes": 7745,
+            "catalog_sha256": "71b6289f8a930c119d77cdfbddf8880290c9819a02e68012f587ac59d180e6b4",
+            "tools_missing_description": 0,
+            "tools_missing_annotations": 0,
+            "schema_check": "top-level object shape only; not full JSON Schema validation"
+          }
+        },
+        {
+          "name": "ping",
+          "status": "pass",
+          "duration_ms": 0.21,
+          "details": null
+        },
+        {
+          "name": "unknown_method",
+          "status": "pass",
+          "duration_ms": 0.2,
+          "details": null
+        },
+        {
+          "name": "malformed_json",
+          "status": "pass",
+          "duration_ms": 0.19,
+          "details": null
+        },
+        {
+          "name": "invalid_request_envelope",
+          "status": "pass",
+          "duration_ms": 0.26,
+          "details": null
+        },
+        {
+          "name": "unknown_notification_no_response",
+          "status": "pass",
+          "duration_ms": 0.32,
+          "details": null
+        },
+        {
+          "name": "recovers_after_invalid_input",
+          "status": "pass",
+          "duration_ms": 0.2,
+          "details": null
+        }
+      ],
+      "limitations": [
+        "Not full protocol conformance or security certification",
+        "Does not test HTTP, cancellation, subscriptions, or all capability semantics",
+        "Does not test emulator service behavior or cleanup",
+        "Does not record server output, command arguments, or credentials"
+      ],
+      "shutdown": {
+        "exited_on_stdin_close": true,
+        "exit_code": 0
+      },
+      "passed": true
+    },
+    {
+      "checker_version": "0.1.0",
+      "checked_at_utc": "2026-11-12T18:09:21.670289+00:00",
+      "scope": "MCP 2026-07-28 stdio smoke checks; no tool calls",
+      "server_tested": true,
+      "checks": [
+        {
+          "name": "modern_discovery",
+          "status": "pass",
+          "duration_ms": 292.95,
+          "details": {
+            "protocol_version": "2026-07-28",
+            "initialize_sent": false
+          }
+        },
+        {
+          "name": "tool_catalog",
+          "status": "pass",
+          "duration_ms": 0.49,
+          "details": {
+            "tool_count": 25,
+            "catalog_utf8_bytes": 7745,
+            "catalog_sha256": "71b6289f8a930c119d77cdfbddf8880290c9819a02e68012f587ac59d180e6b4",
+            "tools_missing_description": 0,
+            "tools_missing_annotations": 0,
+            "schema_check": "top-level object shape only; not full JSON Schema validation"
+          }
+        },
+        {
+          "name": "ping",
+          "status": "pass",
+          "duration_ms": 0.18,
+          "details": {
+            "expected": "Method not found"
+          }
+        },
+        {
+          "name": "unknown_method",
+          "status": "pass",
+          "duration_ms": 0.16,
+          "details": null
+        },
+        {
+          "name": "malformed_json",
+          "status": "pass",
+          "duration_ms": 0.1,
+          "details": null
+        },
+        {
+          "name": "invalid_request_envelope",
+          "status": "pass",
+          "duration_ms": 0.07,
+          "details": null
+        },
+        {
+          "name": "unknown_notification_no_response",
+          "status": "pass",
+          "duration_ms": 0.21,
+          "details": null
+        },
+        {
+          "name": "recovers_after_invalid_input",
+          "status": "pass",
+          "duration_ms": 0.07,
+          "details": {
+            "expected": "Method not found"
+          }
+        },
+        {
+          "name": "unsupported_version",
+          "status": "pass",
+          "duration_ms": 0.08,
+          "details": null
+        },
+        {
+          "name": "missing_required_capabilities",
+          "status": "pass",
+          "duration_ms": 0.06,
+          "details": null
+        }
+      ],
+      "limitations": [
+        "Not full protocol conformance or security certification",
+        "Does not test HTTP, cancellation, subscriptions, or all capability semantics",
+        "Does not test emulator service behavior or cleanup",
+        "Does not record server output, command arguments, or credentials"
+      ],
+      "shutdown": {
+        "exited_on_stdin_close": true,
+        "exit_code": 0
+      },
+      "passed": true
+    }
+  ]
+}

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aws-emulator-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "Safe MCP adapter to the official AWS Emulator"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,6 +13,7 @@ dependencies = []
 
 [project.scripts]
 aws-emulator-mcp = "aws_emulator_mcp.server:main"
+aws-emulator-mcp-cli = "aws_emulator_mcp.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

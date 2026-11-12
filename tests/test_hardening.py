@@ -93,7 +93,7 @@ class HardeningTests(unittest.TestCase):
     def test_stateless_tools_list_has_metadata(self):
         r=self.rpc("tools/list",self.modern_params())
         d=r["result"]
-        self.assertEqual(len(d["tools"]),25)
+        self.assertEqual(len(d["tools"]),27)
         self.assertEqual(d["resultType"],"complete")
         self.assertIsInstance(d["ttlMs"],int)
         self.assertEqual(d["cacheScope"],"public")
@@ -192,5 +192,14 @@ class HardeningTests(unittest.TestCase):
             result=self.rpc("tools/call",{"name":"emulator_self_test","arguments":{}})
         self.assertTrue(result["result"]["isError"])
 
+
+    def test_s3_path_traversal_is_rejected(self):
+        for key in ("../health", "a/../health", "a/./b", "a//b",
+                    ("a/"+chr(0)+"bad"), "/root"):
+            with self.subTest(key=repr(key)):
+                with self.assertRaises(m.LocalError):
+                    m.object_path("safe-bucket",key)
+        self.assertEqual(m.object_path("safe-bucket","receipts/order-123.json"),
+                         "/safe-bucket/receipts/order-123.json")
 
 if __name__=="__main__":unittest.main()

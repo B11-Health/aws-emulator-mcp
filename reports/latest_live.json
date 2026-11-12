@@ -1,89 +1,93 @@
 {
   "result": "PASS",
-  "revision": "0.2.0",
-  "recorded_utc": "2026-11-12T13:41:35.679260+00:00",
+  "revision": "0.3.0",
+  "recorded_utc": "2026-11-12T18:22:53.202620+00:00",
   "emulator_version": "Version: 1.0.322\nRelease date: 2026.11.10\nCommit: 7753983c6e495ec3612695b1336bf4936fc7b7fd",
   "endpoint": "https://127.0.0.1:9297",
   "account": "000000000000",
-  "tool_count": 25,
-  "rpc_responses": 9,
+  "tool_count": 27,
+  "rpc_responses": 10,
   "protocol_versions_tested": [
     "2025-11-25",
     "2026-07-28"
   ],
   "service_checks": 13,
   "resource_cleanup": 4,
-  "selftest_ms": 6154.0,
+  "selftest_ms": 6355.5,
+  "order_demo_checks": 12,
+  "order_demo_recovery": 2,
+  "order_demo_cleanup": 4,
+  "order_demo_ms": 6216.3,
   "selftest": {
     "passed": true,
     "endpoint": "https://127.0.0.1:9297",
     "account": "000000000000",
-    "elapsed_ms": 6154.0,
+    "elapsed_ms": 6355.5,
     "checks": [
       {
         "check": "health",
         "passed": true,
-        "latency_ms": 2.2
+        "latency_ms": 3.9
       },
       {
         "check": "STS identity",
         "passed": true,
-        "latency_ms": 3.1
+        "latency_ms": 6.2
       },
       {
         "check": "S3 create bucket",
         "passed": true,
-        "latency_ms": 2.8
+        "latency_ms": 19.4
       },
       {
         "check": "S3 put object",
         "passed": true,
-        "latency_ms": 3.0
+        "latency_ms": 14.6
       },
       {
         "check": "S3 get object",
         "passed": true,
-        "latency_ms": 2.7
+        "latency_ms": 8.7
       },
       {
         "check": "S3 list objects",
         "passed": true,
-        "latency_ms": 2.8
+        "latency_ms": 12.6
       },
       {
         "check": "DynamoDB create and wait",
         "passed": true,
-        "latency_ms": 3004.4
+        "latency_ms": 3096.2
       },
       {
         "check": "DynamoDB put item",
         "passed": true,
-        "latency_ms": 3.4
+        "latency_ms": 9.9
       },
       {
         "check": "DynamoDB get item",
         "passed": true,
-        "latency_ms": 2.3
+        "latency_ms": 7.4
       },
       {
         "check": "SQS create queue",
         "passed": true,
-        "latency_ms": 2.1
+        "latency_ms": 8.7
       },
       {
         "check": "SQS send message",
         "passed": true,
-        "latency_ms": 2.3
+        "latency_ms": 8.4
       },
       {
         "check": "SQS receive message",
         "passed": true,
-        "latency_ms": 2.2
+        "latency_ms": 7.3
       },
       {
         "check": "SQS delete message",
         "passed": true,
-        "latency_ms": 2.3
+        "latency_ms": 5.7
       }
     ],
     "cleanup": [
@@ -104,6 +108,115 @@
         "passed": true
       }
     ],
+    "error": null
+  },
+  "order_demo": {
+    "passed": true,
+    "order_id": "order-7df4e4501e",
+    "synthetic_order": {
+      "id": "order-7df4e4501e",
+      "sku": "CODEGYM-DEMO-001",
+      "quantity": 2,
+      "total_usd": "42.00",
+      "status": "simulated"
+    },
+    "resources": {
+      "bucket": "mcp-order-7df4e4501e",
+      "table": "mcp_order_7df4e4501e",
+      "queue": "mcp_order_7df4e4501e"
+    },
+    "steps": [
+      {
+        "name": "health",
+        "passed": true,
+        "duration_ms": 2.5
+      },
+      {
+        "name": "isolated STS identity",
+        "passed": true,
+        "duration_ms": 5.2
+      },
+      {
+        "name": "create S3 receipt bucket",
+        "passed": true,
+        "duration_ms": 4.9
+      },
+      {
+        "name": "create DynamoDB orders table",
+        "passed": true,
+        "duration_ms": 3005.3
+      },
+      {
+        "name": "create SQS order queue",
+        "passed": true,
+        "duration_ms": 10.8
+      },
+      {
+        "name": "write order record",
+        "passed": true,
+        "duration_ms": 4.9
+      },
+      {
+        "name": "repair by writing receipt",
+        "passed": true,
+        "duration_ms": 3.8
+      },
+      {
+        "name": "enqueue order ID",
+        "passed": true,
+        "duration_ms": 3.4
+      },
+      {
+        "name": "receive queued order",
+        "passed": true,
+        "duration_ms": 5.2
+      },
+      {
+        "name": "acknowledge queue message",
+        "passed": true,
+        "duration_ms": 4.2
+      },
+      {
+        "name": "read DynamoDB order",
+        "passed": true,
+        "duration_ms": 4.9
+      },
+      {
+        "name": "read recovered S3 receipt",
+        "passed": true,
+        "duration_ms": 4.5
+      }
+    ],
+    "recovery": [
+      {
+        "step": "read missing receipt",
+        "expected_error": "S3 404 Not Found",
+        "passed": true
+      },
+      {
+        "step": "receipt readback after repair",
+        "passed": true
+      }
+    ],
+    "cleanup": [
+      {
+        "name": "delete demo SQS queue",
+        "passed": true
+      },
+      {
+        "name": "delete demo DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "delete demo S3 receipt",
+        "passed": true
+      },
+      {
+        "name": "delete demo S3 bucket",
+        "passed": true
+      }
+    ],
+    "duration_ms": 6216.3,
     "error": null
   }
 }

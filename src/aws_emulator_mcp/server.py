@@ -103,6 +103,49 @@ def emulator_binary():
 def status():
     return {"installed":bool(emulator_binary()),"port":PORT,**health()}
 
+def doctor():
+    """Read-only diagnostics with actionable guidance; never exposes credentials."""
+    checks=[]
+    def row(name,ok,remedy=""):
+        checks.append({"check":name,"passed":bool(ok),"fix":"" if ok else remedy})
+    executable=emulator_binary()
+    row("official emulator executable",bool(executable),
+        "Run install.cmd on Windows or bash install.sh on Linux.")
+    if executable:
+        try:
+            details=subprocess.run([executable,"--version"],capture_output=True,
+                text=True,timeout=6)
+            row("emulator executable starts",details.returncode==0,
+                "Reinstall the signed official package.")
+            version=(details.stdout or details.stderr).strip().splitlines()[0][:120]
+        except (OSError,subprocess.TimeoutExpired):
+            version="unknown"
+            row("emulator executable starts",False,
+                "Check executable permissions and Linux dependencies.")
+    else:version="not installed"
+    row("emulator CA certificate",(CREDDIR/"ca.pem").is_file(),
+        "Start the emulator; it generates a local CA per running instance.")
+    try:
+        emulator_keys()
+        key_ok=True
+    except (LocalError,OSError,ValueError,KeyError):
+        key_ok=False
+    row("emulator-issued credentials",key_ok,
+        "Start the emulator; never use credentials from a real AWS profile.")
+    reachable=health()
+    row("local HTTPS health",reachable.get("running",False),
+        "Start the emulator on loopback port %s and check its local log." % PORT)
+    account=None
+    if reachable.get("running") and key_ok:
+        try:account=identity().get("Account")
+        except (LocalError,ValueError,OSError,ET.ParseError):pass
+    row("isolated STS account",account=="000000000000",
+        "Check local credentials/CA. Refusing a non-emulator identity.")
+    return {"ready":all(x["passed"] for x in checks),
+            "endpoint":ENDPOINT,"port":PORT,"emulator_version":version,
+            "account_verified":account=="000000000000",
+            "checks":checks}
+
 def start():
     if health()["running"]: return {"action":"already_running",**status()}
     binary=emulator_binary()
@@ -158,6 +201,8 @@ def object_path(bucket,key):
     check_bucket(bucket)
     if not isinstance(key,str) or not 1<=len(key)<=1024 or key.startswith("/"):
         raise LocalError("Invalid object key")
+    if any(part in ("",".","..") for part in key.split("/")) or any(ord(c)<32 for c in key):
+        raise LocalError("Unsafe S3 key path component")
     return f"/{bucket}/{key}"
 
 def s3_create_bucket(bucket):
@@ -401,6 +446,107 @@ def emulator_self_test():
             "checks":checks,"cleanup":cleanup,
             "error":error if error else None}
 
+def emulator_order_demo():
+    """Synthetic order workflow; run-specific resources and deterministic repair."""
+    import secrets
+    suffix=secrets.token_hex(5)
+    order_id="order-"+suffix
+    bucket="mcp-order-"+suffix
+    table="mcp_order_"+suffix
+    queue="mcp_order_"+suffix
+    receipt_key="receipts/"+order_id+".json"
+    order={"id":order_id,"sku":"CODEGYM-DEMO-001","quantity":2,
+           "total_usd":"42.00","status":"simulated"}
+    order_json=json.dumps(order,sort_keys=True,separators=(",",":"))
+    created={"bucket":False,"table":False,"queue":False}
+    checks=[];cleanups=[];recovery=[];error=None
+    begin=time.perf_counter()
+    def step(name,fn):
+        start=time.perf_counter()
+        try:
+            value=fn()
+        except Exception:
+            checks.append({"name":name,"passed":False,
+                           "duration_ms":round((time.perf_counter()-start)*1000,1)})
+            raise
+        checks.append({"name":name,"passed":True,
+                       "duration_ms":round((time.perf_counter()-start)*1000,1)})
+        return value
+    try:
+        status=step("health",health)
+        if not status["running"]:raise LocalError("Emulator not healthy")
+        account=step("isolated STS identity",identity)["Account"]
+        if account!="000000000000":raise LocalError("Wrong account")
+        step("create S3 receipt bucket",lambda:s3_create_bucket(bucket))
+        created["bucket"]=True
+        step("create DynamoDB orders table",lambda:dynamodb_create_table(table))
+        created["table"]=True
+        step("create SQS order queue",lambda:sqs_create_queue(queue))
+        created["queue"]=True
+
+        # Controlled failure: request a receipt before it exists, then repair.
+        try:
+            s3_get_object(bucket,receipt_key)
+        except LocalError as exc:
+            if "HTTP 404" not in str(exc):raise
+            recovery.append({"step":"read missing receipt",
+                             "expected_error":"S3 404 Not Found","passed":True})
+        else:
+            raise LocalError("Missing receipt unexpectedly existed")
+
+        step("write order record",
+             lambda:dynamodb_put_item(table,order_id,order_json))
+        step("repair by writing receipt",
+             lambda:s3_put_object(bucket,receipt_key,order_json))
+        step("enqueue order ID",lambda:sqs_send_message(queue,order_id))
+        messages=[]
+        for _ in range(6):
+            received=step("receive queued order",lambda:sqs_receive_messages(queue))
+            messages=received["messages"]
+            if messages:break
+            time.sleep(0.1)
+        if not messages or messages[0].get("Body")!=order_id:
+            raise LocalError("Queue did not return expected order ID")
+        step("acknowledge queue message",lambda:sqs_delete_message(
+            queue,messages[0]["ReceiptHandle"]))
+        stored=step("read DynamoDB order",
+                    lambda:dynamodb_get_item(table,order_id))
+        saved=stored.get("Item",{}).get("message",{}).get("S")
+        if saved!=order_json:raise LocalError("DynamoDB order content mismatch")
+        receipt=step("read recovered S3 receipt",
+                     lambda:s3_get_object(bucket,receipt_key))
+        if receipt["text"]!=order_json:raise LocalError("S3 receipt mismatch")
+        recovery.append({"step":"receipt readback after repair","passed":True})
+    except Exception as exc:
+        error=str(exc)[:300] if isinstance(exc,(LocalError,ValueError)) else "Unexpected order-demo failure"
+    finally:
+        actions=[]
+        if created["queue"]:
+            actions.append(("delete demo SQS queue",
+                            lambda:sqs_delete_queue(queue)))
+        if created["table"]:
+            actions.append(("delete demo DynamoDB table",
+                            lambda:dynamodb_delete_table(table)))
+        if created["bucket"]:
+            actions.append(("delete demo S3 receipt",
+                            lambda:s3_delete_object(bucket,receipt_key)))
+            actions.append(("delete demo S3 bucket",
+                            lambda:s3_delete_bucket(bucket)))
+        for name,fn in actions:
+            try:
+                fn()
+                cleanups.append({"name":name,"passed":True})
+            except Exception:
+                cleanups.append({"name":name,"passed":False,
+                                 "detail":"Cleanup action failed; inspect local emulator"})
+    ok=error is None and len(recovery)==2 and all(c["passed"] for c in cleanups)
+    return {"passed":ok,"order_id":order_id,
+            "synthetic_order":order,
+            "resources":{"bucket":bucket,"table":table,"queue":queue},
+            "steps":checks,"recovery":recovery,"cleanup":cleanups,
+            "duration_ms":round(1000*(time.perf_counter()-begin),1),
+            "error":error}
+
 def spec(name,description,properties=None,required=()):
     return {"name":name,"description":description,
       "inputSchema":{"type":"object","properties":properties or {},
@@ -408,6 +554,7 @@ def spec(name,description,properties=None,required=()):
 STR={"type":"string"}
 TOOLS=[
     spec("emulator_status","Inspect official local AWS Emulator status"),
+    spec("emulator_doctor","Diagnose local install, CA, credentials, TLS, and STS with safe fixes"),
     spec("emulator_start","Start official AWS Emulator with telemetry disabled"),
     spec("emulator_stop","Stop only an MCP-managed emulator process"),
     spec("emulator_health","Check local HTTPS emulator health"),
@@ -427,6 +574,7 @@ TOOLS=[
          {"queue":STR,"receipt_handle":STR},("queue","receipt_handle")),
     spec("sqs_delete_queue","Delete an emulated SQS queue",{"queue":STR},("queue",)),
     spec("emulator_self_test","Run isolated local S3, DynamoDB, and SQS round trips, with cleanup"),
+    spec("emulator_order_demo","Run synthetic S3 + DynamoDB + SQS order workflow with a controlled failure, repair, and cleanup"),
     spec("dynamodb_list_tables","List emulated DynamoDB tables"),
     spec("dynamodb_describe_table","Describe emulated DynamoDB table",{"table":STR},("table",)),
     spec("dynamodb_create_table","Create DynamoDB table with string id key",{"table":STR},("table",)),
@@ -435,7 +583,7 @@ TOOLS=[
     spec("dynamodb_delete_table","Delete emulated DynamoDB table",{"table":STR},("table",)),
 ]
 READ_ONLY_TOOLS={
-    "emulator_status","emulator_health","emulator_identity",
+    "emulator_status","emulator_health","emulator_identity","emulator_doctor",
     "s3_list_buckets","s3_list_objects","s3_get_object",
     "dynamodb_list_tables","dynamodb_describe_table","dynamodb_get_item",
     "sqs_list_queues",
@@ -453,7 +601,7 @@ for tool in TOOLS:
         "openWorldHint":False,
     }
 
-FUNCTIONS=dict(emulator_status=status,emulator_start=start,emulator_stop=stop,
+FUNCTIONS=dict(emulator_status=status,emulator_doctor=doctor,emulator_start=start,emulator_stop=stop,
     emulator_health=health,emulator_identity=identity,
     s3_create_bucket=s3_create_bucket,s3_list_buckets=s3_list_buckets,
     s3_list_objects=s3_list_objects,s3_delete_bucket=s3_delete_bucket,
@@ -464,11 +612,11 @@ FUNCTIONS=dict(emulator_status=status,emulator_start=start,emulator_stop=stop,
     sqs_create_queue=sqs_create_queue,sqs_list_queues=sqs_list_queues,
     sqs_send_message=sqs_send_message,sqs_receive_messages=sqs_receive_messages,
     sqs_delete_message=sqs_delete_message,sqs_delete_queue=sqs_delete_queue,
-    emulator_self_test=emulator_self_test)
+    emulator_self_test=emulator_self_test,emulator_order_demo=emulator_order_demo)
 
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
-VERSION="0.2.0"
+VERSION="0.3.0"
 PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
 SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
 SERVER_CAPS={"tools":{"listChanged":False}}

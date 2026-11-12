@@ -24,7 +24,7 @@ def create_server(port=None,token=None):
         raise ValueError("AWS_MCP_BEARER_TOKEN must contain at least 32 characters")
 
     class Handler(BaseHTTPRequestHandler):
-        server_version="AWS-Emulator-MCP/0.2"
+        server_version="AWS-Emulator-MCP/0.3"
         sys_version=""
         protocol_version="HTTP/1.1"
 

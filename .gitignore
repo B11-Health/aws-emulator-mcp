@@ -10,3 +10,6 @@ install.pid
 dist/
 build/
 *.egg-info/
+generated/
+reports/launch_check_latest.json
+reports/order_demo_latest.json

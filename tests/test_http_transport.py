@@ -62,7 +62,7 @@ class HttpTransportTests(unittest.TestCase):
     def test_legacy_tools_list(self):
         status,body,headers=self.post({"jsonrpc":"2.0","id":1,"method":"tools/list"})
         self.assertEqual(status,200)
-        self.assertEqual(len(body["result"]["tools"]),25)
+        self.assertEqual(len(body["result"]["tools"]),27)
         self.assertEqual(headers.get("Cache-Control"),"no-store")
 
     def test_modern_tools_list(self):
@@ -71,7 +71,7 @@ class HttpTransportTests(unittest.TestCase):
                 {"MCP-Protocol-Version":"2026-07-28","Mcp-Method":"tools/list"})
         self.assertEqual(status,200,body)
         self.assertEqual(body["result"]["resultType"],"complete")
-        self.assertEqual(len(body["result"]["tools"]),25)
+        self.assertEqual(len(body["result"]["tools"]),27)
 
     def test_modern_requires_version_header(self):
         params={"_meta":{m.META_VERSION:"2026-07-28",m.META_CAPS:{}}}

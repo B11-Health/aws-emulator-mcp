@@ -10,7 +10,12 @@ BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BASE" "$BIN_DIR"
 WORK="$(mktemp -d "$BASE/.install.XXXXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
-URL="https://downloads.aws.com/aws-emulator/packages/aws-emulator/LTS/latest/aws-emulator_amd64.deb"
+case "$(uname -m)" in
+  x86_64|amd64) PKG="aws-emulator_amd64.deb" ;;
+  aarch64|arm64) PKG="aws-emulator_arm64.deb" ;;
+  *) echo "Unsupported architecture. Supported: amd64 and arm64." >&2; exit 2 ;;
+esac
+URL="https://downloads.aws.com/aws-emulator/packages/aws-emulator/LTS/latest/$PKG"
 EXPECTED="98BCF336A3BE53B734E967C52E5BF49BD940F624"
 # A unique fresh download prevents mixing bytes across mutable "latest" releases.
 curl --fail --location --silent --show-error --retry 6 --retry-all-errors \
