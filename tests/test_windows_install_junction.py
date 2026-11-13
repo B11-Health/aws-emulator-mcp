@@ -14,7 +14,7 @@ class InstallerJunctionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="aws-emulator-mcp-installer-junction-") as tmp:
             base=Path(tmp)
             target=base/"AWS-Emulator-MCP"
-            target.parent.mkdir(parents=True)
+            target.parent.mkdir(parents=True,exist_ok=True)
             victim=base/"do-not-touch"
             victim.mkdir()
             sentinel=victim/"keep.txt"
