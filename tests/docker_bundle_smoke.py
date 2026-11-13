@@ -12,7 +12,7 @@ import sys
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-CLI = Path(os.environ.get("CODEGYM_QA_CLI", str(ROOT / "bin" / "codegym-aws.mjs")))
+CLI = Path(os.environ.get("AWS_EMULATOR_MCP_QA_CLI", str(ROOT / "bin" / "aws-emulator-mcp.mjs")))
 assert CLI.exists()
 
 

@@ -52,7 +52,7 @@ HTML=r'''<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<title>Code Gym — AWS Emulator MCP / Release Evidence</title>
+<title>AWS Emulator MCP / Release Evidence</title>
 <style>
 :root{--bg:#08131e;--panel:#102131;--panel2:#13293a;--line:#294457;--ink:#eaf6fb;--muted:#9db6c5;--accent:#62e4d9;--green:#92e6b4;--gold:#ffca83;--warn:#f2a99a;--shadow:0 16px 50px rgba(0,0,0,.19);font:16px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse 55vw 70vh at 88% 2%,rgba(25,101,128,.2),transparent),radial-gradient(ellipse 48vw 65vh at 4% 70%,rgba(22,64,108,.18),transparent),var(--bg);color:var(--ink)}
@@ -115,7 +115,7 @@ h2{font-size:24px;letter-spacing:-.025em;margin:0}h3{font-size:17px;margin:0 0 1
 @media(max-width:1020px){.metrics{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr}.gates{grid-template-columns:1fr}}
 @media(max-width:630px){.shell{padding-top:21px}.nav{align-items:start}.metrics{gap:9px}.metric{padding:16px;min-height:132px}.metric-value{font-size:39px}.section-head{display:block}.chart{height:220px}.kicker{margin-top:42px}.toprow{margin-top:20px}}
 </style></head><body><div class="shell">
-<header class="nav"><div class="brand"><span class="bar" aria-hidden="true"></span>CODE GYM</div><div style="text-align:right"><div class="micro">Engineering Evidence / B11-Health</div><div class="micro" style="margin-top:5px">AWS Emulator MCP</div></div></header>
+<header class="nav"><div class="brand"><span class="bar" aria-hidden="true"></span>AWS EMULATOR MCP</div><div style="text-align:right"><div class="micro">Engineering Evidence / B11-Health</div><div class="micro" style="margin-top:5px">AWS Emulator MCP</div></div></header>
 <div class="kicker">Build · Test · Verify · Repeat</div>
 <h1>Ship proof.<br><em>Not promises.</em></h1>
 <p class="lede">A reproducible, evidence-first local benchmark. Every metric below comes from actual AWS Emulator MCP checks—not estimates, production cloud claims, or fabricated success screens.</p>
@@ -130,11 +130,11 @@ h2{font-size:24px;letter-spacing:-.025em;margin:0}h3{font-size:17px;margin:0 0 1
 <section><div class="section-head"><div><div class="micro" style="margin-bottom:8px">HONEST SHIP CRITERIA</div><h2>What this result does—and does not—prove</h2></div></div>
 <div class="grid3">
 <div class="callout"><h3>✓ Verified locally</h3><p>MCP tool discovery, repeatable STS/S3/DynamoDB/SQS operations, a controlled S3 receipt failure-and-repair, bounded execution times, and explicit cleanup checks.</p></div>
-<div class="callout"><h3>○ Still needs evidence</h3><p>First-time install on independent Windows, a real desktop MCP host user journey, public CI and security review, and a matching Code Gym demonstration.</p></div>
+<div class="callout"><h3>○ Still needs evidence</h3><p>First-time install on independent Windows, a real desktop MCP host user journey, public CI and security review, and a matching AWS Emulator MCP demonstration.</p></div>
 <div class="callout"><h3>× Never implied</h3><p>A real AWS account, production IAM enforcement, complete AWS API parity, persistent cloud resources, or reliable distributed production behavior.</p></div>
 </div><p class="instruction" style="margin-top:24px">Public release approval is independent of this local engineering scorecard.</p>
 </section>
-<footer class="footer"><div>B11-Health / GitHub source · Code Gym / LinkedIn</div><div>Independent community adapter · Not endorsed by AWS</div><div>Offline report; no external network requests</div></footer>
+<footer class="footer"><div>B11-Health / GitHub source · AWS Emulator MCP / Tool</div><div>Independent community adapter · Not endorsed by AWS</div><div>Offline report; no external network requests</div></footer>
 </div>
 <script id="evidence" type="application/json">__EVIDENCE__</script>
 <script>

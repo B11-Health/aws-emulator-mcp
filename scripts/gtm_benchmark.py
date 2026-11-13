@@ -123,7 +123,7 @@ def benchmark(repetitions=3,include_unit=True):
         "End-user desktop MCP application setup and usability test (not just SDK)",
         "Independent security review and public source secret scan",
         "Public B11-Health repository and green CI checked while logged out",
-        "Real Code Gym launch demonstration tied to exact released commit",
+        "Real AWS Emulator MCP demonstration tied to exact released commit",
     ]
     report={
         "timestamp_utc":dt.datetime.now(dt.timezone.utc).isoformat(),

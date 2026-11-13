@@ -1,29 +1,29 @@
-# Code Gym AWS Lab: Docker + npm developer beta
+# AWS Emulator MCP: Docker + npm developer beta
 
 **Goal:** a developer can give an AI coding assistant a disposable, isolated AWS-style lab and see real emulated AWS API calls. This is a local developer workshop, not production AWS.
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.1 public GitHub source beta** at a pinned, verified commit. The package is not yet published to the npm registry (the scoped npm registry name currently returns 404), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.2 public GitHub source beta** at a signed-off release tag (pending tag publication after CI). The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
 Install from the public GitHub source while the npm registry release is pending:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#88d5f84c6625c11d988306c71235eef3a28e9e0f"
-codegym-aws doctor
-codegym-aws demo
-codegym-aws config copilot
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.2"
+aws-emulator-mcp doctor
+aws-emulator-mcp demo
+aws-emulator-mcp config copilot
 ```
 
 Or run without a global installation:
 
 ```sh
-npm exec --yes --package="github:B11-Health/aws-emulator-mcp#88d5f84c6625c11d988306c71235eef3a28e9e0f" -- codegym-aws demo
+npm exec --yes --package="github:B11-Health/aws-emulator-mcp#v0.4.0-beta.2" -- aws-emulator-mcp demo
 ```
 
-Use `codegym-aws config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
+Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
 
 **Verified on a separate EC2 Docker host, 2026-11-13:** the npm-packed tarball installed into a fresh prefix and passed six emulator diagnostics; installing this exact GitHub commit into a second fresh prefix also passed the 12-step order demo with four scoped cleanups. The isolated Docker smoke test passed the 29-tool MCP handshake, SDK-model discovery, local S3 CRUD, and cleanup. This is **Linux test evidence**, not a Windows/macOS first-use endorsement.
 
@@ -52,11 +52,11 @@ The bundled botocore SDK model catalog currently contains hundreds of AWS servic
 
 ## Hands-on acceptance test
 
-Run `codegym-aws demo`. Passing proof includes a DynamoDB order record, an SQS queued/received work item, an S3 receipt intentionally missing and then created/read back, and cleanup of the unique demo resources. The command prints JSON results; **12 steps, 2 expected failure/recovery assertions, 4 cleanup actions** should pass. Runtime and IDs vary.
+Run `aws-emulator-mcp demo`. Passing proof includes a DynamoDB order record, an SQS queued/received work item, an S3 receipt intentionally missing and then created/read back, and cleanup of the unique demo resources. The command prints JSON results; **12 steps, 2 expected failure/recovery assertions, 4 cleanup actions** should pass. Runtime and IDs vary.
 
-Use `codegym-aws mcp` only from an MCP client. Its stdout is reserved for JSON-RPC (no installation logs). `codegym-aws doctor` verifies readiness; `codegym-aws catalog` lists the actual installed tools.
+Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for JSON-RPC (no installation logs). `aws-emulator-mcp doctor` verifies readiness; `aws-emulator-mcp catalog` lists the actual installed tools.
 
-**Known boundaries:** the container is intentionally isolated and does not expose its AWS SDK endpoint to the host, so use MCP and `aws_sdk_invoke` for this beta. Direct host AWS CLI/SDK integration needs a separate, explicit opt-in mode with loopback-only port exposure. No real AWS billing or production IAM validation is performed. Amazon's own [Docker guidance](https://docs.aws.amazon.com/emulator/latest/userguide/getting-started-docker.html) explains the upstream path; Code Gym's bundle is independently maintained and not an official Amazon product.
+**Known boundaries:** the container is intentionally isolated and does not expose its AWS SDK endpoint to the host, so use MCP and `aws_sdk_invoke` for this beta. Direct host AWS CLI/SDK integration needs a separate, explicit opt-in mode with loopback-only port exposure. No real AWS billing or production IAM validation is performed. Amazon's own [Docker guidance](https://docs.aws.amazon.com/emulator/latest/userguide/getting-started-docker.html) explains the upstream path; This project's bundle is independently maintained and not an official Amazon product.
 
 ## Release-quality gates
 

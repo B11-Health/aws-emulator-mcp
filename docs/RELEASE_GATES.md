@@ -1,6 +1,6 @@
 # Release gates — AWS Emulator MCP
 
-**Ownership:** B11-Health publishes source/releases; Code Gym publishes LinkedIn. Independent of AWS.
+**Identity:** AWS Emulator MCP is the tool; B11-Health is the GitHub publishing account. Independent of AWS.
 
 ## Product thesis
 AWS already supplies the emulator engine and an official agent skill. Our public promise is **a practical AWS-style playground operated through an AI assistant**: explicit local MCP operations, reproducible examples, measured results and scoped cleanup. Do not market complete AWS coverage or production IAM validation.
@@ -35,8 +35,8 @@ AWS already supplies the emulator engine and an official agent skill. Our public
 - Continuous integration green on the **public** B11-Health repository, with an accessible tag and license.
 - Outside reviewer checks security boundaries, documentation, secret hygiene and cold install.
 - A logged-out developer can clone, install and complete the order demo using public instructions only.
-- Code Gym LinkedIn video reflects **the exact shipped commit**, records real execution and clearly states emulator fidelity limits.
-- Public link works without login, is not the unrelated private Code Gym website repository, and has source provenance.
+- Project demonstration video reflects **the exact shipped commit**, records real execution and clearly states emulator fidelity limits.
+- Public link works without login, is not an unrelated website repository, and has source provenance.
 
 **Decision:** The automated scorecard can pass local engineering gates, but cannot by itself approve a public launch. Untested independent gates remain explicit BLOCKED items.
 

@@ -2,7 +2,7 @@
 
 Verified from public documentation on November 12, 2026. Capabilities below are documented features, not independent comparative performance tests.
 
-| Differentiator | AWS official emulator agent skill | LocalStack MCP | B11-Health / Code Gym MCP v0.3 |
+| Differentiator | AWS official emulator agent skill | LocalStack MCP | AWS Emulator MCP v0.3 |
 | --- | --- | --- | --- |
 | Target | Official AWS Emulator | LocalStack engine | Official AWS Emulator |
 | Agent setup | Installs and configures AWS Emulator | Interactive npx wizard | Windows/WSL installer and Linux command |
@@ -15,7 +15,7 @@ Verified from public documentation on November 12, 2026. Capabilities below are 
 | Repeatable benchmark | AWS maintains its fidelity suite | MCP test harness | 127 local tests (2 expected skips) on Windows and WSL, plus strict GTM scorecard |
 | Source/public release | AWS public source | Public repository and npm package | Local release candidate; private staging until gated |
 
-**Current weakness:** LocalStack's documented MCP offering has far broader deployment, tracing, chaos, and client-setup capabilities. Code Gym is **not yet** a full IaC/observability platform. We should not claim that it surpasses LocalStack on capability today.
+**Current weakness:** LocalStack's documented MCP offering has far broader deployment, tracing, chaos, and client-setup capabilities. AWS Emulator MCP is **not yet** a full IaC/observability platform. We should not claim that it surpasses LocalStack on capability today.
 
 **Positioning:** A conversational AWS-style local laboratory: explicit S3/DynamoDB/SQS operations, repeatable experiments, fail-closed local credentials and scoped cleanup. AWS supplies the emulation engine; this MCP supplies a discoverable AI tool interface.
 
@@ -26,7 +26,7 @@ Verified from public documentation on November 12, 2026. Capabilities below are 
 3. Add honest service-fidelity coverage and output where APIs differ from AWS.
 4. Provide a real, captioned demo recorded from the exact released commit.
 5. Make installation errors actionable, and measure first successful tool call on a fresh host.
-6. Only then publish the GitHub repo and announce from Code Gym LinkedIn.
+6. Only then publish the GitHub repo and announce through the product channel.
 
 Sources:
 - https://docs.aws.amazon.com/emulator/latest/userguide/getting-started-agent.html

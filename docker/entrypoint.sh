@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MCP stdout must contain JSON-RPC only. The AWS Emulator never binds off-loopback.
+# AWS Emulator MCP stdout must contain JSON-RPC only. The AWS Emulator never binds off-loopback.
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 export AWS_EMULATOR_PORT=9297

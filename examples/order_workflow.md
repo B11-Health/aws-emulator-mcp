@@ -1,6 +1,6 @@
 # Example: Synthetic order processing
 
-This example uses an existing local official AWS Emulator and the Code Gym MCP bridge. It is not a deployment to AWS.
+This example uses an existing local official AWS Emulator and the AWS Emulator MCP bridge. It is not a deployment to AWS.
 
 ## One-click demo on Windows
 

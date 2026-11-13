@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Code Gym: boot a signed AWS Emulator and Python MCP in an isolated container.
+/* AWS Emulator MCP: boot a signed AWS Emulator and Python MCP in an isolated container.
  * Neither AWS credentials nor writable host directories are passed to Docker.
  */
 import { spawn, spawnSync } from 'node:child_process';
@@ -9,18 +9,18 @@ import { existsSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.1';
-const IMAGE = 'codegym/aws-emulator-mcp:' + VERSION;
+const VERSION = '0.4.0-beta.2';
+const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 
 function fail(message, code = 1) {
-  stderr.write('Code Gym AWS Lab: ' + message + '\n');
+  stderr.write('AWS Emulator MCP: ' + message + '\n');
   exit(code);
 }
 function help() {
-  stdout.write(`Code Gym AWS Lab (developer beta)
+  stdout.write(`AWS Emulator MCP (Docker beta)
 
-Usage: codegym-aws <command>
+Usage: aws-emulator-mcp <command>
 
 Commands:
   doctor           Verify Docker and the isolated emulator account
@@ -81,7 +81,7 @@ async function buildImage() {
       !existsSync(path.join(ROOT, 'scripts', 'install_wsl.sh'))) {
     fail('Bundled Docker source missing; reinstall from a verified source release.');
   }
-  stderr.write('Code Gym: building a local image with the signed official AWS Emulator.\n');
+  stderr.write('AWS Emulator MCP: building a local image with the signed official AWS Emulator.\n');
   const child = spawn('docker', ['build', '--pull', '-t', IMAGE, '-f', 'docker/Dockerfile', ROOT], {
     stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false
   });
@@ -96,7 +96,7 @@ function renderReport(command, result) {
   const green = text => stdout.isTTY ? '\x1b[32m' + text + '\x1b[0m' : text;
   const muted = text => stdout.isTTY ? '\x1b[2m' + text + '\x1b[0m' : text;
   const mark = ok => ok ? green('PASS') : 'FAIL';
-  const lines = ['', '  CODE GYM   /   LOCAL AWS LAB', '  ----------------------------------------'];
+  const lines = ['', '  AWS EMULATOR MCP   /   LOCAL LAB', '  ----------------------------------------'];
   if (command === 'doctor') {
     lines.push('  ' + mark(result.ready) + '  Official AWS Emulator diagnostics',
       '  ' + muted(String(result.emulator_version || 'unknown')),
@@ -166,7 +166,7 @@ async function main() {
   const wantsJson = args.length === 1 && args[0] === '--json';
   if (!commands.includes(command) ||
       (args.length && !(wantsJson && !['build', 'mcp'].includes(command)))) {
-    fail('Unknown command/arguments. Run: codegym-aws help', 2);
+    fail('Unknown command/arguments. Run: aws-emulator-mcp help', 2);
   }
   requireDocker();
   if (command === 'build' || !imageExists()) await buildImage();
@@ -176,7 +176,7 @@ async function main() {
     if (code !== 0) fail('MCP server exited (exit ' + code + ')', code);
     return;
   }
-  if (!wantsJson) stderr.write('Code Gym: running verified local ' + command + '...\n');
+  if (!wantsJson) stderr.write('AWS Emulator MCP: running verified local ' + command + '...\n');
   const result = await runCaptured(dockerArgs(command));
   let parsed;
   try { parsed = JSON.parse(result.raw); }

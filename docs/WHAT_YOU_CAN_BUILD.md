@@ -1,6 +1,6 @@
-# What you can build with AWS Emulator + Code Gym MCP
+# What you can build with AWS Emulator MCP
 
-**AWS is the cloud. The emulator is your workshop. Code Gym MCP lets an AI assistant use the workshop.**
+**AWS is the cloud. The emulator is your workshop. AWS Emulator MCP lets an AI assistant use the workshop.**
 
 When you ask your assistant to create an S3 object, store a DynamoDB record or send an SQS message, these aren't diagrams or simulated chat answers. The MCP calls the **running official AWS Emulator on your computer**, which implements supported AWS-style API operations.
 
@@ -98,7 +98,7 @@ Imagine teaching a new developer how an API handles invalid or missing resources
 
 ## Another audience: developers running automated checks
 
-The emulator can also be used through AWS SDKs and AWS CLI in software tests. Code Gym ships a repeatable S3/DynamoDB/SQS test and a benchmark that creates temporary resources, measures completion, and verifies cleanup.
+The emulator can also be used through AWS SDKs and AWS CLI in software tests. AWS Emulator MCP ships a repeatable S3/DynamoDB/SQS test and a benchmark that creates temporary resources, measures completion, and verifies cleanup.
 
 For a local test run (from a configured source environment), use:
 
@@ -124,10 +124,10 @@ An AWS CLI expert could do many of these operations directly with shell commands
 
 **It's especially helpful for people learning cloud concepts and for AI developers who want agents to experiment locally.** Advanced developers may prefer CLI/SDK for unsupported or more complex operations.
 
-## Which features belong to AWS, and which belong to Code Gym?
+## Which features belong to AWS, and which belong to AWS Emulator MCP?
 
 - **AWS Emulator (official AWS project):** local API server, emulator credentials and certificates, AWS SDK/CLI compatibility, supported emulated AWS operations, official agent skill and published fidelity measurements.
-- **Code Gym MCP (independent project):** 27 curated local MCP tools, simple text-oriented S3/DynamoDB/SQS operations, guided diagnostics, repeatable synthetic order workflow, cleanup verification, MCP compatibility and engineering reports.
+- **AWS Emulator MCP (independent project):** 27 curated local MCP tools, simple text-oriented S3/DynamoDB/SQS operations, guided diagnostics, repeatable synthetic order workflow, cleanup verification, MCP compatibility and engineering reports.
 - **Your own application:** payment handling, real workers, business logic, user interfaces, authorization, sophisticated data structures, deployments and production monitoring.
 
 The emulator does **not** enforce production IAM policies. Its in-memory state is disposable. Some AWS APIs are unsupported and may return 501. Always read [AWS's documentation](https://docs.aws.amazon.com/emulator/) and compare the fidelity of the emulator version being tested.
@@ -136,7 +136,7 @@ The emulator does **not** enforce production IAM policies. Its in-memory state i
 
 The **local MCP** has 27 tools, including writes. It is for compatible MCP clients running on or attached to the same machine.
 
-The optional **Code Gym AWS Emulator – Secure QA** plugin in ChatGPT web provides **only three read-only diagnostics**: emulator_status, emulator_doctor, emulator_identity. It uses an independently authenticated connector; it cannot create buckets or queues or run emulator_order_demo remotely.
+The existing, separately branded legacy **Secure QA** plugin in ChatGPT web provides **only three read-only diagnostics**: emulator_status, emulator_doctor, emulator_identity. It uses an independently authenticated connector; it cannot create buckets or queues or run emulator_order_demo remotely.
 
 A remote **write-capable** plugin must be deliberately designed with per-user approval and authorization. We don't describe the current read-only plugin as full control.
 

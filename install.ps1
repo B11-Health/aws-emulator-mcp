@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "AWS Emulator MCP - one-click local setup" -ForegroundColor Cyan
-Write-Host "Publisher: B11-Health  |  Code Gym on LinkedIn"
+Write-Host "GitHub repository: B11-Health/aws-emulator-mcp"
 Write-Host "No AWS account or cloud credentials required."
 Write-Host ""
 
@@ -15,7 +15,7 @@ if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
     exit 2
 }
 $version = "0.3.0"
-$targetBase = Join-Path $env:LOCALAPPDATA "CodeGym\AWS-Emulator-MCP"
+$targetBase = Join-Path $env:LOCALAPPDATA "AWS-Emulator-MCP"
 $target = Join-Path $targetBase "v$version"
 $source = $PSScriptRoot
 if ($Preview) {

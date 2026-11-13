@@ -75,13 +75,13 @@ class SDKBridgeTests(unittest.TestCase):
 
     def test_broad_tools_not_registered_in_native_python(self):
         # Existing local native stdlib-only MCP remains fixed and safe.
-        if os.environ.get("CODEGYM_ISOLATED_LAB") != "1":
+        if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
             self.assertNotIn("aws_sdk_invoke", m.FUNCTIONS)
             self.assertEqual(len(m.TOOLS), 27)
 
     def test_model_bridge_requires_container(self):
-        if os.environ.get("CODEGYM_ISOLATED_LAB") != "1":
-            with self.assertRaisesRegex(m.LocalError, "isolated Code Gym Docker"):
+        if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
+            with self.assertRaisesRegex(m.LocalError, "isolated AWS Emulator MCP Docker"):
                 aws_sdk._runtime()
 
 

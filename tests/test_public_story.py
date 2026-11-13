@@ -29,6 +29,15 @@ class ProductStoryTests(unittest.TestCase):
         self.assertIn("DynamoDB",lead)
         self.assertIn("SQS",lead)
 
+    def test_public_identity_has_no_unrelated_nonprofit_brand(self):
+        for name in ("README.md", "docs/DOCKER_NPM_BETA.md"):
+            content=(ROOT/name).read_text(encoding="utf-8")
+            self.assertNotIn("codegym-aws",content)
+            self.assertNotIn("@codegym/",content)
+            self.assertNotIn("Code Gym",content)
+        pkg=(ROOT/"package.json").read_text(encoding="utf-8")
+        self.assertIn('"name": "aws-emulator-mcp"',pkg)
+
     def test_no_remote_write_claim(self):
         for file in ("README.md","docs/WHAT_YOU_CAN_BUILD.md"):
             text=(ROOT/file).read_text(encoding="utf-8")
