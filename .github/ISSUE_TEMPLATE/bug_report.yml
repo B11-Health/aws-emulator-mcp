@@ -1,0 +1,52 @@
+name: Reproducible bug report
+description: Report a problem with AWS Emulator MCP's install, tools, or observed local API behavior
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing AWS Emulator MCP. Please **remove credentials, local paths, personal data and production AWS IDs**. If the behavior comes from AWS Emulator itself, also consult its [upstream issue tracker](https://github.com/aws/aws-emulator/issues).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - npm / Docker installation
+        - MCP client integration
+        - Curated S3 / DynamoDB / SQS tool
+        - SDK model discovery or invocation
+        - Coverage smoke probe
+        - Experiment / cleanup
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions and operating system
+      placeholder: "MCP beta version, AWS Emulator version, OS, Node version"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal steps to reproduce
+      description: Use synthetic input and the emulator-only account.
+      placeholder: "1. ... 2. ... 3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior versus actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted result or JSON evidence
+      description: Share the operation, status and any cleanup failure. No auth tokens or production AWS credentials.
+      render: shell
+    validations:
+      required: false

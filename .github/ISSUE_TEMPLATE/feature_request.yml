@@ -1,0 +1,27 @@
+name: Feature or API coverage request
+description: Propose a specific AWS Emulator MCP feature with reproducible evidence
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Model discovery does not establish AWS Emulator implementation. Cite the actual AWS service/operation and its [upstream fidelity guidance](https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html) when requesting coverage.
+  - type: input
+    id: operation
+    attributes:
+      label: Service / SDK operation
+      placeholder: "lambda.Invoke / ec2.DescribeInstances / cloudformation.CreateStack"
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What developer problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Reproducible acceptance test
+      description: Include expected local API response, failure modes and cleanup. No real AWS resources.
+    validations:
+      required: true

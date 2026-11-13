@@ -6,7 +6,7 @@
 
 An AWS emulator alone can answer AWS SDK/CLI requests. An MCP bridge alone exposes functions. Neither automatically gives a developer confidence that an **application workflow** works, that an agent understood a failure, or that test resources were cleaned up. A local-first workbench should reduce the time between an AI agent changing application code and a trustworthy, reproducible integration-test result.
 
-AWS already ships the emulator, an agent skill, isolated instances, and official fidelity reports. LocalStack's MCP server already supports sophisticated features such as chaos injection, deployment tooling and traces (some require its own authenticated ecosystem). We must **not** pretend these ideas are new or that 31 tool names equal AWS service coverage. Our wedge is an open, easy-to-audit, local testing workflow with a clean evidence contract and no real AWS credentials.
+AWS already ships the emulator, an agent skill, isolated instances, and official fidelity reports. LocalStack's MCP server already supports sophisticated features such as chaos injection, deployment tooling and traces (some require its own authenticated ecosystem). We must **not** pretend these ideas are new or that 32 tool names equal AWS service coverage. Our wedge is an open, easy-to-audit, local testing workflow with a clean evidence contract and no real AWS credentials.
 
 ## Phase 1: experiments with observed evidence (implemented developer beta)
 
@@ -69,3 +69,7 @@ AWS already ships the emulator, an agent skill, isolated instances, and official
 - **Maintainer burden per contribution**: predictable tests, reviewed scope, and no silent credential/network regressions.
 
 **Principle:** Prefer one impressive, reproducible application repair over adding 100 ambiguous MCP tools.
+
+## Coverage transparency shipped in beta.4
+
+AWS Emulator MCP now pages through the installed AWS SDK service and operation catalog and can run 20 explicitly bounded, read-only API probes against an isolated emulator. This is deliberately separate from AWS's official fidelity measurements: a modeled operation or a successful List/Describe call is not evidence of a complete service implementation. See [coverage methodology](COVERAGE.md).

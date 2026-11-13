@@ -669,7 +669,11 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
     from aws_emulator_mcp import aws_sdk
     TOOLS.extend([
         spec("aws_sdk_discover",
-             "Discover AWS SDK-modeled services or operations. A model is NOT proof that AWS Emulator implements the API.",
+             "Page through ALL SDK-modeled AWS services or operations; models do NOT imply AWS Emulator implementation. Use query, offset and limit.",
+             {"service": STR, "offset": {"type": "integer", "minimum": 0, "maximum": 20000},
+              "limit": {"type": "integer", "minimum": 1, "maximum": 100}, "query": STR}),
+        spec("aws_sdk_coverage",
+             "Perform ONLY a fixed allowlist of read-only AWS SDK API probes against the local emulator; report actual responses. NOT a full AWS fidelity audit.",
              {"service": STR}),
         spec("aws_sdk_invoke",
              "Invoke a modeled AWS SDK operation only on the isolated local emulator. Never calls real AWS; unsupported emulator operations fail.",
@@ -677,18 +681,19 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
               "parameters": {"type": "object", "additionalProperties": True}},
              ("service", "operation")),
     ])
-    for extra in TOOLS[-2:]:
+    for extra in TOOLS[-3:]:
         extra["annotations"] = {
-            "readOnlyHint": extra["name"] == "aws_sdk_discover",
+            "readOnlyHint": extra["name"] in ("aws_sdk_discover", "aws_sdk_coverage"),
             "destructiveHint": extra["name"] == "aws_sdk_invoke",
             "idempotentHint": extra["name"] == "aws_sdk_discover",
             "openWorldHint": False
         }
-    FUNCTIONS.update(aws_sdk_discover=aws_sdk.discover, aws_sdk_invoke=aws_sdk.invoke)
+    FUNCTIONS.update(aws_sdk_discover=aws_sdk.discover,
+                     aws_sdk_coverage=aws_sdk.coverage, aws_sdk_invoke=aws_sdk.invoke)
 
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
-VERSION="0.4.0b3"
+VERSION="0.4.0b4"
 PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
 SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
 SERVER_CAPS={"tools":{"listChanged":False}}
@@ -724,6 +729,10 @@ def _tool_arguments_ok(name,args):
         except (TypeError, ValueError): return False
     for k,value in args.items():
         declared=properties[k]
+        if declared.get("type")=="integer":
+            if type(value) is not int: return False
+            if value < declared.get("minimum",0) or value > declared.get("maximum",20000):
+                return False
         if declared.get("type")=="string":
             if not isinstance(value,str): return False
             if len(value.encode("utf-8"))>limits.get(k,65536): return False

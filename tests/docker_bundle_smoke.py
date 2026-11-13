@@ -69,6 +69,17 @@ def verify():
         print("EXPERIMENT_PASS", experiment, len(proof["steps"]),
               "assertions", len(proof["cleanup"]), "cleanup checks", flush=True)
 
+    coverage = run("coverage", json_mode=True, timeout=140)
+    assert coverage.returncode == 0, coverage.stderr[-900:]
+    evidence = json.loads(coverage.stdout)
+    assert evidence["modeledServiceCount"] >= 400
+    assert evidence["totalProbes"] == 20
+    assert evidence["successfulProbes"] == 20, evidence
+    assert all(row["status"] == "responded" for row in evidence["results"])
+    print("SDK_COVERAGE_PASS", evidence["successfulProbes"],
+          "of", evidence["totalProbes"], "read-only API probes across models",
+          evidence["modeledServiceCount"], flush=True)
+
     bucket = "cg-sdk-qa-" + uuid.uuid4().hex[:14]
     key = "proof.txt"
     text = "isolated-sdk-model-bridge-verified"
@@ -91,6 +102,8 @@ def verify():
         msg(11, "aws_sdk_invoke", {"service": "s3", "operation": "ImpossibleOperation"}),
         msg(12, "lab_catalog"),
         msg(13, "lab_run", {"experiment": "s3-recovery"}),
+        msg(14, "aws_sdk_coverage", {"service": "ec2"}),
+        msg(15, "aws_sdk_discover", {"service":"ec2", "limit":10, "offset":10, "query":"Describe"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=100)
@@ -100,8 +113,8 @@ def verify():
     assert len(rows) == len(calls), (rows.keys(), r.stderr[:200])
     tools = rows[1]["result"]["tools"]
     names = {x["name"] for x in tools}
-    assert len(tools) == 31
-    assert {"aws_sdk_discover", "aws_sdk_invoke", "emulator_order_demo", "lab_catalog", "lab_run"} <= names
+    assert len(tools) == 32
+    assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage", "emulator_order_demo", "lab_catalog", "lab_run"} <= names
     assert content(rows[2])["modeledOperationCount"] >= 100
     assert content(rows[3])["passed"] and content(rows[4])["passed"]
     for i in range(5, 11):
@@ -117,6 +130,14 @@ def verify():
     proof=content(rows[13])
     assert proof["passed"] and proof["experiment"] == "s3-recovery"
     assert all(x["passed"] for x in proof["cleanup"])
+    api_evidence=content(rows[14])
+    assert api_evidence["totalProbes"] == 1
+    assert api_evidence["results"][0]["status"] == "responded"
+    described=content(rows[15])
+    assert described["service"] == "ec2" and described["offset"] == 10
+    assert described["matchedOperationCount"] > 10
+    assert len(described["operations"]) == 10
+    assert all("Describe" in row["operation"] for row in described["operations"])
 
     print("DOCKER_SDK_PASS", len(tools), "tools, S3 CRUD + cleanup, modeled S3/DDB operations", flush=True)
     print("VERIFIED: no host mounts, ports, AWS account or container external network required", flush=True)

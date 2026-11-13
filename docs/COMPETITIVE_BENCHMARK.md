@@ -33,3 +33,8 @@ Sources:
 - https://github.com/localstack/localstack-mcp-server
 - https://docs.localstack.cloud/aws/developer-tools/running-localstack/mcp-server/
 - https://github.com/aws/aws-emulator
+
+
+## Broad SDK discovery and measured probes (beta.4)
+
+The local Docker bridge now supports paged botocore model discovery and a read-only 20-operation coverage audit across more than three AWS services. This does not replicate the official AWS agent skill's upstream fidelity analysis or LocalStack MCP's deployment and chaos features. See [the snapshot and limitations](COVERAGE.md).

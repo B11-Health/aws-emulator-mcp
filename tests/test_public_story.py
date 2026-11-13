@@ -22,12 +22,12 @@ class ProductStoryTests(unittest.TestCase):
                     self.assertTrue((page.parent/path).exists(),f"{source} -> {target}")
 
     def test_readme_starts_with_value_not_tool_versions(self):
-        lead=(ROOT/"README.md").read_text(encoding="utf-8")[:1600]
+        lead=(ROOT/"README.md").read_text(encoding="utf-8")[:2700]
         self.assertIn("Your AWS playground",lead)
         self.assertIn("No AWS account",lead)
-        self.assertIn("S3",lead)
-        self.assertIn("DynamoDB",lead)
-        self.assertIn("SQS",lead)
+        full=(ROOT/"README.md").read_text(encoding="utf-8")
+        for service in ("S3","DynamoDB","SQS","EC2","Lambda","IAM"):
+            self.assertIn(service,full)
 
     def test_public_identity_has_no_unrelated_nonprofit_brand(self):
         for name in ("README.md", "docs/DOCKER_NPM_BETA.md"):
@@ -42,8 +42,50 @@ class ProductStoryTests(unittest.TestCase):
         for file in ("README.md","docs/WHAT_YOU_CAN_BUILD.md"):
             text=(ROOT/file).read_text(encoding="utf-8")
             self.assertIn("read-only",text)
-            self.assertIn("27",text)
+            self.assertIn("29",text)
         self.assertIn("cannot create", (ROOT/"README.md").read_text(encoding="utf-8"))
+
+    def test_readme_media_is_real_and_repo_local(self):
+        import xml.etree.ElementTree as ET
+        body=(ROOT/"README.md").read_text(encoding="utf-8")
+        for match in re.findall(r'<(?:img|a)\s+[^>]*?(?:src|href)="([^"]+)"',body):
+            if match.startswith(("http://","https://","#","mailto:")):
+                continue
+            f=ROOT/match.split("#",1)[0]
+            with self.subTest(asset=match):
+                self.assertTrue(f.is_file(), f"Missing README asset {match}")
+        for filename in ("hero.svg", "architecture.svg"):
+            image=ROOT/"docs/assets"/filename
+            self.assertLess(image.stat().st_size,100_000)
+            root=ET.parse(image).getroot()
+            self.assertEqual(root.tag,"{http://www.w3.org/2000/svg}svg")
+            self.assertIn("title", image.read_text())
+        mp4=ROOT/"docs/assets/real-cli-demo.mp4"
+        gif=ROOT/"docs/assets/real-cli-demo.gif"
+        self.assertTrue(mp4.read_bytes()[4:8]==b"ftyp")
+        self.assertTrue(gif.read_bytes().startswith(b"GIF89a"))
+        self.assertLess(mp4.stat().st_size,5_000_000)
+        self.assertLess(gif.stat().st_size,5_000_000)
+
+    def test_readme_coverage_claims_are_specific_and_verifiable(self):
+        import json
+        import sys
+        sys.path.insert(0, str(ROOT / "src"))
+        from aws_emulator_mcp import aws_sdk
+        body=(ROOT/"README.md").read_text(encoding="utf-8")
+        self.assertIn("29 tools",body)
+        self.assertIn("3 additional MCP tools",body)
+        self.assertIn("436 service models",body)
+        self.assertIn("20/20 read-only",body)
+        self.assertIn("not yet published on npm",body)
+        self.assertNotIn("img.shields.io/npm/v/",body)
+        self.assertIn("actions/workflows/tests.yml/badge.svg?branch=master",body)
+        evidence=json.loads((ROOT/"docs/evidence/coverage-aws-emulator-1.0.343.json").read_text())
+        self.assertEqual(evidence["modeledServiceCount"],436)
+        self.assertEqual(evidence["successfulProbes"],20)
+        self.assertEqual([(item["service"],item["operation"]) for item in evidence["results"]],
+                         list(aws_sdk.READ_ONLY_PROBES))
+        self.assertTrue(all(item["status"]=="responded" for item in evidence["results"]))
 
     def test_local_command_examples_exist(self):
         for name in ("install.cmd","demo.cmd","install.sh",
