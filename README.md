@@ -1,8 +1,88 @@
-# AWS Emulator MCP v0.3.0
+# AWS Emulator MCP
 
-**Let your AI agent test AWS workflows locally, diagnose failures, and show the evidence before deployment.**
+### Your AWS playground. Controlled by your AI assistant.
 
-Independent MIT-licensed MCP bridge for the official [AWS Emulator](https://github.com/aws/aws-emulator). GitHub publisher: **B11-Health**. LinkedIn announcement: [Code Gym](https://www.linkedin.com/company/codegympr/). Not affiliated with or endorsed by AWS.
+**Create buckets. Store data. Send messages. Experiment with AWS-style infrastructure. Break something, fix it, and reset the lab—without deploying to AWS.**
+
+The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software talk to supported AWS APIs **on your own machine**. **Code Gym AWS Emulator MCP** gives compatible AI assistants a set of tools to operate that sandbox in natural language.
+
+**No AWS account. No AWS service charges for emulated resources. No production AWS resources at risk.** Your computer still provides the compute.
+
+**[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
+
+---
+
+## You ask. The sandbox does the work.
+
+| Ask your AI assistant... | What actually happens | Availability |
+| --- | --- | --- |
+| **"Create an S3 bucket, store a note and read it back."** | Emulated S3 create/put/get/list calls | **Available locally** |
+| **"Show me DynamoDB. Store and retrieve an example order."** | Table creation and simple text records | **Available locally** |
+| **"Send a job to a queue and show how it gets received."** | SQS send/receive/acknowledge | **Available locally** |
+| **"Process an order, generate a receipt and verify everything."** | DynamoDB + SQS + S3 in one scenario | **Working order demo** |
+| **"Cause an expected error, recover, and clean up."** | Deliberate missing S3 receipt, repair, verification and cleanup | **Working order demo** |
+| **"Test Lambda, EventBridge and API Gateway together."** | Would depend on the emulator's implemented APIs | **Not in our 27-tool MCP catalog** |
+| **"Deploy and automatically repair my entire application."** | Needs additional coding and infrastructure tools | **Not implemented** |
+
+### One prompt. Three services. Real emulated APIs.
+
+> "Check AWS Emulator with **emulator_doctor**. Run **emulator_order_demo**. Walk me through the DynamoDB order, queued SQS message, expected missing S3 receipt, recovery, verification and cleanup. Don't claim success if a check fails."
+
+~~~mermaid
+flowchart LR
+    You["Ask your AI"] --> MCP["Code Gym MCP"]
+    MCP --> Lab["AWS Emulator on localhost"]
+    Lab --> DB["DynamoDB: order"]
+    Lab --> Q["SQS: work item"]
+    Lab --> S3["S3: receipt"]
+    S3 --> Error{"Receipt exists?"}
+    Error -->|Expected 404| Repair["Write missing receipt"]
+    Repair --> Verify["Read back + verify"]
+    DB --> Verify
+    Q --> Verify
+    Verify --> Clean["Acknowledge + clean up"]
+~~~
+
+The built-in demo executes **12 workflow steps**, checks **two failure/recovery assertions**, and verifies **four cleanup actions**. It uses unique synthetic resources, not a real payment processor or automatic Lambda trigger.
+
+## Why not just use AWS?
+
+**Because production and experimentation are different jobs.**
+
+| For this task... | Real AWS | AWS Emulator + our MCP |
+| --- | --- | --- |
+| Learn APIs without an account | Requires AWS access | **No AWS account needed** |
+| Experiment without AWS service charges | Cloud usage may be billed | **No AWS service charges for emulated calls** |
+| Make mistakes safely | Carefully manage real resources | **Only local test resources** |
+| Reset the environment | Clean up real infrastructure | **Restart the emulator** |
+| Ask an AI to operate the sandbox | Configure SDK/CLI or other tools | **Explicit, discoverable MCP tools** |
+| Validate production IAM, availability, scale | **Actual AWS behavior** | **Not a substitute** |
+
+AWS already provides the emulator engine, AWS CLI/SDK compatibility and an [official agent skill](https://github.com/aws/aws-emulator). Our MCP adds a **client-neutral tool interface** with local safety boundaries, examples, diagnostics, repeatable workflows and evidence.
+
+**AWS is where your application runs. The emulator is where you experiment. MCP is how your AI gets hands-on access.**
+
+## Who would use this?
+
+**New to AWS?** Learn S3, SQS and DynamoDB by creating and inspecting real *emulated* resources instead of just reading tutorials.
+
+**Building a backend?** Prototype an order pipeline, helpdesk intake flow, inventory tracker or file archive against locally simulated services.
+
+**Developing with an AI coding agent?** Give it a disposable place to inspect API behavior, reproduce expected errors and verify its test cases.
+
+**Running CI?** Start an isolated emulator on a runner, execute reproducible integration checks, report assertions and clean up.
+
+See the **[use-case playbook](docs/WHAT_YOU_CAN_BUILD.md)** for examples you can actually try, plus honest boundaries for ideas that need more tools.
+
+## What it does not do
+
+The official emulator is **not production AWS**: state is temporary, service API fidelity varies, and it does **not enforce production IAM/resource policies**. Unsupported operations may return 501. Successful local tests are not proof of production security or distributed-system performance.
+
+The **27 local MCP tools** support a focused S3/DynamoDB/SQS set. Our optional **remote ChatGPT Secure QA plugin exposes only three read-only diagnostics** (status, doctor and identity); it cannot create resources or run the order workflow remotely. For the full sandbox experience, connect a compatible local MCP client.
+
+**Independent community project** maintained by [B11-Health](https://github.com/B11-Health), announced through [Code Gym](https://www.linkedin.com/company/codegympr/). Not affiliated with or endorsed by AWS.
+
+---
 
 ## Quickest install on Windows
 
