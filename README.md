@@ -19,7 +19,7 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 Until an npm registry release is verified, test the beta directly from the public GitHub source:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.2"
+npm install -g "github:B11-Health/aws-emulator-mcp#670547aa25ac42801a170abb01411c06ba6edc5d"
 aws-emulator-mcp doctor
 aws-emulator-mcp demo
 aws-emulator-mcp config copilot
