@@ -27,6 +27,25 @@ class FakeClient:
 
 
 class SDKBridgeTests(unittest.TestCase):
+    def test_checksum_streaming_body_is_bounded_and_closed(self):
+        class Stream:
+            def __init__(self, payload):
+                self.payload = payload
+                self.closed = False
+            def read(self, limit):
+                self.limit = limit
+                return self.payload[:limit]
+            def close(self):
+                self.closed = True
+        Stream.__name__ = "StreamingChecksumBody"
+        Stream.__module__ = "botocore.httpchecksum"
+        raw = Stream(b"emulator-readback")
+        value = aws_sdk._safe(raw)
+        self.assertEqual(value["encoding"], "base64")
+        self.assertEqual(__import__("base64").b64decode(value["data"]), b"emulator-readback")
+        self.assertTrue(raw.closed)
+        self.assertEqual(raw.limit, aws_sdk.MAX_OUTPUT_BYTES + 1)
+
     def test_safe_json_strips_metadata(self):
         v = aws_sdk._safe(FakeClient().list_buckets())
         self.assertEqual(v["Buckets"][0]["Name"], "local-test")

@@ -58,9 +58,14 @@ def _safe(value):
         return str(value)
     if isinstance(value, (datetime.datetime, datetime.date)):
         return value.isoformat()
-    if type(value).__module__ == "botocore.response" and type(value).__name__ == "StreamingBody":
-        chunk = value.read(MAX_OUTPUT_BYTES + 1)
-        value.close()
+    if (type(value).__module__.startswith("botocore.") and
+            type(value).__name__ in ("StreamingBody", "StreamingChecksumBody")):
+        # Botocore may wrap streaming HTTP responses in a checksum-verifying
+        # reader. Handle both variants without ever returning an open stream.
+        try:
+            chunk = value.read(MAX_OUTPUT_BYTES + 1)
+        finally:
+            value.close()
         if len(chunk) > MAX_OUTPUT_BYTES:
             raise ValueError("SDK binary response exceeded 256 KiB")
         return {"encoding": "base64", "data": base64.b64encode(chunk).decode("ascii")}
@@ -114,7 +119,10 @@ def invoke(service, operation, parameters=None):
         raise m.LocalError("Operation not present in the installed AWS SDK model")
     try:
         result = getattr(client, methods[operation])(**parameters)
-        safe = _safe(result)
+        try:
+            safe = _safe(result)
+        except (ValueError, TypeError) as exc:
+            raise m.LocalError("SDK operation returned unsupported or oversized data") from exc
         out = {"passed": True, "service": service, "operation": operation,
                "endpoint": m.ENDPOINT, "result": safe,
                "note": "Response is from the local AWS Emulator, not real AWS."}
