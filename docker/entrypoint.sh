@@ -33,7 +33,7 @@ if [[ "$ready" != 1 ]]; then
   exit 3
 fi
 case "$mode" in
-  mcp) python3 -u -m aws_emulator_mcp.server ;;
+  mcp) python3 -u -c 'from aws_emulator_mcp.server import main; main()' ;;
   doctor) python3 -m aws_emulator_mcp.cli doctor --json ;;
   demo) python3 -m aws_emulator_mcp.cli order-demo --json ;;
   self-test) python3 -m aws_emulator_mcp.cli self-test --json ;;

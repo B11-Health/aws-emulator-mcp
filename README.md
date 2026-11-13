@@ -8,9 +8,24 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 
 **No AWS account. No AWS service charges for emulated resources. No production AWS resources at risk.** Your computer still provides the compute.
 
-**[Watch the 116-second demo](https://32-185-50-90.sslip.io/codegym-aws-mcp-review-nov26/)** · **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
+**[Docker + npm developer beta](docs/DOCKER_NPM_BETA.md)** · **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
 
 ---
+
+## New: isolated Docker + npm beta (in active QA)
+
+**The v0.3 public release only provides 27 curated MCP tools.** A new experimental Docker bundle adds a small Node CLI and two broad, model-driven AWS SDK tools. The SDK models expose many operations, but **their presence does not imply the official AWS Emulator implements them**. The container has no network, forwarded ports, or host credentials. No AWS account or host Python installation is needed.
+
+Until an npm registry release is verified, test the beta directly from the public GitHub source:
+
+```sh
+npm install -g "github:B11-Health/aws-emulator-mcp#feat/docker-npm-one-command-lab"
+codegym-aws doctor
+codegym-aws demo
+codegym-aws config copilot
+```
+
+Docker Desktop/Engine and Node 20+ are required. The official AWS Emulator binary is nearly 1 GB unpacked; the npm package is a small launcher that builds the signed image on first use. **Read [the architecture, safety boundaries, and beta QA requirements](docs/DOCKER_NPM_BETA.md)** before treating this as stable. The previous narrated launch video is no longer considered the reference demo; new launch media must show real product interactions.
 
 ## Try a real AWS lab in minutes
 

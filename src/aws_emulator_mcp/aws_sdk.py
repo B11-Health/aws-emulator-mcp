@@ -58,6 +58,12 @@ def _safe(value):
         return str(value)
     if isinstance(value, (datetime.datetime, datetime.date)):
         return value.isoformat()
+    if type(value).__module__ == "botocore.response" and type(value).__name__ == "StreamingBody":
+        chunk = value.read(MAX_OUTPUT_BYTES + 1)
+        value.close()
+        if len(chunk) > MAX_OUTPUT_BYTES:
+            raise ValueError("SDK binary response exceeded 256 KiB")
+        return {"encoding": "base64", "data": base64.b64encode(chunk).decode("ascii")}
     if isinstance(value, (bytes, bytearray)):
         return {"encoding": "base64", "data": base64.b64encode(value).decode("ascii")}
     if isinstance(value, (list, tuple)):
