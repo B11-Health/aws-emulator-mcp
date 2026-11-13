@@ -1,3 +1,11 @@
+## v0.4.0-beta.2 — product identity cleanup
+
+- Project/tool name and published npm package identity are **AWS Emulator MCP**.
+- The npm command is now `aws-emulator-mcp`, and the local Docker image is `aws-emulator-mcp:0.4.0-beta.2`.
+- The repository is published through the B11-Health GitHub account; Code Gym is an unrelated nonprofit and is not the product.
+- New Windows source installations use `%LOCALAPPDATA%\AWS-Emulator-MCP`; legacy paths remain readable by the demo/connect helpers.
+- This beta is source-installable from GitHub; **no npm registry package or public Docker registry image is claimed**.
+
 # Changelog
 
 ## Unreleased — developer experience and product story

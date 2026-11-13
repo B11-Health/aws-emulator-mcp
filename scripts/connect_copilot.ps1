@@ -8,7 +8,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $version = "0.3.0"
-$installed = Join-Path $env:LOCALAPPDATA "CodeGym\AWS-Emulator-MCP\v$version"
+$installed = Join-Path $env:LOCALAPPDATA "AWS-Emulator-MCP\v$version"
+if (-not (Test-Path (Join-Path $installed "scripts\connect_client.py"))) {
+    $legacyInstalled = Join-Path $env:LOCALAPPDATA "CodeGym\AWS-Emulator-MCP\v$version"
+    if (Test-Path (Join-Path $legacyInstalled "scripts\connect_client.py")) { $installed = $legacyInstalled }
+}
 if ([string]::IsNullOrWhiteSpace($SourceFile)) {
     $SourceFile = Join-Path $installed "generated\copilot-mcp.windows-wsl.json"
 }
@@ -22,7 +26,7 @@ if ([string]::IsNullOrWhiteSpace($Destination)) {
 }
 $scriptFile = Join-Path $installed "scripts\connect_client.py"
 if (-not (Test-Path -LiteralPath $scriptFile)) {
-    throw "Stable Code Gym install not found. Run install.cmd first."
+    throw "Stable AWS Emulator MCP install not found. Run install.cmd first."
 }
 if (-not (Test-Path -LiteralPath $SourceFile)) {
     throw "Generated Copilot configuration missing. Run install.cmd first."
@@ -48,7 +52,7 @@ if (-not $Preview) { $wslArguments += "--apply" }
 if ($Replace) { $wslArguments += "--replace" }
 
 Write-Host ""
-Write-Host "Code Gym / Connect VS Code Copilot (native MCP)" -ForegroundColor Cyan
+Write-Host "AWS Emulator MCP / Connect VS Code Copilot (native MCP)" -ForegroundColor Cyan
 Write-Host "Destination: $Destination"
 if ($Preview) {
     Write-Host "Preview mode: no client configuration will be changed."

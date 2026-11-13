@@ -1,3 +1,5 @@
+> Current project name: **AWS Emulator MCP**. Source repository: **B11-Health/aws-emulator-mcp**. Historic Code Gym launch notes below are retained only as dated prior evidence, not current branding. The prior video is not approved as product demonstration.
+
 # AWS Emulator MCP v0.3.0 — release QA
 
 Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publisher: **Code Gym**.

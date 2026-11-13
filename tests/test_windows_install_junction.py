@@ -11,10 +11,10 @@ ROOT=Path(__file__).resolve().parents[1]
 @unittest.skipUnless(sys.platform=="win32","Windows junction safety test")
 class InstallerJunctionTests(unittest.TestCase):
     def test_managed_install_junction_is_refused_before_mutation(self):
-        with tempfile.TemporaryDirectory(prefix="codegym-installer-junction-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="aws-emulator-mcp-installer-junction-") as tmp:
             base=Path(tmp)
-            target=base/"CodeGym"/"AWS-Emulator-MCP"
-            target.parent.mkdir(parents=True)
+            target=base/"AWS-Emulator-MCP"
+            target.parent.mkdir(parents=True,exist_ok=True)
             victim=base/"do-not-touch"
             victim.mkdir()
             sentinel=victim/"keep.txt"
@@ -35,9 +35,9 @@ class InstallerJunctionTests(unittest.TestCase):
             self.assertFalse((victim/"v0.3.0").exists())
 
     def test_nested_junction_in_existing_managed_target_is_refused(self):
-        with tempfile.TemporaryDirectory(prefix="codegym-nested-junction-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="aws-emulator-mcp-nested-junction-") as tmp:
             base=Path(tmp)
-            source_dir=base/"CodeGym"/"AWS-Emulator-MCP"/"v0.3.0"/"src"
+            source_dir=base/"AWS-Emulator-MCP"/"v0.3.0"/"src"
             source_dir.mkdir(parents=True)
             victim=base/"keep-me"
             victim.mkdir()

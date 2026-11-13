@@ -18,8 +18,8 @@ MAX_OUTPUT_BYTES = 262144
 
 def _runtime():
     from aws_emulator_mcp import server as m
-    if os.environ.get("CODEGYM_ISOLATED_LAB") != "1":
-        raise m.LocalError("Broad SDK operations require the isolated Code Gym Docker lab")
+    if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
+        raise m.LocalError("Broad SDK operations require the isolated AWS Emulator MCP Docker lab")
     try:
         import botocore.session
         from botocore.config import Config

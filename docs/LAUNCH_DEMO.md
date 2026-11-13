@@ -13,7 +13,7 @@ Record the installed local MCP client interacting with the actual AWS Emulator. 
 | Time | Picture | Narration | Evidence to show |
 | --- | --- | --- | --- |
 | 0–10s | Chat prompt: “Make an order flow in my local AWS lab.” | “What if your AI could **use AWS-style services** without deploying to AWS?” | Actual AI-client prompt |
-| 10–20s | Emulator doctor succeeds | “AWS Emulator runs the APIs locally. Code Gym connects an assistant to them.” | Loopback endpoint and isolated emulated account; redact credentials |
+| 10–20s | Emulator doctor succeeds | “AWS Emulator runs the APIs locally. AWS Emulator MCP connects an assistant to them.” | Loopback endpoint and isolated emulated account; redact credentials |
 | 20–43s | Order is stored and message is sent | “Store an order in DynamoDB, queue work in SQS, and create an S3 receipt.” | Real tool trace or actual scenario report |
 | 43–57s | Missing receipt returns expected 404; then upload/get succeeds | “We can even make the receipt fail on purpose and prove the recovery.” | Both expected error and verified content |
 | 57–72s | Cleanup report with only run-specific names | “When we're done, delete only what this experiment created.” | Four cleanup checks and final inventory |
@@ -23,7 +23,7 @@ Record the installed local MCP client interacting with the actual AWS Emulator. 
 
 ## A shorter plain-language voiceover
 
-> “Want to experiment with AWS without setting up an AWS account? AWS Emulator brings supported AWS APIs onto your computer. Code Gym connects your AI assistant to them with MCP. Ask it to create a bucket, store records, send messages or run an entire synthetic order workflow. Watch the actual API results. Make a mistake. Fix it. Verify the result. Clean up. Real AWS-style experiments, no production cloud resources, no AWS service charge for the local lab. The emulator is the workshop. Your AI is the operator.”
+> “Want to experiment with AWS without setting up an AWS account? AWS Emulator brings supported AWS APIs onto your computer. AWS Emulator MCP connects your AI assistant to them with MCP. Ask it to create a bucket, store records, send messages or run an entire synthetic order workflow. Watch the actual API results. Make a mistake. Fix it. Verify the result. Clean up. Real AWS-style experiments, no production cloud resources, no AWS service charge for the local lab. The emulator is the workshop. Your AI is the operator.”
 
 ## QA checklist for an honest launch
 
@@ -32,7 +32,7 @@ Record the installed local MCP client interacting with the actual AWS Emulator. 
 - [ ] Source code, commit SHA, test evidence, video, version, and link all match.
 - [ ] Record a **real write-capable local MCP** session; do **not** substitute the remote three-tool Secure QA plugin.
 - [ ] No live credentials, personal IDs, nonpublic URLs or secret tokens appear in the video.
-- [ ] Correct attribution: AWS created AWS Emulator and its official agent skill; Code Gym independently created this MCP adapter.
+- [ ] Correct attribution: AWS created AWS Emulator and its official agent skill; The AWS Emulator MCP project independently created this MCP adapter.
 - [ ] No false claims about Lambda triggers, payments, production security, auto code repair or all AWS services.
 - [ ] Mobile-readable captions and the resource cleanup outcome remain visible.
 

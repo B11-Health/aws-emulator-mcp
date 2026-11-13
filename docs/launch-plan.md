@@ -90,7 +90,7 @@ of enterprise readiness, complete AWS coverage, or being the first MCP adapter.
 This is a plan; nothing here has been posted, scheduled, or sent.
 
 1. Publish the verified release under B11-Health with the real demo and evidence.
-2. Announce it from Code Gym's existing LinkedIn company page. Put the usable repo
+2. Publish from a product-appropriate channel (do not conflate the nonprofit with the tool). Put the usable repo
    link in the post so viewers can reproduce it immediately.
 3. Prepare a technically specific personal follow-up explaining one difficult
    design decision and its test. Publish only when separately authorized.

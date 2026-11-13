@@ -643,7 +643,7 @@ FUNCTIONS=dict(emulator_status=status,emulator_doctor=doctor,emulator_start=star
 
 # Broad SDK operations are available only inside the completely network-isolated
 # Docker lab. The native 27-tool adapter stays dependency-free and unchanged.
-if os.environ.get("CODEGYM_ISOLATED_LAB") == "1":
+if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
     from aws_emulator_mcp import aws_sdk
     TOOLS.extend([
         spec("aws_sdk_discover",

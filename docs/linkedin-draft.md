@@ -1,4 +1,6 @@
-# Code Gym LinkedIn launch announcement — NOT POSTED
+> Archived, unapproved wording from an earlier campaign. This is not a product identity guide; use README.md for current product naming.
+
+# AWS Emulator MCP community launch draft — ARCHIVAL
 
 **Destination:** https://www.linkedin.com/company/codegympr/
 
@@ -10,7 +12,7 @@ Publish only after B11-Health repository is publicly accessible without login, a
 
 What if you could **experiment with AWS simply by talking to your AI assistant**—without deploying anything to a real AWS account?
 
-AWS has released its official local AWS Emulator. We built **Code Gym AWS Emulator MCP**, an independent open-source bridge that lets compatible AI assistants operate supported AWS-style APIs on your computer.
+AWS has released its official local AWS Emulator. We built **AWS Emulator MCP**, an independent open-source bridge that lets compatible AI assistants operate supported AWS-style APIs on your computer.
 
 Ask it to:
 
@@ -26,7 +28,7 @@ It's not production AWS, and API coverage has limits. It's a practical way to le
 
 The source and runnable demo: **https://github.com/B11-Health/aws-emulator-mcp**
 
-Created independently by B11-Health / Code Gym. Not affiliated with or endorsed by AWS.
+Project: AWS Emulator MCP. Source publisher: B11-Health GitHub account. Not affiliated with or endorsed by AWS.
 
 What would you ask your AI to build in a local cloud lab?
 

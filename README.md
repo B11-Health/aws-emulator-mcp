@@ -4,7 +4,7 @@
 
 **Create S3 buckets. Store DynamoDB records. Send SQS messages. Experiment with AWS-style infrastructure. Break something, fix it, and reset the lab—without deploying to AWS.**
 
-The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software talk to supported AWS APIs **on your own machine**. **Code Gym AWS Emulator MCP** gives compatible AI assistants a set of tools to operate that sandbox in natural language.
+The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software talk to supported AWS APIs **on your own machine**. **AWS Emulator MCP** gives compatible AI assistants a set of tools to operate that sandbox in natural language.
 
 **No AWS account. No AWS service charges for emulated resources. No production AWS resources at risk.** Your computer still provides the compute.
 
@@ -19,10 +19,10 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 Until an npm registry release is verified, test the beta directly from the public GitHub source:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#88d5f84c6625c11d988306c71235eef3a28e9e0f"
-codegym-aws doctor
-codegym-aws demo
-codegym-aws config copilot
+npm install -g "github:B11-Health/aws-emulator-mcp#670547aa25ac42801a170abb01411c06ba6edc5d"
+aws-emulator-mcp doctor
+aws-emulator-mcp demo
+aws-emulator-mcp config copilot
 ```
 
 Docker Desktop/Engine and Node 20+ are required. The official AWS Emulator binary is nearly 1 GB unpacked; the npm package is a small launcher that builds the signed image on first use. **Read [the architecture, safety boundaries, and beta QA requirements](docs/DOCKER_NPM_BETA.md)** before treating this as stable. The previous narrated launch video is no longer considered the reference demo; new launch media must show real product interactions.
@@ -71,7 +71,7 @@ To run this conversationally, connect a compatible **local MCP client** using th
 
 ~~~mermaid
 flowchart LR
-    You["Ask your AI"] --> MCP["Code Gym MCP"]
+    You["Ask your AI"] --> MCP["AWS Emulator MCP"]
     MCP --> Lab["AWS Emulator on localhost"]
     Lab --> DB["DynamoDB: order"]
     Lab --> Q["SQS: work item"]
@@ -121,7 +121,7 @@ The official emulator is **not production AWS**: state is temporary, service API
 
 The **27 local MCP tools** support a focused S3/DynamoDB/SQS set. Our optional **remote ChatGPT Secure QA plugin exposes only three read-only diagnostics** (status, doctor and identity); it cannot create resources or run the order workflow remotely. For the full sandbox experience, connect a compatible local MCP client.
 
-**Independent community project** maintained by [B11-Health](https://github.com/B11-Health), announced through [Code Gym](https://www.linkedin.com/company/codegympr/). Not affiliated with or endorsed by AWS.
+**AWS Emulator MCP** is an independent open-source tool published via the [B11-Health GitHub account](https://github.com/B11-Health). B11-Health is the repository publisher, not the tool name. Not affiliated with or endorsed by AWS.
 
 ---
 
@@ -139,7 +139,7 @@ Requirements: Windows with Ubuntu WSL2 already configured, and internet access f
 
 Or clone in a Git desktop client and double-click install.cmd inside the checked-out folder. The installer:
 
-1. Copies the MCP project to a stable per-user folder under %LOCALAPPDATA%\CodeGym\AWS-Emulator-MCP\v0.3.0
+1. Copies the MCP project to a stable per-user folder under %LOCALAPPDATA%\AWS-Emulator-MCP\v0.3.0
 2. Reuses a valid local emulator or downloads and verifies the AWS-signed Linux package
 3. Starts or checks local HTTPS and generated emulator-only credentials
 4. Performs STS/S3/DynamoDB/SQS diagnostics, test resources, and scoped cleanup
@@ -246,7 +246,7 @@ AWS Emulator does not enforce production IAM or resource policies. It has partia
 
 ## Publication status
 
-**Public developer-preview source is available:** [B11-Health/aws-emulator-mcp](https://github.com/B11-Health/aws-emulator-mcp). A logged-out HTTPS clone, MIT license, and hosted CI have been verified. The independent [Code Gym video review](https://32-185-50-90.sslip.io/codegym-aws-mcp-review-nov26/) is available; it has **not** been posted to LinkedIn. **A public repository is not a stable-release or production-certification claim.** Independent Windows cold-install, end-user desktop MCP experience and outside security review remain open. See [release gates](docs/RELEASE_GATES.md).
+**Public developer-preview source is available:** [B11-Health/aws-emulator-mcp](https://github.com/B11-Health/aws-emulator-mcp). A logged-out HTTPS clone, MIT license, and hosted CI have been verified. The earlier promotional video is retired as release evidence; rely on reproducible Docker/npm tests and issue reports. **A public repository is not a stable-release or production-certification claim.** Independent Windows cold-install, end-user desktop MCP experience and outside security review remain open. See [release gates](docs/RELEASE_GATES.md).
 
 ## Measurable release benchmark
 
@@ -254,4 +254,4 @@ Run the local engineering gates (Python on Windows automatically routes to WSL):
 
     python scripts/gtm_benchmark.py --repetitions 5
 
-This measures unit/security tests, independent MCP protocol compatibility, S3/DynamoDB/SQS/STS workflows, p95 order latency, scoped cleanup, and leaked resource inventory. Reports are written under reports/gtm_latest.json and also rendered as a **self-contained, offline evidence dashboard** at reports/gtm_dashboard.html. Open the HTML in a browser to inspect actual scenario latencies, release gates, and cleanup outcomes. The dashboard does not contact external services or claim public release approval. A local pass is **not** public release approval. Independent Windows cold installation, real desktop-host UX, independent security review, public CI visibility and final Code Gym demo are separate gates in docs/RELEASE_GATES.md. See docs/COMPETITIVE_BENCHMARK.md for honest positioning against the official agent skill and LocalStack MCP.
+This measures unit/security tests, independent MCP protocol compatibility, S3/DynamoDB/SQS/STS workflows, p95 order latency, scoped cleanup, and leaked resource inventory. Reports are written under reports/gtm_latest.json and also rendered as a **self-contained, offline evidence dashboard** at reports/gtm_dashboard.html. Open the HTML in a browser to inspect actual scenario latencies, release gates, and cleanup outcomes. The dashboard does not contact external services or claim public release approval. A local pass is **not** public release approval. Independent Windows cold installation, real desktop-host UX, independent security review, public CI visibility and final independent MCP demo are separate gates in docs/RELEASE_GATES.md. See docs/COMPETITIVE_BENCHMARK.md for honest positioning against the official agent skill and LocalStack MCP.

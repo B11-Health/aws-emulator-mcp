@@ -1,4 +1,4 @@
-"""Safely add one generated Code Gym MCP server entry to a client config.
+"""Safely add one generated AWS Emulator MCP server entry to a client config.
 
 No implicit writes: --apply is mandatory for mutation. Existing unrelated
 servers are preserved, and any changed file gets a timestamped backup.

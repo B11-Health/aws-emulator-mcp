@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
+const requirePackage = () => readFileSync(new URL('../package.json', import.meta.url), 'utf8');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BIN = path.join(ROOT, 'bin', 'codegym-aws.mjs');
+const BIN = path.join(ROOT, 'bin', 'aws-emulator-mcp.mjs');
 function cli(...args) {
   return spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8', timeout: 12000 });
 }
@@ -37,4 +39,16 @@ test('errors do not corrupt MCP stdout', () => {
   const result = cli('invalid-command');
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /Unknown command/);
+});
+
+test('npm package and CLI identify AWS Emulator MCP, not an unrelated organization', () => {
+  const pkg = JSON.parse(requirePackage());
+  assert.equal(pkg.name, 'aws-emulator-mcp');
+  assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
+  assert.equal(pkg.version, '0.4.0-beta.2');
+  assert.equal(pkg.bin['codegym-aws'], undefined);
+  const result = cli('help');
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Usage: aws-emulator-mcp/);
+  assert.doesNotMatch(result.stdout + result.stderr, /Code Gym|CodeGym|codegym-aws/);
 });
