@@ -9,7 +9,8 @@ from cryptography.hazmat.primitives import hashes,serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from datetime import datetime,timedelta,timezone
 from urllib.parse import quote
-from urllib.request import Request,urlopen
+from urllib.request import Request
+from safety import validate_loopback_url, loopback_opener
 from urllib.error import HTTPError
 import json,sys,os
 from pathlib import Path
@@ -17,7 +18,8 @@ source=os.environ.get("CODEGYM_MCP_SOURCE","")
 if not source:raise RuntimeError("Set CODEGYM_MCP_SOURCE")
 sys.path.insert(0,source)
 from aws_emulator_mcp import server as m
-base=os.environ.get("CODEGYM_GATEWAY_LOCAL_URL","http://127.0.0.1:8987/mcp")
+base=validate_loopback_url(os.environ.get("CODEGYM_GATEWAY_LOCAL_URL","http://127.0.0.1:8987/mcp"))
+opener=loopback_opener()
 expected_port=int(os.environ.get("CODEGYM_EXPECTED_EMULATOR_PORT","9297"))
 def make_cert(san):
     key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
@@ -37,7 +39,7 @@ headers={"Content-Type":"application/json","Accept":"application/json,text/event
 def request(msg,override=None):
     h={**headers,**(override or {})}
     try:
-        with urlopen(Request(base,data=json.dumps(msg).encode(),headers=h,method="POST"),timeout=27) as r:
+        with opener.open(Request(base,data=json.dumps(msg).encode(),headers=h,method="POST"),timeout=27) as r:
             return r.status,json.load(r)
     except HTTPError as e:
         return e.code,{"error":e.read().decode(errors="replace")[:100]}

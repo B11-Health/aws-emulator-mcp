@@ -35,6 +35,10 @@ jobs:
           python -m compileall -q src tests scripts
           python scripts/release_scan.py
           python -m unittest discover -s tests -q
+      - name: Independent static security scan (medium/high findings fail)
+        run: |
+          python -m pip install --disable-pip-version-check bandit==1.9.2
+          python -m bandit -r src/aws_emulator_mcp remote_connector -ll -q
       - name: Independent legacy/modern MCP checker
         run: |
           mkdir -p reports

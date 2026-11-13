@@ -2,6 +2,14 @@
 
 Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publisher: **Code Gym**.
 
+## Additional source hardening — 2026-11-13
+
+Security-sensitive XML responses are now prevalidated by the stdlib Expat parser and **all DTD / entity declarations are rejected** before ElementTree processes the bounded response. Adversarial regressions cover ASCII and UTF-16 DTD payloads, malformed data, and oversized replies.
+
+The optional remote connector's QA script now **refuses any destination other than the exact `http://127.0.0.1:PORT/mcp` endpoint**, ignores ambient HTTP proxies, and denies redirects so its private test edge token cannot be forwarded to a remote host. This does not expand the plugin's three-tool read-only surface.
+
+Bandit v1.9.2 static scan over `src/aws_emulator_mcp` and `remote_connector`: **zero medium/high findings** after the changes. Four low-severity advisory findings remain (process execution through fixed emulator paths and non-cryptographic reconnect jitter). Static scanning is defense in depth, not independent security certification.
+
 ## Independent clean Ubuntu install — 2026-11-13 04:47 UTC
 
 The source at `0f0a16c0bf90b74dd88904b298e5e5d2ae5129af` was cloned on a separate EC2 machine using a **temporary read-only deploy key**. Its GitHub SSH host key was checked against the officially documented ED25519 fingerprint. The key was revoked and deleted after cloning.
