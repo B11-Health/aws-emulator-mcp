@@ -10,12 +10,17 @@
     "node": ">=20"
   },
   "files": [
-    "bin/",
-    "docker/",
+    "bin/aws-emulator-mcp.mjs",
+    "docker/Dockerfile",
+    "docker/entrypoint.sh",
     "scripts/install_wsl.sh",
-    "src/aws_emulator_mcp/",
-    "LICENSE",
-    "README.md"
+    "src/aws_emulator_mcp/__init__.py",
+    "src/aws_emulator_mcp/aws_sdk.py",
+    "src/aws_emulator_mcp/cli.py",
+    "src/aws_emulator_mcp/experiments.json",
+    "src/aws_emulator_mcp/http_transport.py",
+    "src/aws_emulator_mcp/labs.py",
+    "src/aws_emulator_mcp/server.py"
   ],
   "license": "MIT",
   "repository": {
