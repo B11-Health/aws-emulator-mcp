@@ -111,8 +111,12 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.12'
-      - name: Download and verify official AWS Emulator
-        run: bash scripts/install_wsl.sh
+      - name: Fresh Linux quickstart with signed AWS Emulator and runnable order example
+        run: |
+          bash install.sh
+          test -s generated/mcp-client.linux.json
+          test -s generated/copilot-mcp.linux.json
+          bash scripts/order_demo_linux.sh
       - name: Run complete real MCP service test
         run: python scripts/live_test.py
       - name: Measure reliability, latency, and scoped cleanup
