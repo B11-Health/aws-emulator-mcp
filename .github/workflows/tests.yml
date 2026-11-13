@@ -105,6 +105,60 @@ jobs:
             throw "Client connector PowerShell parse failed"
           }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Preview
+  npm-package-smoke:
+    name: npm tarball and Node CLI / no registry publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - name: Test Node CLI and pack without publishing
+        run: |
+          npm test
+          npm pack --dry-run --json > /tmp/codegym-npm-package.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/codegym-npm-package.json'))[0]
+          paths=[f['path'] for f in data['files']]
+          assert data['name']=='@codegym/aws-emulator-mcp'
+          assert 'docker/Dockerfile' in paths and 'bin/codegym-aws.mjs' in paths
+          assert not any('/.env' in p or 'credentials' in p.lower() for p in paths)
+          print('npm_package_file_count',len(paths))
+          PY
+          npm pack --silent
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./codegym-aws-emulator-mcp-0.4.0-beta.1.tgz
+          node .qa-npm/node_modules/@codegym/aws-emulator-mcp/bin/codegym-aws.mjs config copilot > /tmp/codegym-mcp-config.json
+          python3 - <<'PY'
+          import json
+          conf=json.load(open('/tmp/codegym-mcp-config.json'))
+          assert conf['mcpServers']['aws-emulator-local']['type']=='stdio'
+          PY
+
+  docker-bundle-live:
+    name: Docker bundle / real MCP SDK integration
+    needs: npm-package-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - name: Install the packed npm package in isolation
+        run: |
+          npm pack --silent
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./codegym-aws-emulator-mcp-0.4.0-beta.1.tgz
+      - name: Build signed official emulator and run actual Docker MCP demo and SDK API calls
+        run: |
+          export CODEGYM_QA_CLI="$(pwd)/.qa-npm/node_modules/@codegym/aws-emulator-mcp/bin/codegym-aws.mjs"
+          python3 tests/docker_bundle_smoke.py
+      - name: Verify no production credentials are available to the image
+        run: |
+          docker run --rm --network none --entrypoint env codegym/aws-emulator-mcp:0.4.0-beta.1 | grep '^CODEGYM_ISOLATED_LAB=1$'
+          docker image inspect codegym/aws-emulator-mcp:0.4.0-beta.1 --format '{{.Size}}' | tee /tmp/codegym-image-size
+
   live-official-aws:
     name: Signed AWS Emulator / real E2E
     needs: [unit-and-protocol, client-sdk-interop, windows-source-preview]

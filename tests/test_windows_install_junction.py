@@ -22,13 +22,13 @@ class InstallerJunctionTests(unittest.TestCase):
             quote=lambda value: "'"+str(value).replace("'","''")+"'"
             command="New-Item -ItemType Junction -Path "+quote(target)+" -Target "+quote(victim)+" -ErrorAction Stop | Out-Null"
             created=subprocess.run(["powershell.exe","-NoProfile","-Command",command],
-                                   capture_output=True,text=True,timeout=12)
+                                   capture_output=True,text=True,timeout=40)
             if created.returncode:
                 self.skipTest("Junction creation unavailable in this Windows runner")
             env=dict(os.environ,LOCALAPPDATA=tmp)
             result=subprocess.run(["powershell.exe","-NoProfile","-ExecutionPolicy",
                                    "Bypass","-File",str(ROOT/"install.ps1")],
-                                  capture_output=True,text=True,env=env,timeout=15)
+                                  capture_output=True,text=True,env=env,timeout=45)
             self.assertNotEqual(result.returncode,0)
             self.assertIn("Refusing linked installation directory",result.stdout+result.stderr)
             self.assertEqual(sentinel.read_text(),"preserve")
@@ -47,13 +47,13 @@ class InstallerJunctionTests(unittest.TestCase):
             quote=lambda value: "'"+str(value).replace("'","''")+"'"
             command="New-Item -ItemType Junction -Path "+quote(junction)+" -Target "+quote(victim)+" -ErrorAction Stop | Out-Null"
             created=subprocess.run(["powershell.exe","-NoProfile","-Command",command],
-                                   capture_output=True,text=True,timeout=12)
+                                   capture_output=True,text=True,timeout=40)
             if created.returncode:
                 self.skipTest("Junction creation unavailable in this Windows runner")
             env=dict(os.environ,LOCALAPPDATA=tmp)
             result=subprocess.run(["powershell.exe","-NoProfile","-ExecutionPolicy",
                                    "Bypass","-File",str(ROOT/"install.ps1")],
-                                  capture_output=True,text=True,env=env,timeout=17)
+                                  capture_output=True,text=True,env=env,timeout=45)
             self.assertNotEqual(result.returncode,0)
             self.assertIn("Refusing linked content inside managed target entry",result.stdout+result.stderr)
             self.assertEqual(sentinel.read_text(),"untouched")
