@@ -3,12 +3,39 @@
   "version": "0.4.0-beta.1",
   "description": "AI-operated, isolated AWS Emulator development lab through local MCP",
   "type": "module",
-  "bin": { "codegym-aws": "./bin/codegym-aws.mjs" },
-  "engines": { "node": ">=20" },
-  "files": ["bin/", "docker/", "scripts/install_wsl.sh", "src/aws_emulator_mcp/", "LICENSE", "README.md"],
+  "bin": {
+    "codegym-aws": "./bin/codegym-aws.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin/codegym-aws.mjs",
+    "docker/Dockerfile",
+    "docker/entrypoint.sh",
+    "scripts/install_wsl.sh",
+    "src/aws_emulator_mcp/__init__.py",
+    "src/aws_emulator_mcp/aws_sdk.py",
+    "src/aws_emulator_mcp/cli.py",
+    "src/aws_emulator_mcp/http_transport.py",
+    "src/aws_emulator_mcp/server.py",
+    "LICENSE",
+    "README.md"
+  ],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/B11-Health/aws-emulator-mcp.git" },
-  "keywords": ["aws", "aws-emulator", "mcp", "ai-agents", "docker", "devtools", "local-cloud"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B11-Health/aws-emulator-mcp.git"
+  },
+  "keywords": [
+    "aws",
+    "aws-emulator",
+    "mcp",
+    "ai-agents",
+    "docker",
+    "devtools",
+    "local-cloud"
+  ],
   "scripts": {
     "test": "node --test tests/node_cli.test.mjs",
     "pack:check": "npm pack --dry-run --json",

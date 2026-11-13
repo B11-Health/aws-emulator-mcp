@@ -123,9 +123,11 @@ jobs:
           data=json.load(open('/tmp/codegym-npm-package.json'))[0]
           paths=[f['path'] for f in data['files']]
           assert data['name']=='@codegym/aws-emulator-mcp'
-          assert 'docker/Dockerfile' in paths and 'bin/codegym-aws.mjs' in paths
-          assert not any('/.env' in p or 'credentials' in p.lower() for p in paths)
-          print('npm_package_file_count',len(paths))
+          import pathlib
+          declared=set(__import__('json').loads(pathlib.Path('package.json').read_text())['files'])
+          assert set(paths)==declared|{'package.json'}, ('unexpected npm files',set(paths)-declared-{'package.json'})
+          assert not any('pycache' in p.lower() or p.endswith('.pyc') or '/.env' in p or 'credentials' in p.lower() for p in paths)
+          print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
           npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./codegym-aws-emulator-mcp-0.4.0-beta.1.tgz
