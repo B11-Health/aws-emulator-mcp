@@ -50,6 +50,12 @@ Source: ${SOURCE}
 `);
 }
 function requireDocker() {
+  // DOCKER_HOST can override the selected context; reject remote daemon
+  // redirects before invoking Docker. A remote daemon defeats local isolation.
+  const dockerHost = process.env.DOCKER_HOST;
+  if (dockerHost && !/^(unix|npipe):\/\//.test(dockerHost)) {
+    fail('Refusing nonlocal DOCKER_HOST. Use a local Docker Unix socket or Windows named pipe.');
+  }
   const check = spawnSync('docker', ['context', 'inspect', '--format', '{{json .Endpoints.docker.Host}}'], {
     encoding: 'utf8', timeout: 10000, windowsHide: true
   });
