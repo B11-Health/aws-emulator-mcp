@@ -19,7 +19,6 @@ RUN bash scripts/install_wsl.sh \
  && python3 -m compileall -q src \
  && /home/emulatormcp/.local/bin/aws-emulator --version
 LABEL org.opencontainers.image.source="https://github.com/B11-Health/aws-emulator-mcp" \
-      org.opencontainers.image.title="AWS Emulator MCP" \
-      org.opencontainers.image.vendor="B11-Health"
+      org.opencontainers.image.title="AWS Emulator MCP"
 ENTRYPOINT ["bash", "docker/entrypoint.sh"]
 CMD ["mcp"]
