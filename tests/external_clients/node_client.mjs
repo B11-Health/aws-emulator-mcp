@@ -16,7 +16,7 @@ for (const [mode, options] of [
   try {
     await client.connect(transport);
     const listed=await client.listTools();
-    if(listed.tools.length!==27)throw new Error(mode+' discovered '+listed.tools.length+' instead of 27 tools');
+    if(listed.tools.length!==29)throw new Error(mode+' discovered '+listed.tools.length+' instead of 29 tools');
     const response=await client.callTool({name:'emulator_status',arguments:{}});
     if(response.isError)throw new Error(mode+' tool failed: '+JSON.stringify(response));
     const status=JSON.parse(response.content.find(c=>c.type==='text').text);

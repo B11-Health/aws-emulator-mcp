@@ -8,24 +8,39 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 
 **No AWS account. No AWS service charges for emulated resources. No production AWS resources at risk.** Your computer still provides the compute.
 
-**[Docker + npm developer beta](docs/DOCKER_NPM_BETA.md)** · **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
+**[What we are building](docs/PRODUCT_VISION.md)** · **[Docker + npm developer beta](docs/DOCKER_NPM_BETA.md)** · **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#29-mcp-tools)** · **[Limits](#what-it-does-not-do)**
 
 ---
 
 ## New: isolated Docker + npm beta (in active QA)
 
-**The v0.3 public release only provides 27 curated MCP tools.** A new experimental Docker bundle adds a small Node CLI and two broad, model-driven AWS SDK tools. The SDK models expose many operations, but **their presence does not imply the official AWS Emulator implements them**. The container has no network, forwarded ports, or host credentials. No AWS account or host Python installation is needed.
+**The original v0.3 prerelease had 27 curated MCP tools.** The current source adds two allowlisted experiment tools, and the isolated Docker bundle adds two model-driven AWS SDK tools (31 tools total inside Docker). The SDK models expose many operations, but **their presence does not imply the official AWS Emulator implements them**. The container has no network, forwarded ports, or host credentials. No AWS account or host Python installation is needed.
 
 Until an npm registry release is verified, test the beta directly from the public GitHub source:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#670547aa25ac42801a170abb01411c06ba6edc5d"
+npm install -g "github:B11-Health/aws-emulator-mcp#master"
 aws-emulator-mcp doctor
 aws-emulator-mcp demo
 aws-emulator-mcp config copilot
 ```
 
 Docker Desktop/Engine and Node 20+ are required. The official AWS Emulator binary is nearly 1 GB unpacked; the npm package is a small launcher that builds the signed image on first use. **Read [the architecture, safety boundaries, and beta QA requirements](docs/DOCKER_NPM_BETA.md)** before treating this as stable. The previous narrated launch video is no longer considered the reference demo; new launch media must show real product interactions.
+
+## New: reproducible AWS experiments
+
+**A local API model is not proof of AWS compatibility.** The experimental lab runner creates only synthetic resources, executes specific real emulated API calls, checks an expected failure or state transition, and confirms scoped cleanup. It produces machine-readable evidence suitable for AI agent reviews and CI logs. It does **not** validate production IAM or full service fidelity.
+
+The lab list needs only Node.js; running a lab needs the isolated Docker environment:
+
+```sh
+aws-emulator-mcp experiments
+aws-emulator-mcp experiment s3-recovery
+aws-emulator-mcp experiment dynamodb-overwrite --json > experiment-evidence.json
+aws-emulator-mcp experiment order-recovery
+```
+
+The native MCP adapter also exposes `lab_catalog` and `lab_run` so an assistant can select and run an allowlisted mission without arbitrary shell execution. The first missions cover missing S3-object recovery, DynamoDB overwrites, and the existing three-service synthetic order workflow. Every report distinguishes assertions, expected errors, and resource cleanup. This is a foundation for future application-specific integration tests, **not** yet a generic user-defined chaos engine. See [experiment documentation](docs/EXPERIMENT_LABS.md).
 
 ## Try a real AWS lab in minutes
 
@@ -175,7 +190,7 @@ The MCP tool **emulator_order_demo** creates a fresh synthetic order and unique 
 
 The **emulator_self_test** tool provides a shorter STS/S3/DynamoDB/SQS check with cleanup. The **emulator_doctor** tool checks the executable, credentials, CA, local HTTPS endpoint, and emulated STS identity, giving actionable fixes.
 
-## 27 MCP tools
+## 29 curated MCP tools
 
 | Category | Tools |
 | --- | --- |

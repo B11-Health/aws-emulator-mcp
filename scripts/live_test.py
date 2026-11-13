@@ -58,11 +58,11 @@ def main():
     assert len(results)==10,("unexpected JSON-RPC response count",len(results))
     assert results[-1]["error"]["code"]==-32700
     assert by_id[1]["result"]["protocolVersion"]=="2025-11-25"
-    assert len(by_id[2]["result"]["tools"])==27
+    assert len(by_id[2]["result"]["tools"])==29
     assert "2026-07-28" in by_id[3]["result"]["supportedVersions"]
     assert by_id[3]["result"]["resultType"]=="complete"
     assert by_id[4]["result"]["resultType"]=="complete"
-    assert len(by_id[4]["result"]["tools"])==27
+    assert len(by_id[4]["result"]["tools"])==29
     assert by_id[4]["result"]["cacheScope"]=="public"
     identity=rpc_tool(by_id[5])
     assert identity["Account"]=="000000000000"

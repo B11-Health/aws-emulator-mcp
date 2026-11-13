@@ -127,14 +127,14 @@ An AWS CLI expert could do many of these operations directly with shell commands
 ## Which features belong to AWS, and which belong to AWS Emulator MCP?
 
 - **AWS Emulator (official AWS project):** local API server, emulator credentials and certificates, AWS SDK/CLI compatibility, supported emulated AWS operations, official agent skill and published fidelity measurements.
-- **AWS Emulator MCP (independent project):** 27 curated local MCP tools, simple text-oriented S3/DynamoDB/SQS operations, guided diagnostics, repeatable synthetic order workflow, cleanup verification, MCP compatibility and engineering reports.
+- **AWS Emulator MCP (independent project):** 29 curated local MCP tools, simple text-oriented S3/DynamoDB/SQS operations, guided diagnostics, repeatable synthetic order workflow, cleanup verification, MCP compatibility and engineering reports.
 - **Your own application:** payment handling, real workers, business logic, user interfaces, authorization, sophisticated data structures, deployments and production monitoring.
 
 The emulator does **not** enforce production IAM policies. Its in-memory state is disposable. Some AWS APIs are unsupported and may return 501. Always read [AWS's documentation](https://docs.aws.amazon.com/emulator/) and compare the fidelity of the emulator version being tested.
 
 ## Local MCP vs ChatGPT web: don't confuse them
 
-The **local MCP** has 27 tools, including writes. It is for compatible MCP clients running on or attached to the same machine.
+The **local MCP** has 29 tools, including writes. It is for compatible MCP clients running on or attached to the same machine.
 
 The existing, separately branded legacy **Secure QA** plugin in ChatGPT web provides **only three read-only diagnostics**: emulator_status, emulator_doctor, emulator_identity. It uses an independently authenticated connector; it cannot create buckets or queues or run emulator_order_demo remotely.
 

@@ -14,7 +14,7 @@ function cli(...args) {
 test('help states a limited tool surface, not full AWS parity', () => {
   const result = cli('help');
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /27 curated \+ 2 modeled-SDK tools/);
+  assert.match(result.stdout, /29 curated \+ 2 modeled-SDK tools/);
   assert.match(result.stdout, /No AWS account/);
   assert.doesNotMatch(result.stdout, /1000|full AWS API parity/i);
 });
@@ -45,10 +45,40 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.2');
+  assert.equal(pkg.version, '0.4.0-beta.3');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Usage: aws-emulator-mcp/);
   assert.doesNotMatch(result.stdout + result.stderr, /Code Gym|CodeGym|codegym-aws/);
+});
+
+test('experiment list works without Docker and includes clear coverage caveats', () => {
+  const result = cli('experiments', '--json');
+  assert.equal(result.status, 0, result.stderr);
+  const registry = JSON.parse(result.stdout);
+  assert.equal(registry.schemaVersion, 1);
+  assert.deepEqual(registry.experiments.map(x => x.id),
+    ['order-recovery', 's3-recovery', 'dynamodb-overwrite']);
+  for (const experiment of registry.experiments) {
+    assert.ok(experiment.services.length);
+    assert.ok(experiment.caveat);
+  }
+});
+
+test('experiment argument validation rejects arbitrary scripts and unknown ids before Docker', () => {
+  assert.equal(cli('experiment', 'exec').status, 2);
+  assert.equal(cli('experiment', '../../etc/passwd').status, 2);
+  assert.equal(cli('experiment').status, 2);
+  assert.equal(cli('experiment', 's3-recovery', '--shell').status, 2);
+});
+
+test('DOCKER_HOST cannot redirect a local experiment to a remote Docker daemon', () => {
+  const result = spawnSync(process.execPath, [BIN, 'doctor', '--json'], {
+    encoding: 'utf8', timeout: 12000,
+    env: { ...process.env, DOCKER_HOST: 'tcp://198.51.100.7:2375' }
+  });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /Refusing nonlocal DOCKER_HOST/);
 });

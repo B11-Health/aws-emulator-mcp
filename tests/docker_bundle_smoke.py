@@ -16,8 +16,8 @@ CLI = Path(os.environ.get("AWS_EMULATOR_MCP_QA_CLI", str(ROOT / "bin" / "aws-emu
 assert CLI.exists()
 
 
-def run(command, input_data=None, timeout=300, json_mode=False):
-    args=["node", str(CLI), command] + (["--json"] if json_mode else [])
+def run(command, input_data=None, timeout=300, json_mode=False, extra=None):
+    args=["node", str(CLI), command] + (extra or []) + (["--json"] if json_mode else [])
     return subprocess.run(args, cwd=ROOT, input=input_data,
                           text=True, capture_output=True, timeout=timeout)
 
@@ -50,6 +50,25 @@ def verify():
     assert len(d["cleanup"]) == 4 and all(x["passed"] for x in d["cleanup"])
     print("DOCKER_ORDER_PASS", d["duration_ms"], flush=True)
 
+    labs = run("experiments", json_mode=True)
+    assert labs.returncode == 0, labs.stderr[-800:]
+    available = json.loads(labs.stdout)
+    assert [x["id"] for x in available["experiments"]] == [
+        "order-recovery", "s3-recovery", "dynamodb-overwrite"]
+    for experiment in ("s3-recovery", "dynamodb-overwrite"):
+        attempt = run("experiment", extra=[experiment], json_mode=True, timeout=120)
+        assert attempt.returncode == 0, attempt.stderr[-800:]
+        proof = json.loads(attempt.stdout)
+        assert proof["passed"] and proof["schemaVersion"] == 1
+        assert proof["verifiedAccount"] == "000000000000"
+        assert all(row["passed"] for row in proof["steps"] + proof["cleanup"])
+        assert len(proof["cleanup"]) >= 2
+        if experiment == "s3-recovery":
+            assert len(proof["expectedFailures"]) == 1
+            assert proof["expectedFailures"][0]["observed"] == "HTTP 404"
+        print("EXPERIMENT_PASS", experiment, len(proof["steps"]),
+              "assertions", len(proof["cleanup"]), "cleanup checks", flush=True)
+
     bucket = "cg-sdk-qa-" + uuid.uuid4().hex[:14]
     key = "proof.txt"
     text = "isolated-sdk-model-bridge-verified"
@@ -70,6 +89,8 @@ def verify():
                                   "parameters": {"Bucket": bucket}}),
         msg(10, "aws_sdk_invoke", {"service": "s3", "operation": "ListBuckets"}),
         msg(11, "aws_sdk_invoke", {"service": "s3", "operation": "ImpossibleOperation"}),
+        msg(12, "lab_catalog"),
+        msg(13, "lab_run", {"experiment": "s3-recovery"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=100)
@@ -79,8 +100,8 @@ def verify():
     assert len(rows) == len(calls), (rows.keys(), r.stderr[:200])
     tools = rows[1]["result"]["tools"]
     names = {x["name"] for x in tools}
-    assert len(tools) == 29
-    assert {"aws_sdk_discover", "aws_sdk_invoke", "emulator_order_demo"} <= names
+    assert len(tools) == 31
+    assert {"aws_sdk_discover", "aws_sdk_invoke", "emulator_order_demo", "lab_catalog", "lab_run"} <= names
     assert content(rows[2])["modeledOperationCount"] >= 100
     assert content(rows[3])["passed"] and content(rows[4])["passed"]
     for i in range(5, 11):
@@ -92,6 +113,11 @@ def verify():
     assert bucket not in [b["Name"] for b in final], "Emulated SDK bucket leaked"
     assert rows[11]["result"]["isError"]
     assert "Operation not present" in rows[11]["result"]["content"][0]["text"]
+    assert len(content(rows[12])["experiments"]) == 3
+    proof=content(rows[13])
+    assert proof["passed"] and proof["experiment"] == "s3-recovery"
+    assert all(x["passed"] for x in proof["cleanup"])
+
     print("DOCKER_SDK_PASS", len(tools), "tools, S3 CRUD + cleanup, modeled S3/DDB operations", flush=True)
     print("VERIFIED: no host mounts, ports, AWS account or container external network required", flush=True)
 

@@ -77,7 +77,7 @@ class SDKBridgeTests(unittest.TestCase):
         # Existing local native stdlib-only MCP remains fixed and safe.
         if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
             self.assertNotIn("aws_sdk_invoke", m.FUNCTIONS)
-            self.assertEqual(len(m.TOOLS), 27)
+            self.assertEqual(len(m.TOOLS), 29)
 
     def test_model_bridge_requires_container(self):
         if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":

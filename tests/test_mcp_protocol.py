@@ -27,7 +27,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertIn("dynamodb_list_tables",names)
         self.assertIn("sqs_send_message",names)
         self.assertIn("emulator_self_test",names)
-        self.assertEqual(len(names),27)
+        self.assertEqual(len(names),29)
 
     def test_notifications_have_no_response(self):
         self.assertIsNone(m.handle({"jsonrpc":"2.0","method":"notifications/initialized"}))
@@ -86,7 +86,7 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(p.returncode,0,p.stderr)
         output=[json.loads(x) for x in p.stdout.splitlines()]
         self.assertEqual(len(output),2)
-        self.assertEqual(len(output[1]["result"]["tools"]),27)
+        self.assertEqual(len(output[1]["result"]["tools"]),29)
 
     def test_no_nonlocal_url_setting(self):
         self.assertEqual(m.ENDPOINT,f"https://127.0.0.1:{m.PORT}")
