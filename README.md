@@ -19,7 +19,7 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 Until an npm registry release is verified, test the beta directly from the public GitHub source:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#feat/docker-npm-one-command-lab"
+npm install -g "github:B11-Health/aws-emulator-mcp#88d5f84c6625c11d988306c71235eef3a28e9e0f"
 codegym-aws doctor
 codegym-aws demo
 codegym-aws config copilot
