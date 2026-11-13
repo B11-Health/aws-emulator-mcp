@@ -24,7 +24,7 @@ Ask it to:
 
 It's not production AWS, and API coverage has limits. It's a practical way to learn, prototype, reproduce errors and validate supported workflows before deploying.
 
-The source and runnable demo: **[VERIFIED_PUBLIC_REPOSITORY_URL]**
+The source and runnable demo: **https://github.com/B11-Health/aws-emulator-mcp**
 
 Created independently by B11-Health / Code Gym. Not affiliated with or endorsed by AWS.
 

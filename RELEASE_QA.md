@@ -2,6 +2,14 @@
 
 Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publisher: **Code Gym**.
 
+## Public developer-preview source — 2026-11-13
+
+- The source repository `https://github.com/B11-Health/aws-emulator-mcp` was changed to **PUBLIC** and verified from an unauthenticated, separate EC2 environment: Git clone succeeded at commit `ac5fa465590ea2a067f6f9f08bffb416e6540f14`; both the GitHub page and raw README returned HTTP 200.
+- PR #5's hosted pipeline passed on Linux Python 3.10/3.12, Windows 2025, the official Python/TypeScript MCP SDKs, Bandit static checks, and the full signed AWS Emulator Linux quickstart and integration benchmark.
+- Local Windows 3.12 suite: 134 test cases, zero failures, two skips; Bandit 1.9.2 medium/high findings: zero.
+- The [Code Gym technical video preview](https://32-185-50-90.sslip.io/codegym-aws-mcp-review-nov26/) is accessible on an unlisted no-index review page with the current developer-preview facts. The video is not an actual LinkedIn publication.
+- **This is a public source preview, not a production security certification or v0.3 stable release.** Independent cold Windows installation, actual end-user desktop client usability, and outside security review remain open.
+
 ## Additional source hardening — 2026-11-13
 
 Security-sensitive XML responses are now prevalidated by the stdlib Expat parser and **all DTD / entity declarations are rejected** before ElementTree processes the bounded response. Adversarial regressions cover ASCII and UTF-16 DTD payloads, malformed data, and oversized replies.
