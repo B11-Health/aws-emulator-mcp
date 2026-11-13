@@ -7,7 +7,9 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, build_opener, ProxyHandler, HTTPSHandler, HTTPRedirectHandler
-from xml.etree import ElementTree as ET
+# Expat rejects declarations before ElementTree sees any response.
+from xml.etree import ElementTree as ET  # nosec B405
+from xml.parsers import expat
 
 PORT=int(os.environ.get("AWS_EMULATOR_PORT","9297"))
 if not 1024 <= PORT <= 65535: raise SystemExit("Invalid AWS_EMULATOR_PORT")
@@ -19,6 +21,31 @@ REGION="us-east-1"
 MAX_BYTES=1_048_576
 
 class LocalError(RuntimeError): pass
+
+def parse_emulator_xml(raw):
+    """Parse bounded local AWS Emulator XML without accepting DTDs or entities.
+
+    Expat inspects the exact XML byte encoding first, rejecting declarations
+    before ElementTree can expand or resolve them. No third-party runtime deps.
+    """
+    if not isinstance(raw, bytes) or len(raw) > MAX_BYTES:
+        raise LocalError("Emulator XML response is invalid or too large")
+    checker = expat.ParserCreate()
+    checker.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
+
+    def reject_doctype(*_args):
+        raise LocalError("Emulator XML DTD/entity declarations are forbidden")
+
+    checker.StartDoctypeDeclHandler = reject_doctype
+    checker.EntityDeclHandler = reject_doctype
+    checker.ExternalEntityRefHandler = reject_doctype
+    try:
+        checker.Parse(raw, True)
+    except expat.ExpatError as exc:
+        raise LocalError("Malformed AWS Emulator XML response") from exc
+    # A bounded, independently pre-parsed document without a DTD is safe here.
+    return ET.fromstring(raw)  # nosec B314
+
 
 class RejectRedirects(HTTPRedirectHandler):
     """Never forward AWS request headers, signatures, or data to another URL."""
@@ -181,7 +208,7 @@ def identity():
     payload=urlencode({"Action":"GetCallerIdentity","Version":"2011-06-15"}).encode()
     r=request("POST","/",service="sts",body=payload,
               headers={"content-type":"application/x-www-form-urlencoded; charset=utf-8"})
-    d={x.tag.split("}")[-1]:x.text for x in ET.fromstring(r["body"]).iter()
+    d={x.tag.split("}")[-1]:x.text for x in parse_emulator_xml(r["body"]).iter()
        if x.tag.split("}")[-1] in ("Account","Arn","UserId")}
     if d.get("Account")!="000000000000":
         raise LocalError("Account is not the isolated emulator account")
@@ -212,7 +239,7 @@ def s3_create_bucket(bucket):
 
 def s3_list_buckets():
     r=request("GET","/",service="s3")
-    root=ET.fromstring(r["body"])
+    root=parse_emulator_xml(r["body"])
     buckets=[]
     for node in root.iter():
         if node.tag.split("}")[-1]=="Buckets":
@@ -224,7 +251,7 @@ def s3_list_buckets():
 def s3_list_objects(bucket):
     bucket=check_bucket(bucket)
     r=request("GET",f"/{bucket}",service="s3",query={"list-type":"2"})
-    root=ET.fromstring(r["body"])
+    root=parse_emulator_xml(r["body"])
     keys=[]
     for node in root.iter():
         if node.tag.split("}")[-1]=="Contents":

@@ -19,6 +19,29 @@ class HardeningTests(unittest.TestCase):
             m.META_VERSION:version,m.META_CAPS:{}},
             **(extra or {})}
 
+    def test_emulator_xml_accepts_simple_valid_xml(self):
+        payload = b'<?xml version="1.0"?><Response><Account>000000000000</Account></Response>'
+        self.assertEqual(m.parse_emulator_xml(payload).findtext("Account"), "000000000000")
+
+    def test_emulator_xml_rejects_dtd_entity_expansion(self):
+        payload = (b'<?xml version="1.0"?>'
+                   b'<!DOCTYPE data [<!ENTITY a "EXPAND">]>'
+                   b'<data>&a;</data>')
+        with self.assertRaisesRegex(m.LocalError, "DTD/entity"):
+            m.parse_emulator_xml(payload)
+
+    def test_emulator_xml_rejects_utf16_dtd(self):
+        payload = ('<?xml version="1.0" encoding="UTF-16"?>'
+                   '<!DOCTYPE data [<!ENTITY a "EXPAND">]><data>&a;</data>').encode("utf-16")
+        with self.assertRaisesRegex(m.LocalError, "DTD/entity"):
+            m.parse_emulator_xml(payload)
+
+    def test_emulator_xml_rejects_invalid_and_oversized_payloads(self):
+        for payload in (b"<root>", b"x" * (m.MAX_BYTES + 1), "not bytes"):
+            with self.subTest(case=type(payload).__name__):
+                with self.assertRaises(m.LocalError):
+                    m.parse_emulator_xml(payload)
+
     def test_rejects_every_redirect(self):
         handler=m.RejectRedirects()
         from urllib.request import Request
