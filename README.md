@@ -2,7 +2,7 @@
 
 ### Your AWS playground. Controlled by your AI assistant.
 
-**Create buckets. Store data. Send messages. Experiment with AWS-style infrastructure. Break something, fix it, and reset the lab—without deploying to AWS.**
+**Create S3 buckets. Store DynamoDB records. Send SQS messages. Experiment with AWS-style infrastructure. Break something, fix it, and reset the lab—without deploying to AWS.**
 
 The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software talk to supported AWS APIs **on your own machine**. **Code Gym AWS Emulator MCP** gives compatible AI assistants a set of tools to operate that sandbox in natural language.
 
@@ -11,6 +11,32 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
 
 ---
+
+## Try a real AWS lab in minutes
+
+The shortest proof is the built-in **synthetic order demo**. You can run it before connecting any AI client. It exercises the **official local AWS Emulator**, not production AWS.
+
+**Windows + Ubuntu WSL2** (WSL2 must already be set up):
+
+```powershell
+git clone https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+.\install.cmd
+.\demo.cmd
+```
+
+**Debian / Ubuntu Linux** (Python 3.10+, curl, GPG and dpkg-deb):
+
+```bash
+git clone https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+bash install.sh
+bash scripts/order_demo_linux.sh
+```
+
+The installer may need to download the official, signed emulator package on first run. The demo stores a temporary DynamoDB order, sends an SQS message, deliberately requests a missing S3 receipt, creates and verifies the receipt, then cleans up its own resources. Inspect the actual assertions and cleanup results; **a failed check is not success**.
+
+To run this conversationally, connect a compatible **local MCP client** using the generated configuration, then ask the prompt below. **ChatGPT web's optional Secure QA plugin is read-only**, not a substitute for the 27-tool local adapter. See the [full Windows setup](#quickest-install-on-windows) and [Linux setup](#linux-quickstart).
 
 ## You ask. The sandbox does the work.
 

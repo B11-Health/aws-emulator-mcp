@@ -2,6 +2,19 @@
 
 Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publisher: **Code Gym**.
 
+## Latest verified engineering run — 2026-11-13 03:52 UTC
+
+- Source: clean Windows Git checkout at `a3cf4cc86b9b493d961003c4643d729de5b5d248`; MCP package v0.3.0.
+- Local AWS Emulator: official v1.0.322, `https://127.0.0.1:9297`, isolated emulated STS account `000000000000`.
+- Unit/security test invocation: **127 tests ran, 0 failures, 2 skips** on Windows Python 3.12.3.
+- Pre-publication tracked-source heuristic scan: **69 files inspected, zero matching credential signatures**. Additional scan of 148 historical Git blobs found no matches for the checked credential patterns. **Neither scan replaces an independent security review**.
+- Five live self-tests and five live order demos: **10/10 passed**; 27 MCP tools; independent legacy/modern MCP protocol smoke checks passed.
+- Order-demo **p95 6.251 seconds** across five repetitions (release threshold 12 seconds); zero leaked demo resources; all eight automated engineering gates passed.
+- Private GitHub Actions run [43359976374](https://github.com/B11-Health/aws-emulator-mcp/actions/runs/43359976374) completed successfully for the same commit.
+- The local benchmark explicitly reported `public_release_approved: false`. Remaining gates: independent Windows cold-install, actual desktop MCP-client UX, outside security review, logged-out public repository/CI check, and a genuine write-capable local MCP launch recording.
+
+These measurements do **not** demonstrate production AWS fidelity, IAM security, or multi-user remote-write support. Older evidence below is retained as dated historical records.
+
 **Engineering release candidate: verified on the author's Windows/Ubuntu WSL2 host. Public publishing still gated.**
 
 ## Verified local evidence
