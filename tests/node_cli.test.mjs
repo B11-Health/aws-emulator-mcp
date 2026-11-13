@@ -72,3 +72,13 @@ test('experiment argument validation rejects arbitrary scripts and unknown ids b
   assert.equal(cli('experiment').status, 2);
   assert.equal(cli('experiment', 's3-recovery', '--shell').status, 2);
 });
+
+test('DOCKER_HOST cannot redirect a local experiment to a remote Docker daemon', () => {
+  const result = spawnSync(process.execPath, [BIN, 'doctor', '--json'], {
+    encoding: 'utf8', timeout: 12000,
+    env: { ...process.env, DOCKER_HOST: 'tcp://198.51.100.7:2375' }
+  });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /Refusing nonlocal DOCKER_HOST/);
+});
