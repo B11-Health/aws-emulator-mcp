@@ -8,7 +8,7 @@ The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software t
 
 **No AWS account. No AWS service charges for emulated resources. No production AWS resources at risk.** Your computer still provides the compute.
 
-**[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
+**[Watch the 116-second demo](https://32-185-50-90.sslip.io/codegym-aws-mcp-review-nov26/)** · **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#27-mcp-tools)** · **[Limits](#what-it-does-not-do)**
 
 ---
 
@@ -116,7 +116,7 @@ Requirements: Windows with Ubuntu WSL2 already configured, and internet access f
 
     wsl --install -d Ubuntu
 
-**Install from GitHub source, not a ZIP.** Once the B11-Health repository is public, open PowerShell:
+**Install from the public GitHub source, not a ZIP.** Open PowerShell:
 
     git clone https://github.com/B11-Health/aws-emulator-mcp.git
     cd aws-emulator-mcp
@@ -231,7 +231,7 @@ AWS Emulator does not enforce production IAM or resource policies. It has partia
 
 ## Publication status
 
-Public source is intended for **B11-Health on GitHub**, with the announcement from **Code Gym on LinkedIn**. A logged-out public source URL, current signed emulator installation, and independent Windows first-run verification still need confirmation before announcement. Do not treat the README as evidence that a public release already exists.
+**Public developer-preview source is available:** [B11-Health/aws-emulator-mcp](https://github.com/B11-Health/aws-emulator-mcp). A logged-out HTTPS clone, MIT license, and hosted CI have been verified. The independent [Code Gym video review](https://32-185-50-90.sslip.io/codegym-aws-mcp-review-nov26/) is available; it has **not** been posted to LinkedIn. **A public repository is not a stable-release or production-certification claim.** Independent Windows cold-install, end-user desktop MCP experience and outside security review remain open. See [release gates](docs/RELEASE_GATES.md).
 
 ## Measurable release benchmark
 
