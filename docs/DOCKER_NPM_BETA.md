@@ -29,7 +29,7 @@ Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server ent
 
 ## What the CLI actually does
 
-1. Verify the Docker daemon is local (Unix socket or Windows named pipe). Remote Docker TCP/SSH contexts are refused.
+1. Verify the Docker daemon is local (Unix socket or Windows named pipe). Remote Docker TCP/SSH contexts and nonlocal `DOCKER_HOST` overrides are refused.
 2. Build a Docker image locally on first use. The rootless image build downloads the **official AWS Emulator Debian package**, verifies the publisher's pinned signing-key fingerprint and detached signature, and installs it.
 3. Start AWS Emulator bound to `127.0.0.1:9297` **inside** the container, with anonymous telemetry explicitly disabled.
 4. Verify the locally generated CA, emulator-issued credentials, HTTPS health, and isolated STS account.
