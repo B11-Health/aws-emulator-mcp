@@ -1,36 +1,53 @@
-# Code Gym LinkedIn announcement — unpublished draft
+# Code Gym LinkedIn launch announcement — NOT POSTED
 
-Destination: https://www.linkedin.com/company/codegympr/
+**Destination:** https://www.linkedin.com/company/codegympr/
 
-Use only after the B11-Health public release and demonstrated workflow are
-verified. Replace the URL placeholder with the exact working release/repo link.
-The wording below describes the intended demonstrated release, not a claim that
-the inaccessible source passed fresh tests today.
+Publish only after B11-Health repository is publicly accessible without login, a separate clean install succeeds, the release gates pass, and the video contains the actual write-capable local MCP demo. Replace the link with a verified real URL. Do not say this was released or tested publicly before it happens.
 
 ---
 
-Your AI agent should be able to test an AWS workflow before touching your AWS account.
+## Recommended launch post
 
-AWS just launched its official local emulator. At Code Gym, we're building an
-open-source MCP bridge that lets an agent work with it through a focused set of tools.
+What if you could **experiment with AWS simply by talking to your AI assistant**—without deploying anything to a real AWS account?
 
-The demo shows one complete local workflow:
+AWS has released its official local AWS Emulator. We built **Code Gym AWS Emulator MCP**, an independent open-source bridge that lets compatible AI assistants operate supported AWS-style APIs on your computer.
 
-• Write an order to DynamoDB.
-• Send and receive its ID through SQS.
-• Store a receipt in S3 and read it back.
-• Verify the results and clean up the resources created by the run.
+Ask it to:
 
-The source, setup instructions, and reproducible test evidence are here:
-[VERIFIED_PUBLIC_REPOSITORY_URL]
+• Create an S3 bucket and save a sample file.
+• Store a DynamoDB record and read it back.
+• Send and receive an SQS work item.
+• Run a synthetic order workflow across all three services.
+• Trigger an expected error, verify the recovery, and clean up.
 
-This is an independent community project, published on GitHub under B11-Health.
-It is not endorsed by AWS. The emulator supports development testing; it does
-not replace production or IAM security validation.
+**The emulator is your workshop. MCP gives your AI the tools.**
 
-Try the example and tell us where it breaks. If it's useful, star the repo and
-help shape the next workflow.
+It's not production AWS, and API coverage has limits. It's a practical way to learn, prototype, reproduce errors and validate supported workflows before deploying.
 
-What would you want your agent to test locally first?
+The source and runnable demo: **[VERIFIED_PUBLIC_REPOSITORY_URL]**
 
-#AWS #MCP #OpenSource
+Created independently by B11-Health / Code Gym. Not affiliated with or endorsed by AWS.
+
+What would you ask your AI to build in a local cloud lab?
+
+#AWS #MCP #OpenSource #DeveloperTools
+
+---
+
+## Optional shorter opening
+
+“Your own AWS playground. Controlled by an AI assistant. No AWS account needed.”
+
+Use this as the **video title**, but accompany it with the actual S3/DynamoDB/SQS demonstration and clear scope. Do not advertise the remote ChatGPT read-only diagnostics as if they support infrastructure writes.
+
+## Suggested first comment once live
+
+The fastest way to see the idea is the included synthetic order demo. It creates a DynamoDB record, sends a message through SQS, intentionally fails and repairs an S3 receipt lookup, verifies the results, and removes the test resources it created. Try it from a compatible local MCP client after installation.
+
+## Evidence and publication checks
+
+- Public clone URL, release tag and license verified from a logged-out browser.
+- Native client onboarding tested from clean Windows/WSL and Linux.
+- Source tree and launch video correspond to the same approved commit.
+- GitHub release notes distinguish **local 27-tool MCP** from **remote three-tool read-only ChatGPT Secure QA**.
+- Do not claim all AWS APIs work, that no compute is consumed, or that this is a replacement for real AWS.

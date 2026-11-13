@@ -2,10 +2,7 @@
 
 ## Recommendation
 
-Position the project as **an agent testing workflow for the official AWS
-Emulator**. The compelling moment is an agent creating a small application
-workflow, observing the result, handling an error, and cleaning up. A list of
-25 wrappers is less distinctive and easier to replace.
+Position the project as **your own AWS playground, controlled by an AI assistant**. The first impression must show a developer creating a bucket, storing a record, sending a message, and inspecting what actually happened. A multi-service test and error-recovery demonstration prove this isn't just a chat explanation. The 27-tool catalog is supporting evidence, not the headline. See WHAT_YOU_CAN_BUILD.md and LAUNCH_DEMO.md.
 
 Thousands of stars is an ambition, not a forecast. The first useful signal is
 whether developers outside this project can install it and reproduce the demo.

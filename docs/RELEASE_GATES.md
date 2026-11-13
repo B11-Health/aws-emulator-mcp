@@ -3,7 +3,16 @@
 **Ownership:** B11-Health publishes source/releases; Code Gym publishes LinkedIn. Independent of AWS.
 
 ## Product thesis
-AWS's official agent skill already installs and connects AWS Emulator. Our edge must be **repeatable agent-driven scenarios, measured reliability, clear failure analysis, and scoped cleanup** — not simply another API wrapper.
+AWS already supplies the emulator engine and an official agent skill. Our public promise is **a practical AWS-style playground operated through an AI assistant**: explicit local MCP operations, reproducible examples, measured results and scoped cleanup. Do not market complete AWS coverage or production IAM validation.
+
+## Developer-experience and messaging acceptance
+
+- The first screen states what developers can **do** before listing protocols or tests.
+- One prompt reproduces a real S3/DynamoDB/SQS scenario and shows expected failures and cleanup.
+- Published examples distinguish working MCP tools from possible future emulator integrations.
+- Windows and Linux installation commands work from a **logged-out public GitHub clone**.
+- ChatGPT's read-only Secure QA plugin is never advertised as the 27-tool local write-capable adapter.
+- A live, recorded demonstration shows actual emulated API effects, not invented screenshots.
 
 ## Automated engineering gates
 

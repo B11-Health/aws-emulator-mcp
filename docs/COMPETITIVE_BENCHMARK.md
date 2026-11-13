@@ -12,17 +12,17 @@ Verified from public documentation on November 12, 2026. Capabilities below are 
 | Multi-service scenario | Depends on agent implementation | Infrastructure validation flows | Deterministic S3 + DynamoDB + SQS order flow |
 | Observability | Emulator fidelity reports | Logs, App Inspector and traces | Check-level durations and machine-readable evidence only |
 | Fault injection | Not claimed by official skill | Documented chaos tools | Controlled missing-receipt recovery only |
-| Repeatable benchmark | AWS maintains its fidelity suite | MCP test harness | Local 90-test suite and strict GTM scorecard |
+| Repeatable benchmark | AWS maintains its fidelity suite | MCP test harness | 127 local tests (2 expected skips) on Windows and WSL, plus strict GTM scorecard |
 | Source/public release | AWS public source | Public repository and npm package | Local release candidate; private staging until gated |
 
 **Current weakness:** LocalStack's documented MCP offering has far broader deployment, tracing, chaos, and client-setup capabilities. Code Gym is **not yet** a full IaC/observability platform. We should not claim that it surpasses LocalStack on capability today.
 
-**Positioning:** A small, fast, independent adapter for AWS's actual open-source emulator that prioritizes fail-closed local credentials, evidence-backed QA, isolated resource cleanup and reproducible agent workflows.
+**Positioning:** A conversational AWS-style local laboratory: explicit S3/DynamoDB/SQS operations, repeatable experiments, fail-closed local credentials and scoped cleanup. AWS supplies the emulation engine; this MCP supplies a discoverable AI tool interface.
 
 ## Required next improvements
 
-1. Validate clean install from private staging CI against the newest signed AWS Emulator release.
-2. Test at least two real MCP clients, not just our independent checker.
+1. Validate a complete first-run install on an independent Windows/WSL computer, not only clean CI.
+2. Validate the actual interactive desktop host experience in addition to official Python and TypeScript SDK tests.
 3. Add honest service-fidelity coverage and output where APIs differ from AWS.
 4. Provide a real, captioned demo recorded from the exact released commit.
 5. Make installation errors actionable, and measure first successful tool call on a fresh host.

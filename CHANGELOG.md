@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — developer experience and product story
+
+- README now leads with hands-on AWS Emulator MCP use cases and clear local-vs-AWS value, rather than tool counts and protocol versions.
+- Added a use-case playbook for S3, DynamoDB, SQS, the synthetic order flow and troubleshooting.
+- Added a reproducible launch-video plan and revised Code Gym LinkedIn draft with accurate feature boundaries.
+- Added documentation contract tests for links, install commands, expected workflow evidence and remote read-only scope.
+- Validated a fresh order demo (12 steps, 2 recovery checks and 4 cleanups) and the complete 127-test Windows/WSL suite (2 expected skips on each platform).
+
 ## 0.3.0 — November 12, 2026 (local release candidate)
 
 ### Installation and onboarding
