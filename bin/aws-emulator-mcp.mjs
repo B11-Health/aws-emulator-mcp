@@ -5,13 +5,22 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.2';
+const VERSION = '0.4.0-beta.3';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
+const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
+function experiments() {
+  const data = JSON.parse(readFileSync(EXPERIMENT_FILE, 'utf8'));
+  if (data.schemaVersion !== 1 || !Array.isArray(data.experiments) ||
+      data.experiments.some(item => !/^[a-z][a-z0-9-]{0,47}$/.test(item.id))) {
+    fail('Bundled experiment registry invalid. Reinstall from source.');
+  }
+  return data;
+}
 
 function fail(message, code = 1) {
   stderr.write('AWS Emulator MCP: ' + message + '\n');
@@ -25,15 +34,18 @@ Usage: aws-emulator-mcp <command>
 Commands:
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run 27 curated + 2 modeled-SDK tools via local MCP
+  mcp              Run 29 curated + 2 modeled-SDK tools via local MCP
   catalog          List implemented MCP tools
+  experiments      Discover repeatable AWS lab missions (no Docker needed)
+  experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   self-test        Exercise supported services and scoped cleanup
   build            Build the image from the signed official AWS package
   config [format]  Print MCP configuration: copilot or vscode
   help             Show this help
 
-Docker is required. No AWS account or Python required on the host.
-Use --json with doctor, demo, self-test, or catalog for machine-readable results.\nFirst build downloads and verifies the official AWS Emulator.
+Docker is required to run experiments and MCP tools; listing experiments or printing config needs only Node.
+No AWS account or Python is required on the host.
+Use --json with doctor, demo, self-test, catalog, experiments, or experiment for machine-readable results.\nFirst build downloads and verifies the official AWS Emulator.
 Source: ${SOURCE}
 `);
 }
@@ -61,10 +73,10 @@ function imageExists() {
     stdio: 'ignore', timeout: 10000, windowsHide: true
   }).status === 0;
 }
-function dockerArgs(mode) {
+function dockerArgs(mode, extra = []) {
   return ['run', '--rm', '-i', '--network', 'none',
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-    '--pids-limit', '256', '--memory', '2g', IMAGE, mode];
+    '--pids-limit', '256', '--memory', '2g', IMAGE, mode, ...extra];
 }
 function runDocker(args) {
   return new Promise((resolve, reject) => {
@@ -120,6 +132,18 @@ function renderReport(command, result) {
     for (const item of result.checks || []) lines.push('  ' + mark(item.passed) + '  ' + item.name);
     const cleanup = result.cleanup || [];
     lines.push('  Scoped cleanup: ' + cleanup.filter(x => x.passed).length + '/' + cleanup.length);
+  } else if (command === 'experiment') {
+    lines.push('  ' + mark(result.passed) + '  ' + result.title,
+      '  Services: ' + (result.services || []).join(', '),
+      '  Real API assertions: ' + (result.steps || []).filter(x => x.passed).length +
+        '/' + (result.steps || []).length,
+      '  Expected faults: ' + (result.expectedFailures || []).filter(x => x.passed).length +
+        '/' + (result.expectedFailures || []).length,
+      '  Scoped cleanup: ' + (result.cleanup || []).filter(x => x.passed).length +
+        '/' + (result.cleanup || []).length,
+      '  Duration: ' + (result.duration_ms / 1000).toFixed(2) + ' seconds',
+      '  ' + (result.passed ? 'All checks passed; lab resources removed.' :
+        'Failure: ' + (result.error || 'inspect JSON evidence')));
   } else if (command === 'catalog') {
     lines.push('  ' + result.length + ' available MCP tools', '');
     for (const tool of result) lines.push('  - ' + tool.name);
@@ -158,6 +182,39 @@ function config(format = 'copilot') {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'experiments') {
+    if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
+      fail('Usage: aws-emulator-mcp experiments [--json]', 2);
+    const result = experiments();
+    if (args[0] === '--json') stdout.write(JSON.stringify(result, null, 2) + '\n');
+    else {
+      stdout.write('AWS EMULATOR MCP / REPRODUCIBLE LABS\n\n');
+      for (const item of result.experiments) {
+        stdout.write('  ' + item.id + '  -  ' + item.title + '\n');
+        stdout.write('    ' + item.services.join(', ') + '  |  ' + item.goal + '\n\n');
+      }
+      stdout.write('Run: aws-emulator-mcp experiment <id> [--json]\n');
+    }
+    return;
+  }
+  if (command === 'experiment') {
+    if (args.length < 1 || args.length > 2 ||
+        (args.length === 2 && args[1] !== '--json') ||
+        !experiments().experiments.some(item => item.id === args[0])) {
+      fail('Unknown experiment. Run: aws-emulator-mcp experiments', 2);
+    }
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const result = await runCaptured(dockerArgs('experiment', [args[0]]));
+    let parsed;
+    try { parsed = JSON.parse(result.raw); }
+    catch { fail('Could not parse experiment evidence (exit ' + result.code + ')', result.code || 1); }
+    if (args[1] === '--json') stdout.write(JSON.stringify(parsed, null, 2) + '\n');
+    else renderReport('experiment', parsed);
+    if (result.code !== 0 || !parsed.passed)
+      fail('Experiment assertions or cleanup failed', result.code || 1);
+    return;
+  }
   if (command === 'config') {
     if (args.length > 1) fail('config accepts at most one format', 2);
     return config(args[0]);

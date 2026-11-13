@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "experiments": [
+    {
+      "id": "order-recovery",
+      "title": "Recover a broken three-service order workflow",
+      "services": ["S3", "DynamoDB", "SQS"],
+      "goal": "Create an order, intentionally discover a missing receipt, repair it, verify all services and clean up",
+      "expectedFailure": "S3 404 for the receipt before it exists",
+      "caveat": "This is a synthetic workflow, not actual payment processing or event-driven Lambda execution"
+    },
+    {
+      "id": "s3-recovery",
+      "title": "S3 contract: break, repair and verify",
+      "services": ["S3"],
+      "goal": "Observe an expected missing-key error, create the object, verify the exact bytes and list operation, then clean up",
+      "expectedFailure": "S3 404 for a missing object",
+      "caveat": "Validates only the S3 operations executed locally, not full S3 fidelity"
+    },
+    {
+      "id": "dynamodb-overwrite",
+      "title": "DynamoDB last-write-wins demonstration",
+      "services": ["DynamoDB"],
+      "goal": "Write a draft value, verify it, overwrite the same key, prove the current value changed and clean up",
+      "expectedFailure": null,
+      "caveat": "An intentional overwrite demonstration, not a concurrency, transactional or IAM test"
+    }
+  ]
+}

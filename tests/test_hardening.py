@@ -116,7 +116,7 @@ class HardeningTests(unittest.TestCase):
     def test_stateless_tools_list_has_metadata(self):
         r=self.rpc("tools/list",self.modern_params())
         d=r["result"]
-        self.assertEqual(len(d["tools"]),27)
+        self.assertEqual(len(d["tools"]),29)
         self.assertEqual(d["resultType"],"complete")
         self.assertIsInstance(d["ttlMs"],int)
         self.assertEqual(d["cacheScope"],"public")

@@ -1,3 +1,10 @@
+## v0.4.0-beta.3 (source beta) - reproducible AWS experiment labs
+
+- Add `aws-emulator-mcp experiments` and `aws-emulator-mcp experiment <id> [--json]` with structured evidence and cleanup, and corresponding `lab_catalog` / `lab_run` MCP tools.
+- Introduce fixed synthetic S3 recovery and DynamoDB overwrite labs alongside the existing order recovery demonstration.
+- Upgrade curated tool count to 29, plus two optional isolated SDK model tools (31 inside Docker); **tool count is not service coverage**.
+- Add cross-platform unit tests, a packaged JSON experiment catalog, and real signed-emulator Docker acceptance checks.
+
 ## v0.4.0-beta.2 — product identity cleanup
 
 - Project/tool name and published npm package identity are **AWS Emulator MCP**.

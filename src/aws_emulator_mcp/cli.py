@@ -20,7 +20,33 @@ def main(argv=None):
     s.add_argument("--json",action="store_true")
     order=commands.add_parser("order-demo",help="Run a full synthetic order workflow with error repair and cleanup")
     order.add_argument("--json",action="store_true")
+    experiments=commands.add_parser("experiments",help="List the repeatable AWS experiment missions")
+    experiments.add_argument("--json",action="store_true")
+    experiment=commands.add_parser("experiment",help="Run an allowlisted experiment and verify cleanup")
+    experiment.add_argument("experiment_id")
+    experiment.add_argument("--json",action="store_true")
     args=parser.parse_args(argv)
+    if args.command in ("experiments", "experiment"):
+        from aws_emulator_mcp import labs
+        if args.command=="experiments":
+            result=labs.catalog()
+            if args.json:print(json.dumps(result,indent=2))
+            else:
+                for item in result["experiments"]:
+                    print(item["id"], "-", item["title"])
+            return 0
+        try:
+            result=labs.run(args.experiment_id)
+        except server.LocalError as exc:
+            print(str(exc),file=sys.stderr)
+            return 2
+        if args.json:print(json.dumps(result,indent=2))
+        else:
+            print("AWS Emulator experiment:",args.experiment_id)
+            print("PASSED" if result["passed"] else "FAILED")
+            print("Checks:",len(result["steps"]))
+            print("Cleanup:",len(result["cleanup"]))
+        return 0 if result["passed"] else 1
     if args.command=="doctor":
         result=server.doctor()
         if args.json:print(json.dumps(result,indent=2))

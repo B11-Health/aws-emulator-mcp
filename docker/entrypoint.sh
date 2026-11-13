@@ -5,7 +5,7 @@ export PATH="$HOME/.local/bin:$PATH"
 export AWS_EMULATOR_PORT=9297
 mode="${1:-mcp}"
 case "$mode" in
-  mcp|doctor|demo|self-test|catalog) ;;
+  mcp|doctor|demo|self-test|catalog|experiment) ;;
   *) echo "Unsupported command: $mode" >&2; exit 2 ;;
 esac
 if [[ "$mode" == catalog ]]; then
@@ -37,4 +37,5 @@ case "$mode" in
   doctor) python3 -m aws_emulator_mcp.cli doctor --json ;;
   demo) python3 -m aws_emulator_mcp.cli order-demo --json ;;
   self-test) python3 -m aws_emulator_mcp.cli self-test --json ;;
+  experiment) python3 -m aws_emulator_mcp.labs run "${2:-}" ;;
 esac

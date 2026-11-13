@@ -51,7 +51,7 @@ def main()->int:
         print("Missing [project] metadata",file=sys.stderr)
         return 1
     body=project[1].split("\n[",1)[0]
-    versions=re.findall(r'(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"\s*$',body)
+    versions=re.findall(r'(?m)^version\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+(?:b[0-9]+)?)"\s*$',body)
     if len(versions)!=1:
         print("Missing or ambiguous project version",file=sys.stderr)
         return 1

@@ -50,7 +50,7 @@ def benchmark(repetitions=3,include_unit=True):
     details["doctor"]=doctor
     gates.append(gate("health_identity",doctor["ready"],doctor["ready"],True))
     details["tool_count"]=len(m.TOOLS)
-    gates.append(gate("tool_catalog",len(m.TOOLS)>=27,len(m.TOOLS),27))
+    gates.append(gate("tool_catalog",len(m.TOOLS)>=29,len(m.TOOLS),29))
     if include_unit:
         unit=command([sys.executable,"-m","unittest","discover","-s","tests","-q"],65)
         match=re.search(r"Ran (\d+) tests",unit.get("stderr_tail",""))

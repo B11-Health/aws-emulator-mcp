@@ -42,7 +42,7 @@ jobs:
       - name: Independent legacy/modern MCP checker
         run: |
           mkdir -p reports
-          python scripts/mcp_launch_check.py --out reports/ci_protocol.json --min-tools 27 -- python -u src/aws_emulator_mcp/server.py
+          python scripts/mcp_launch_check.py --out reports/ci_protocol.json --min-tools 29 -- python -u src/aws_emulator_mcp/server.py
       - name: Build installable wheel
         run: |
           python -m pip wheel . --no-deps --wheel-dir dist
@@ -128,7 +128,7 @@ jobs:
           print('npm_package_file_count',len(paths))
           PY
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.2.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.3.tgz
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/codegym-mcp-config.json
           python3 - <<'PY'
           import json
@@ -149,15 +149,15 @@ jobs:
       - name: Install the packed npm package in isolation
         run: |
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.2.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.3.tgz
       - name: Build signed official emulator and run actual Docker MCP demo and SDK API calls
         run: |
           export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
           python3 tests/docker_bundle_smoke.py
       - name: Verify no production credentials are available to the image
         run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.2 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.2 --format '{{.Size}}' | tee /tmp/codegym-image-size
+          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.3 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
+          docker image inspect aws-emulator-mcp:0.4.0-beta.3 --format '{{.Size}}' | tee /tmp/codegym-image-size
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E

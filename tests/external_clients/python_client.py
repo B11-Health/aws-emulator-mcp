@@ -23,7 +23,7 @@ async def main():
         params=StdioServerParameters(command=sys.executable, args=[str(SERVER)])
         async with Client(params, mode=mode) as client:
             tools=await client.list_tools()
-            assert len(tools.tools)==27, f"{mode}: expected 27 tools, got {len(tools.tools)}"
+            assert len(tools.tools)==29, f"{mode}: expected 29 tools, got {len(tools.tools)}"
             response=await client.call_tool("emulator_status", {})
             assert not response.is_error, f"{mode}: {response.content}"
             status=json.loads(response.content[0].text)
@@ -51,7 +51,7 @@ async def main():
                     found=await client.list_tools()
                     status=await client.call_tool("emulator_status",{})
                     parsed=json.loads(status.content[0].text)
-                    assert not status.is_error and len(found.tools)==27
+                    assert not status.is_error and len(found.tools)==29
                     assert parsed["endpoint"].startswith("https://127.0.0.1:")
                     http_results.append({"mode":mode,"protocol":str(client.protocol_version),
                                          "tools":len(found.tools),"authenticated":True})
