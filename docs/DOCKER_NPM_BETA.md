@@ -4,14 +4,14 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.2 public GitHub source beta** at a signed-off release tag (pending tag publication after CI). The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.2 public GitHub source beta** at a pinned, independently verified Git commit. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
 Install from the public GitHub source while the npm registry release is pending:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.2"
+npm install -g "github:B11-Health/aws-emulator-mcp#670547aa25ac42801a170abb01411c06ba6edc5d"
 aws-emulator-mcp doctor
 aws-emulator-mcp demo
 aws-emulator-mcp config copilot
@@ -20,7 +20,7 @@ aws-emulator-mcp config copilot
 Or run without a global installation:
 
 ```sh
-npm exec --yes --package="github:B11-Health/aws-emulator-mcp#v0.4.0-beta.2" -- aws-emulator-mcp demo
+npm exec --yes --package="github:B11-Health/aws-emulator-mcp#670547aa25ac42801a170abb01411c06ba6edc5d" -- aws-emulator-mcp demo
 ```
 
 Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
