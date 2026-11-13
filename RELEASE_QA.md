@@ -2,6 +2,22 @@
 
 Review date: November 12, 2026. GitHub publisher: **B11-Health**. LinkedIn publisher: **Code Gym**.
 
+## Independent clean Ubuntu install — 2026-11-13 04:47 UTC
+
+The source at `0f0a16c0bf90b74dd88904b298e5e5d2ae5129af` was cloned on a separate EC2 machine using a **temporary read-only deploy key**. Its GitHub SSH host key was checked against the officially documented ED25519 fingerprint. The key was revoked and deleted after cloning.
+
+Inside a fresh **Ubuntu 24.04.5 Docker container** (no previously installed AWS Emulator or project dependencies), installing Python, curl, GPG and dpkg and running `bash install.sh` completed successfully:
+- Official AWS Emulator **v1.0.338**, signed Debian package `1.0.338-1`, detached signature checked against AWS publisher fingerprint `98BCF336A3BE53B734E967C52E5BF49BD940F624`.
+- Downloaded package SHA256: `7088f266fb16db7f5484001581360242580514f0920126c25a28ee1cb2c641f8`.
+- Local health and identity **6/6 passed**, isolated STS account `000000000000`.
+- Service self-test **13/13** and scoped cleanup **4/4** passed; legacy/modern protocol smoke checker **PASS**.
+- Generated the local Linux and Copilot client configurations.
+- `bash scripts/order_demo_linux.sh`: **PASS**, 12 steps, 2 recovery assertions, 4 cleanup actions; **6.132 seconds**.
+
+A separate fresh Ubuntu 24.04 container with Python and Git ran the full test suite: **127 tests, 0 failures, 2 skips**. The initial combined container's unit-test command was not valid because the test image omitted Git; this was an environment setup error, not an application failure, and the suite passed when Git was installed.
+
+This is an independent *machine/environment* check performed by the project team, **not an outside security audit or a second Windows host test**. Source remains private and release approval remains pending.
+
 ## Latest verified engineering run — 2026-11-13 03:52 UTC
 
 - Source: clean Windows Git checkout at `a3cf4cc86b9b493d961003c4643d729de5b5d248`; MCP package v0.3.0.
