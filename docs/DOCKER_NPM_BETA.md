@@ -4,14 +4,14 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.1 development branch**. The package is not yet published to the npm registry, and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.1 public GitHub source beta** at a pinned, verified commit. The package is not yet published to the npm registry (the scoped npm registry name currently returns 404), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
 Install from the public GitHub source while the npm registry release is pending:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#feat/docker-npm-one-command-lab"
+npm install -g "github:B11-Health/aws-emulator-mcp#88d5f84c6625c11d988306c71235eef3a28e9e0f"
 codegym-aws doctor
 codegym-aws demo
 codegym-aws config copilot
@@ -20,10 +20,12 @@ codegym-aws config copilot
 Or run without a global installation:
 
 ```sh
-npm exec --yes --package="github:B11-Health/aws-emulator-mcp#feat/docker-npm-one-command-lab" -- codegym-aws demo
+npm exec --yes --package="github:B11-Health/aws-emulator-mcp#88d5f84c6625c11d988306c71235eef3a28e9e0f" -- codegym-aws demo
 ```
 
 Use `codegym-aws config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
+
+**Verified on a separate EC2 Docker host, 2026-11-13:** the npm-packed tarball installed into a fresh prefix and passed six emulator diagnostics; installing this exact GitHub commit into a second fresh prefix also passed the 12-step order demo with four scoped cleanups. The isolated Docker smoke test passed the 29-tool MCP handshake, SDK-model discovery, local S3 CRUD, and cleanup. This is **Linux test evidence**, not a Windows/macOS first-use endorsement.
 
 ## What the CLI actually does
 
