@@ -1,0 +1,22 @@
+[Unit]
+Description=Code Gym secure read-only ChatGPT MCP gateway
+After=network.target
+[Service]
+Type=simple
+User=__DEDICATED_SERVICE_USER__
+Group=__DEDICATED_SERVICE_GROUP__
+Environment=CODEGYM_MCP_SOURCE=__REPO_SRC_PATH__
+Environment=CODEGYM_GATEWAY_PORT=8987
+Environment=CODEGYM_EDGE_SECRET_FILE=__PRIVATE_EDGE_FILE__
+Environment=CODEGYM_RELAY_SECRET_FILE=__PRIVATE_RELAY_FILE__
+Environment=CODEGYM_RELAY_ORIGIN=https://__RELAY_HOSTNAME__
+Environment=CODEGYM_ROUTE_WINDOWS=1
+WorkingDirectory=__REPO_PATH__/remote_connector
+ExecStart=__VENV_PYTHON__ __REPO_PATH__/remote_connector/gateway.py
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=12s
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+[Install]
+WantedBy=multi-user.target

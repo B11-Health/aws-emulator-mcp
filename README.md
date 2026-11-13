@@ -82,6 +82,18 @@ The release pipeline runs both **official MCP SDK clients** against the real ser
 
 These are **test-only dependencies** under tests/external_clients. The MCP adapter itself remains standard-library Python. Both test clients run without an emulator or AWS keys for protocol verification.
 
+## Private ChatGPT remote connector (optional)
+
+A separate, audited-by-tests **read-only** remote integration is available
+in remote_connector/README.md. It supports private ChatGPT custom MCP plugins
+over OpenAI client-certificate-authenticated HTTPS, using a WSS **outbound**
+Windows/WSL agent and a private 384-bit relay token. The plugin exposes only
+emulator_status, emulator_doctor and emulator_identity; no resource mutation.
+The core local stdio adapter remains zero-dependency. A real ChatGPT test
+returned Windows emulator version 1.0.322, port 9297 and 6/6 healthy checks.
+This does not constitute a public or multi-user release. Never disable mTLS
+or grant remote write tools without separate per-user OAuth 2.1 review.
+
 ## Tests and independent verification
 
 Run the complete local tests:

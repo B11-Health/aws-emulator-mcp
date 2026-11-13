@@ -46,9 +46,19 @@
 - Source credential heuristic scan, version consistency assertions, and pinned GitHub CI with official signed emulator installation.
 - Local benchmark 10/10 scenarios, p95 7.265 seconds, zero leaked demo resources; private GitHub Actions clean Linux run passed on AWS Emulator v1.0.336.
 
+### Private ChatGPT integration, read-only
+- Installed private Code Gym AWS Emulator - Secure QA custom plugin in
+  ChatGPT Personal without an OpenAI API key, verified real calls twice.
+- Dedicated mTLS HTTPS MCP endpoint, local-only gateway, independent private
+  proxy edge token, secure outbound Windows WSS relay, two matching allowlists.
+- Confirmed ChatGPT itself reached the Windows emulator at 127.0.0.1:9297,
+  official version 1.0.322 and 6/6 healthy checks, no production AWS.
+- Added reproducible secret-free gateway and Windows agent sources,
+  environment templates and optional remote integration QA.
+
 ### Pending
 - Public GitHub release and independent cold Windows installation verification.
-- macOS/Docker quickstart and direct, authenticated remote MCP deployment.
+- macOS/Docker quickstart and independent security audit for optional remote connector.
 
 ## 0.2.0 — November 12, 2026
 - Local STS/S3/DynamoDB/SQS MCP adapter, 25 tools, protocol and HTTP security tests.

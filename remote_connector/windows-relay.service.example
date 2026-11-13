@@ -1,0 +1,13 @@
+[Unit]
+Description=Code Gym outbound Windows diagnostic relay for ChatGPT
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/codegym-mcp-bridge/relay.env
+ExecStart=__VENV_PYTHON__ __REPO_PATH__/remote_connector/windows_agent.py
+Restart=always
+RestartSec=4
+NoNewPrivileges=true
+[Install]
+WantedBy=default.target

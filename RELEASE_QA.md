@@ -63,3 +63,25 @@ This is stronger engineering validation, but it still **does not approve publica
 - Linux quickstart validates port range and consistently passes the chosen port to AWS Emulator. Added negative tests for invalid values.
 - The new hosted Windows Actions job tests launcher syntax, source scan, and non-mutating installation preview on a clean Windows 2025 runner.
 - The nested-directory junction regression was also reproduced on Windows: the installer refused the redirect and preserved the sentinel outside the install tree.
+
+## Private ChatGPT and Windows relay integration (November 12, 2026)
+
+- Registered personal plugin Code Gym AWS Emulator - Secure QA using a
+  dedicated HTTPS MCP URL, no OpenAI API key.
+- OpenAI mTLS client-certificate validation in nginx with current published
+  OpenAI root/connector CA chain and additional backend SAN/clientAuth check.
+- Bound gateway to 127.0.0.1 only, with random unguessable capability path,
+  private edge verification token and ONLY three diagnostic tool names.
+- TLS WSS agent from Windows/WSL connects outward to separate relay hostname,
+  single agent authenticated with independent 384-bit credential in 0600 files.
+- Tested from real ChatGPT conversation: emulator_doctor, emulator_identity
+  and emulator_status returned true Windows values: 127.0.0.1:9297,
+  official emulator 1.0.322, 6/6 checks and isolated account 000000000000.
+- Gateway application security suite: 10/10 checks including legacy/modern
+  MCP protocol compatibility, no edge token, bad client certificates, bad
+  origin and denied write tools. mTLS also verified at TLS edge separately.
+- Reproducible source, dependencies, deployment templates and stdlib contract
+  tests live under remote_connector/. The remote connector is OPTIONAL and
+  requires separate security review for multi-user/public deployment.
+
+This does NOT certify AWS production IAM security or permit public rollout.

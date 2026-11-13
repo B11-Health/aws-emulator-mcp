@@ -19,3 +19,10 @@ reports/
 
 # External MCP SDK test dependencies (dev only)
 node_modules/
+
+
+# Never commit private remote gateway URLs, tokens or runtime config.
+remote_connector/relay.env
+remote_connector/*.secret
+remote_connector/private/
+remote_connector/*_private.conf
