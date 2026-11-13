@@ -2,10 +2,13 @@
 FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq \
- && apt-get install -y -qq --no-install-recommends python3 ca-certificates curl gnupg dpkg-dev findutils \
+ && apt-get install -y -qq --no-install-recommends python3 python3-venv ca-certificates curl gnupg dpkg-dev findutils \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --uid 10001 --create-home --shell /usr/sbin/nologin codegym
-ENV HOME=/home/codegym PYTHONUNBUFFERED=1 PYTHONPATH=/opt/codegym/src AWS_EMULATOR_PORT=9297
+RUN python3 -m venv /opt/codegym-venv \
+ && /opt/codegym-venv/bin/python -m pip install --no-cache-dir --only-binary=:all: botocore==1.44.2
+ENV HOME=/home/codegym PYTHONUNBUFFERED=1 PYTHONPATH=/opt/codegym/src AWS_EMULATOR_PORT=9297 \
+ CODEGYM_ISOLATED_LAB=1 PATH=/opt/codegym-venv/bin:$PATH
 WORKDIR /opt/codegym
 COPY --chown=10001:10001 src/aws_emulator_mcp ./src/aws_emulator_mcp
 COPY --chown=10001:10001 scripts/install_wsl.sh ./scripts/install_wsl.sh

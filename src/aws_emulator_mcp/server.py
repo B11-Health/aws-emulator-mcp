@@ -641,6 +641,29 @@ FUNCTIONS=dict(emulator_status=status,emulator_doctor=doctor,emulator_start=star
     sqs_delete_message=sqs_delete_message,sqs_delete_queue=sqs_delete_queue,
     emulator_self_test=emulator_self_test,emulator_order_demo=emulator_order_demo)
 
+# Broad SDK operations are available only inside the completely network-isolated
+# Docker lab. The native 27-tool adapter stays dependency-free and unchanged.
+if os.environ.get("CODEGYM_ISOLATED_LAB") == "1":
+    from aws_emulator_mcp import aws_sdk
+    TOOLS.extend([
+        spec("aws_sdk_discover",
+             "Discover AWS SDK-modeled services or operations. A model is NOT proof that AWS Emulator implements the API.",
+             {"service": STR}),
+        spec("aws_sdk_invoke",
+             "Invoke a modeled AWS SDK operation only on the isolated local emulator. Never calls real AWS; unsupported emulator operations fail.",
+             {"service": STR, "operation": STR,
+              "parameters": {"type": "object", "additionalProperties": True}},
+             ("service", "operation")),
+    ])
+    for extra in TOOLS[-2:]:
+        extra["annotations"] = {
+            "readOnlyHint": extra["name"] == "aws_sdk_discover",
+            "destructiveHint": extra["name"] == "aws_sdk_invoke",
+            "idempotentHint": extra["name"] == "aws_sdk_discover",
+            "openWorldHint": False
+        }
+    FUNCTIONS.update(aws_sdk_discover=aws_sdk.discover, aws_sdk_invoke=aws_sdk.invoke)
+
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
 VERSION="0.3.0"
@@ -671,6 +694,12 @@ def _tool_arguments_ok(name,args):
         return False
     limits={"bucket":63,"key":1024,"text":65536,"table":255,
             "item_id":1024,"message":65536,"queue":80,"receipt_handle":4096}
+    if name == "aws_sdk_invoke":
+        parameters = args.get("parameters", {})
+        if not isinstance(parameters, dict): return False
+        try:
+            if len(json.dumps(parameters, allow_nan=False).encode("utf-8")) > 65536: return False
+        except (TypeError, ValueError): return False
     for k,value in args.items():
         declared=properties[k]
         if declared.get("type")=="string":

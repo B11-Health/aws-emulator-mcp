@@ -25,7 +25,7 @@ Usage: codegym-aws <command>
 Commands:
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run the 27-tool local MCP server (stdio)
+  mcp              Run 27 curated + 2 modeled-SDK tools via local MCP
   catalog          List implemented MCP tools
   self-test        Exercise supported services and scoped cleanup
   build            Build the image from the signed official AWS package
