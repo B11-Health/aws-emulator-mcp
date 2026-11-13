@@ -16,8 +16,9 @@ CLI = Path(os.environ.get("CODEGYM_QA_CLI", str(ROOT / "bin" / "codegym-aws.mjs"
 assert CLI.exists()
 
 
-def run(command, input_data=None, timeout=300):
-    return subprocess.run(["node", str(CLI), command], cwd=ROOT, input=input_data,
+def run(command, input_data=None, timeout=300, json_mode=False):
+    args=["node", str(CLI), command] + (["--json"] if json_mode else [])
+    return subprocess.run(args, cwd=ROOT, input=input_data,
                           text=True, capture_output=True, timeout=timeout)
 
 
@@ -34,14 +35,14 @@ def content(row):
 
 
 def verify():
-    r = run("doctor")
+    r = run("doctor", json_mode=True)
     assert r.returncode == 0, r.stderr[-1000:]
     doctor = json.loads(r.stdout)
     assert doctor["ready"] and doctor["account_verified"]
     assert len(doctor["checks"]) == 6 and all(v["passed"] for v in doctor["checks"])
     print("DOCKER_DOCTOR_PASS", doctor["emulator_version"], flush=True)
 
-    demo = run("demo")
+    demo = run("demo", json_mode=True)
     assert demo.returncode == 0, demo.stderr[-800:]
     d = json.loads(demo.stdout)
     assert d["passed"] and len(d["steps"]) >= 12
