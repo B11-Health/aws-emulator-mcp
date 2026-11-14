@@ -50,7 +50,7 @@ aws-emulator-mcp experiment s3-recovery      # Reproduce a 404, repair it, verif
 aws-emulator-mcp config vscode               # Generate your editor's MCP config
 ~~~
 
-The first command builds the Docker image from source when needed. The first build verifies the **official AWS-signed emulator package**; subsequent commands reuse the local image. For fully reproducible use, pin a tested Git commit instead of the moving `master` branch. See the [Docker/npm setup guide](docs/DOCKER_NPM_BETA.md).
+The npm install step installs the launcher; it does **not** start Docker. Your first runtime command (for example, `doctor`) builds the local Docker image when needed and verifies the **official AWS-signed emulator package**. Subsequent runtime commands reuse that local image. For fully reproducible use, pin a tested Git commit instead of the moving `master` branch. See the [Docker/npm setup guide](docs/DOCKER_NPM_BETA.md).
 
 ## Watch the real CLI demo
 
