@@ -125,25 +125,27 @@ jobs:
       - name: Test Node CLI and pack without publishing
         run: |
           npm test
-          npm pack --dry-run --json > /tmp/codegym-npm-package.json
+          npm pack --dry-run --json > /tmp/aws-emulator-mcp-npm-package.json
           python3 - <<'PY'
           import json
-          data=json.load(open('/tmp/codegym-npm-package.json'))[0]
+          data=json.load(open('/tmp/aws-emulator-mcp-npm-package.json'))[0]
           paths=[f['path'] for f in data['files']]
           assert data['name']=='aws-emulator-mcp'
           import pathlib
           declared=set(json.loads(pathlib.Path('package.json').read_text())['files'])
           allowed=declared|{'package.json','LICENSE','README.md'}
           assert set(paths)==allowed, {'extra':sorted(set(paths)-allowed),'missing':sorted(allowed-set(paths))}
+          assert 'docs/assets/hero.svg' in paths and 'docs/assets/real-cli-demo.gif' in paths
+          assert 'docs/COVERAGE.md' in paths
           assert not any('__pycache__' in p or p.endswith('.pyc') or '.env' in p or 'credentials' in p.lower() for p in paths)
           print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.3.tgz
-          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/codegym-mcp-config.json
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.4.tgz
+          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/aws-emulator-mcp-mcp-config.json
           python3 - <<'PY'
           import json
-          conf=json.load(open('/tmp/codegym-mcp-config.json'))
+          conf=json.load(open('/tmp/aws-emulator-mcp-mcp-config.json'))
           assert conf['mcpServers']['aws-emulator-local']['type']=='stdio'
           PY
 
@@ -160,15 +162,35 @@ jobs:
       - name: Install the packed npm package in isolation
         run: |
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.3.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.4.tgz
       - name: Build signed official emulator and run actual Docker MCP demo and SDK API calls
         run: |
           export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
           python3 tests/docker_bundle_smoke.py
+      - name: Publish actual read-only coverage results in the CI summary
+        run: |
+          mkdir -p reports
+          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs coverage --json > reports/ci_coverage.json
+          python3 - <<'PY_END' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          j=json.loads(Path("reports/ci_coverage.json").read_text())
+          assert j["totalProbes"] == 20 and j["successfulProbes"] == 20
+          print("### Isolated AWS SDK coverage smoke test")
+          print("- Official AWS Emulator:",j["emulatorVersion"])
+          print("- SDK-modeled services:",j["modeledServiceCount"],"(models != implemented APIs)")
+          print("- Read-only successful responses:",str(j["successfulProbes"])+"/"+str(j["totalProbes"]))
+          print("- Each probe is a zero-argument, read-only API call. **This is not full AWS fidelity.**")
+          print("")
+          print("| Service | Operation | Outcome |")
+          print("| :-- | :-- | :-- |")
+          for row in j["results"]:
+              print("|",row["service"],"|",row["operation"],"|",row["status"],"|")
+          PY_END
       - name: Verify no production credentials are available to the image
         run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.3 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.3 --format '{{.Size}}' | tee /tmp/codegym-image-size
+          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.4 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
+          docker image inspect aws-emulator-mcp:0.4.0-beta.4 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E

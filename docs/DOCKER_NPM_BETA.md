@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.3 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.4 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
@@ -25,7 +25,7 @@ npm exec --yes --package="github:B11-Health/aws-emulator-mcp#master" -- aws-emul
 
 Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
 
-**Verified on a separate EC2 Docker host, 2026-11-13:** the npm-packed tarball installed into a fresh prefix and passed six emulator diagnostics; installing this exact GitHub commit into a second fresh prefix also passed the 12-step order demo with four scoped cleanups. The isolated Docker smoke test passed the 29-tool MCP handshake, SDK-model discovery, local S3 CRUD, and cleanup. This is **Linux test evidence**, not a Windows/macOS first-use endorsement.
+**Verified on a separate EC2 Docker host, 2026-11-13:** the npm-packed tarball installed into a fresh prefix and passed six emulator diagnostics; installing this exact GitHub commit into a second fresh prefix also passed the 12-step order demo with four scoped cleanups. The isolated Docker smoke test passed the 32-tool MCP handshake, read-only probes across 20 services, SDK-model discovery, local S3 CRUD, and cleanup. This is **Linux test evidence**, not a Windows/macOS first-use endorsement.
 
 ## What the CLI actually does
 
@@ -43,12 +43,15 @@ The official Linux emulator binary is approximately **994 MB unpacked** for the 
 
 The 29 curated tools give simple, explicit operations for S3 text objects, DynamoDB id/message records, standard SQS messages, diagnostics, and verified order/self-test workflows. They remain available from the dependency-free native Python adapter.
 
-The **isolated Docker bundle adds two SDK tools (31 total)**:
+The **isolated Docker bundle adds three SDK tools (32 total)**:
 
 - `aws_sdk_discover`: introspect locally installed botocore service and operation models, including required operation inputs.
 - `aws_sdk_invoke`: call a specific modeled AWS SDK operation against the **local emulator endpoint only**, with explicit emulator-issued credentials and the generated TLS CA.
+- `aws_sdk_coverage`: run a **fixed list of 20 read-only operations** with per-service observed statuses. This measures only those operations, not complete service/API parity.
 
-The bundled botocore SDK model catalog currently contains hundreds of AWS services. **This is not a claim that the official emulator implements every service or operation.** Unsupported operations may return 501; shape validation and real responses are part of testing. Model discovery and actual emulator fidelity are separate facts. All SDK calls occur inside the network-disabled container.
+`aws_sdk_discover` now accepts `service`, `query`, `offset`, and `limit`; it can page through all 436 service models and each service's modeled operations instead of truncating the list. Use `aws-emulator-mcp coverage [service] [--json]` to measure selected read-only API calls. See [the measured coverage report](COVERAGE.md).
+
+The tested botocore 1.44.2 SDK catalog contains **436 modeled AWS services**. **This is not a claim that the official emulator implements every service or operation.** Unsupported operations may return 501; shape validation and real responses are part of testing. Model discovery and actual emulator fidelity are separate facts. All SDK calls occur inside the network-disabled container.
 
 ## Reproducible experiment missions (new)
 
@@ -73,4 +76,4 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.3`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b3`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.4`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b4`. The v0.3.0 Windows source installer remains a separate compatibility path.

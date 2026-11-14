@@ -1,272 +1,174 @@
-# AWS Emulator MCP
+<p align="center">
+  <img src="docs/assets/hero.svg" alt="AWS Emulator MCP: Give your AI a local AWS lab. Shows 436 SDK models and 20 successful read-only API probes, which are not a measure of full AWS fidelity." width="100%">
+</p>
 
-### Your AWS playground. Controlled by your AI assistant.
+<h1 align="center">AWS Emulator MCP</h1>
 
-**Create S3 buckets. Store DynamoDB records. Send SQS messages. Experiment with AWS-style infrastructure. Break something, fix it, and reset the lab—without deploying to AWS.**
+<p align="center"><strong>Your AWS playground. Controlled by your AI assistant.</strong></p>
 
-The [official AWS Emulator](https://github.com/aws/aws-emulator) lets software talk to supported AWS APIs **on your own machine**. **AWS Emulator MCP** gives compatible AI assistants a set of tools to operate that sandbox in natural language.
+<p align="center">Explore AWS-style APIs, test application behavior, reproduce failures, and verify cleanup against an isolated <a href="https://github.com/aws/aws-emulator">official AWS Emulator</a> instance. <strong>No AWS account. No production AWS credentials. No AWS service charges for emulated resources.</strong></p>
 
-**No AWS account. No AWS service charges for emulated resources. No production AWS resources at risk.** Your computer still provides the compute.
+<p align="center">
+  <a href="https://github.com/B11-Health/aws-emulator-mcp/actions/workflows/tests.yml"><img src="https://github.com/B11-Health/aws-emulator-mcp/actions/workflows/tests.yml/badge.svg?branch=master" alt="Quality gates — master branch" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0AAB9C" alt="MIT license" /></a>
+  <img src="https://img.shields.io/badge/status-developer%20beta-4768DF" alt="Developer beta" />
+  <img src="https://img.shields.io/badge/Node.js-%E2%89%A520-26816D?logo=node.js&amp;logoColor=white" alt="Node.js 20 or later" />
+  <img src="https://img.shields.io/badge/runtime-local%20Docker-287AB7?logo=docker&amp;logoColor=white" alt="Local Docker runtime" />
+</p>
 
-**[What we are building](docs/PRODUCT_VISION.md)** · **[Docker + npm developer beta](docs/DOCKER_NPM_BETA.md)** · **[See what you can build](docs/WHAT_YOU_CAN_BUILD.md)** · **[Try a real order demo](examples/order_workflow.md)** · **[Install](#quickest-install-on-windows)** · **[Tool catalog](#29-mcp-tools)** · **[Limits](#what-it-does-not-do)**
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#watch-the-real-cli-demo">Live CLI demo</a> ·
+  <a href="#how-much-of-aws-can-it-reach">AWS coverage</a> ·
+  <a href="#connect-an-ai-agent">Connect your agent</a> ·
+  <a href="docs/COVERAGE.md">Measured API probes</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a>
+</p>
 
----
+> [!IMPORTANT]
+> **Developer beta · source distribution.** The npm package name is **not yet published on npm** and there is **no official prebuilt Docker image** for this integration. Install this repository directly from GitHub. AWS Emulator is a separate, AWS-maintained engine; our MCP bridge is independent and is not affiliated with or endorsed by AWS.
 
-## New: isolated Docker + npm beta (in active QA)
+## What makes it useful?
 
-**The original v0.3 prerelease had 27 curated MCP tools.** The current source adds two allowlisted experiment tools, and the isolated Docker bundle adds two model-driven AWS SDK tools (31 tools total inside Docker). The SDK models expose many operations, but **their presence does not imply the official AWS Emulator implements them**. The container has no network, forwarded ports, or host credentials. No AWS account or host Python installation is needed.
+- **Ask an agent to explore AWS APIs, not just recite documentation.** Browse the installed AWS SDK's service models, select modeled operations, and invoke them against an **emulated localhost endpoint**—without using a real AWS profile.
+- **Measure what actually works.** A built-in, read-only coverage probe runs 20 allowlisted operations and reports their observed outcomes, separately from the much larger SDK model inventory.
+- **Run reproducible experiments.** Give an agent three synthetic missions: S3 missing-object recovery, a DynamoDB overwrite, and an S3 + SQS + DynamoDB order workflow. Each returns assertions, expected errors, timing, and scoped cleanup evidence.
+- **Keep the boundary visible.** The default Docker lab has no external network, host file mounts, forwarded ports, or production AWS credentials. It uses a signed official AWS Emulator binary.
 
-Until an npm registry release is verified, test the beta directly from the public GitHub source:
+## Quick start
 
-```sh
+**Requirements:** Node.js 20+, a running **local** Docker daemon (Docker Engine or Desktop), and network access for the first verified emulator download. The signed emulator makes the built Docker image roughly **1.25 GB**. The end-to-end Docker path has been exercised on Linux; a truly independent first-run Windows/macOS Docker acceptance test remains open.
+
+~~~bash
+# Source-only beta; this is NOT an npm registry package.
 npm install -g "github:B11-Health/aws-emulator-mcp#master"
-aws-emulator-mcp doctor
-aws-emulator-mcp demo
-aws-emulator-mcp config copilot
-```
 
-Docker Desktop/Engine and Node 20+ are required. The official AWS Emulator binary is nearly 1 GB unpacked; the npm package is a small launcher that builds the signed image on first use. **Read [the architecture, safety boundaries, and beta QA requirements](docs/DOCKER_NPM_BETA.md)** before treating this as stable. The previous narrated launch video is no longer considered the reference demo; new launch media must show real product interactions.
-
-## New: reproducible AWS experiments
-
-**A local API model is not proof of AWS compatibility.** The experimental lab runner creates only synthetic resources, executes specific real emulated API calls, checks an expected failure or state transition, and confirms scoped cleanup. It produces machine-readable evidence suitable for AI agent reviews and CI logs. It does **not** validate production IAM or full service fidelity.
-
-The lab list needs only Node.js; running a lab needs the isolated Docker environment:
-
-```sh
-aws-emulator-mcp experiments
-aws-emulator-mcp experiment s3-recovery
-aws-emulator-mcp experiment dynamodb-overwrite --json > experiment-evidence.json
-aws-emulator-mcp experiment order-recovery
-```
-
-The native MCP adapter also exposes `lab_catalog` and `lab_run` so an assistant can select and run an allowlisted mission without arbitrary shell execution. The first missions cover missing S3-object recovery, DynamoDB overwrites, and the existing three-service synthetic order workflow. Every report distinguishes assertions, expected errors, and resource cleanup. This is a foundation for future application-specific integration tests, **not** yet a generic user-defined chaos engine. See [experiment documentation](docs/EXPERIMENT_LABS.md).
-
-## Try a real AWS lab in minutes
-
-The shortest proof is the built-in **synthetic order demo**. You can run it before connecting any AI client. It exercises the **official local AWS Emulator**, not production AWS.
-
-**Windows + Ubuntu WSL2** (WSL2 must already be set up):
-
-```powershell
-git clone https://github.com/B11-Health/aws-emulator-mcp.git
-cd aws-emulator-mcp
-.\install.cmd
-.\demo.cmd
-```
-
-**Debian / Ubuntu Linux** (Python 3.10+, curl, GPG and dpkg-deb):
-
-```bash
-git clone https://github.com/B11-Health/aws-emulator-mcp.git
-cd aws-emulator-mcp
-bash install.sh
-bash scripts/order_demo_linux.sh
-```
-
-The installer may need to download the official, signed emulator package on first run. The demo stores a temporary DynamoDB order, sends an SQS message, deliberately requests a missing S3 receipt, creates and verifies the receipt, then cleans up its own resources. Inspect the actual assertions and cleanup results; **a failed check is not success**.
-
-To run this conversationally, connect a compatible **local MCP client** using the generated configuration, then ask the prompt below. **ChatGPT web's optional Secure QA plugin is read-only**, not a substitute for the 27-tool local adapter. See the [full Windows setup](#quickest-install-on-windows) and [Linux setup](#linux-quickstart).
-
-## You ask. The sandbox does the work.
-
-| Ask your AI assistant... | What actually happens | Availability |
-| --- | --- | --- |
-| **"Create an S3 bucket, store a note and read it back."** | Emulated S3 create/put/get/list calls | **Available locally** |
-| **"Show me DynamoDB. Store and retrieve an example order."** | Table creation and simple text records | **Available locally** |
-| **"Send a job to a queue and show how it gets received."** | SQS send/receive/acknowledge | **Available locally** |
-| **"Process an order, generate a receipt and verify everything."** | DynamoDB + SQS + S3 in one scenario | **Working order demo** |
-| **"Cause an expected error, recover, and clean up."** | Deliberate missing S3 receipt, repair, verification and cleanup | **Working order demo** |
-| **"Test Lambda, EventBridge and API Gateway together."** | Would depend on the emulator's implemented APIs | **Not in our 27-tool MCP catalog** |
-| **"Deploy and automatically repair my entire application."** | Needs additional coding and infrastructure tools | **Not implemented** |
-
-### One prompt. Three services. Real emulated APIs.
-
-> "Check AWS Emulator with **emulator_doctor**. Run **emulator_order_demo**. Walk me through the DynamoDB order, queued SQS message, expected missing S3 receipt, recovery, verification and cleanup. Don't claim success if a check fails."
-
-~~~mermaid
-flowchart LR
-    You["Ask your AI"] --> MCP["AWS Emulator MCP"]
-    MCP --> Lab["AWS Emulator on localhost"]
-    Lab --> DB["DynamoDB: order"]
-    Lab --> Q["SQS: work item"]
-    Lab --> S3["S3: receipt"]
-    S3 --> Error{"Receipt exists?"}
-    Error -->|Expected 404| Repair["Write missing receipt"]
-    Repair --> Verify["Read back + verify"]
-    DB --> Verify
-    Q --> Verify
-    Verify --> Clean["Acknowledge + clean up"]
+aws-emulator-mcp doctor                      # Verify the isolated local emulator
+aws-emulator-mcp coverage                    # 20 real read-only API probes
+aws-emulator-mcp experiments                 # See the available lab missions
+aws-emulator-mcp experiment s3-recovery      # Reproduce a 404, repair it, verify cleanup
+aws-emulator-mcp config vscode               # Generate your editor's MCP config
 ~~~
 
-The built-in demo executes **12 workflow steps**, checks **two failure/recovery assertions**, and verifies **four cleanup actions**. It uses unique synthetic resources, not a real payment processor or automatic Lambda trigger.
+The npm install step installs the launcher; it does **not** start Docker. Your first runtime command (for example, `doctor`) builds the local Docker image when needed and verifies the **official AWS-signed emulator package**. Subsequent runtime commands reuse that local image. For fully reproducible use, pin a tested Git commit instead of the moving `master` branch. See the [Docker/npm setup guide](docs/DOCKER_NPM_BETA.md).
 
-## Why not just use AWS?
+## Watch the real CLI demo
 
-**Because production and experimentation are different jobs.**
+<p align="center">
+  <a href="docs/assets/real-cli-demo.mp4"><img src="docs/assets/real-cli-demo.gif" alt="Authentic terminal recording: the experiment catalog, 20 local API coverage probes, and an S3 recovery experiment with 6 passing assertions, one expected fault, and 3 successful cleanup checks" width="960"></a>
+</p>
 
-| For this task... | Real AWS | AWS Emulator + our MCP |
-| --- | --- | --- |
-| Learn APIs without an account | Requires AWS access | **No AWS account needed** |
-| Experiment without AWS service charges | Cloud usage may be billed | **No AWS service charges for emulated calls** |
-| Make mistakes safely | Carefully manage real resources | **Only local test resources** |
-| Reset the environment | Clean up real infrastructure | **Restart the emulator** |
-| Ask an AI to operate the sandbox | Configure SDK/CLI or other tools | **Explicit, discoverable MCP tools** |
-| Validate production IAM, availability, scale | **Actual AWS behavior** | **Not a substitute** |
+<p align="center"><sub><a href="docs/assets/real-cli-demo.mp4">Watch the original 24-second MP4</a> · Actual CLI execution on AWS Emulator 1.0.343 · Silent, no generated narration, no simulated API responses.</sub></p>
 
-AWS already provides the emulator engine, AWS CLI/SDK compatibility and an [official agent skill](https://github.com/aws/aws-emulator). Our MCP adds a **client-neutral tool interface** with local safety boundaries, examples, diagnostics, repeatable workflows and evidence.
+The `s3-recovery` lab confirms **6/6 assertions, 1/1 expected error and 3/3 cleanup checks**. The separate synthetic order demo performs **12 steps, two recovery checks and four cleanups**. These are developer tests, **not production payment processing, automatic Lambda execution, or AWS security validation**.
 
-**AWS is where your application runs. The emulator is where you experiment. MCP is how your AI gets hands-on access.**
+## How much of AWS can it reach?
 
-## Who would use this?
+**More than S3, SQS and DynamoDB—but with important limits.**
 
-**New to AWS?** Learn S3, SQS and DynamoDB by creating and inspecting real *emulated* resources instead of just reading tutorials.
+| Layer | What is available | What it proves |
+|:--|:--|:--|
+| **Curated MCP surface** | **29 tools** for local lifecycle, STS, S3, DynamoDB, SQS and experiments | Tested, bounded developer workflows |
+| **Isolated SDK bridge** | **3 additional MCP tools:** `aws_sdk_discover`, `aws_sdk_invoke`, `aws_sdk_coverage` | Discover and call APIs through installed SDK models, only inside Docker |
+| **SDK model inventory** | **436 service models**, observed with pinned botocore 1.44.2 | The installed SDK knows the API *shapes*, **not** their implementation status |
+| **Observed local API probes** | **20/20 read-only calls responded** on AWS Emulator **1.0.343** (November 13, 2026) | Those specific operations returned successfully against an isolated fresh emulator |
 
-**Building a backend?** Prototype an order pipeline, helpdesk intake flow, inventory tracker or file archive against locally simulated services.
+The successful read-only probes include **EC2, Lambda, IAM, CloudFormation, EventBridge, SNS, API Gateway, Step Functions, Bedrock, KMS, RDS, ECS, ECR, SSM, CloudWatch Logs, Secrets Manager, STS, S3, DynamoDB and SQS**. A successful `ListFunctions` call does **not** prove Lambda execution works; a successful `ListFoundationModels` call does **not** prove Bedrock model inference works.
 
-**Developing with an AI coding agent?** Give it a disposable place to inspect API behavior, reproduce expected errors and verify its test cases.
+<details>
+<summary><strong>How to explore services beyond the curated tools</strong></summary>
 
-**Running CI?** Start an isolated emulator on a runner, execute reproducible integration checks, report assertions and clean up.
+First run the live audit from your terminal:
 
-See the **[use-case playbook](docs/WHAT_YOU_CAN_BUILD.md)** for examples you can actually try, plus honest boundaries for ideas that need more tools.
+~~~bash
+aws-emulator-mcp coverage
+aws-emulator-mcp coverage ec2 --json
+~~~
 
-## What it does not do
+Then, in your connected **local MCP client**, ask the agent to call:
 
-The official emulator is **not production AWS**: state is temporary, service API fidelity varies, and it does **not enforce production IAM/resource policies**. Unsupported operations may return 501. Successful local tests are not proof of production security or distributed-system performance.
+~~~text
+aws_sdk_discover({ "query": "lambda", "limit": 20 })
+aws_sdk_discover({ "service": "ec2", "query": "Describe", "offset": 0, "limit": 20 })
+aws_sdk_coverage({ "service": "ec2" })
+aws_sdk_invoke({ "service": "ec2", "operation": "DescribeVpcs", "parameters": {} })
+~~~
 
-The **27 local MCP tools** support a focused S3/DynamoDB/SQS set. Our optional **remote ChatGPT Secure QA plugin exposes only three read-only diagnostics** (status, doctor and identity); it cannot create resources or run the order workflow remotely. For the full sandbox experience, connect a compatible local MCP client.
+`aws_sdk_discover` now pages through the full installed service/operation catalog; it no longer stops after the first 45 services or 35 operations. An operation might be modeled yet unimplemented by AWS Emulator. Handle `501 Not Implemented`, API errors, and fidelity gaps explicitly.
 
-**AWS Emulator MCP** is an independent open-source tool published via the [B11-Health GitHub account](https://github.com/B11-Health). B11-Health is the repository publisher, not the tool name. Not affiliated with or endorsed by AWS.
+`aws_sdk_invoke` is intentionally powerful: restrict its use to a **trusted local agent**. Its modeled operations may create or delete *emulated* resources. The optional remote ChatGPT diagnostic plugin **cannot create resources**; it exposes only three read-only diagnostic tools.
+
+</details>
+
+**[See every measured operation, methodology and limitations →](docs/COVERAGE.md)**
+
+AWS publishes its own [emulator fidelity reports with releases](https://github.com/aws/aws-emulator/releases). Our probe results are a much narrower smoke test, **not an AWS parity percentage**.
+
+## Connect an AI agent
+
+The default transport is **MCP stdio**. The Node launcher starts a disposable network-isolated Docker instance containing the Python MCP server and the official emulator.
+
+~~~bash
+aws-emulator-mcp config vscode     # JSON for an editor with a servers configuration
+aws-emulator-mcp config copilot     # JSON for compatible mcpServers clients
+~~~
+
+Copy the generated JSON into your supported local MCP client's configuration. The launcher uses the installed absolute Node executable and MCP entry point; it does not open a public listener. See [client installation and limitations](docs/DOCKER_NPM_BETA.md) and [MCP client compatibility tests](tests/external_clients/).
+
+**Try this prompt:**
+
+> Check the local emulator identity. Show which EC2 and Lambda read-only operations have actually responded. Then run the S3 recovery experiment and tell me whether the expected failure, repair and scoped cleanup all passed. Distinguish modeled APIs from tested ones.
+
+## What runs where?
+
+<p align="center"><img src="docs/assets/architecture.svg" alt="Architecture diagram: local AI agent, Node CLI, network-isolated Docker, curated Python MCP tools, SDK bridge, and signed AWS Emulator, returning verified results without host mounts or production AWS credentials." width="100%"></p>
+
+| Boundary | Guarantee in the current Docker route |
+|:--|:--|
+| **Credentials** | Emulator-issued temporary credentials; no host AWS profile forwarded |
+| **Network** | Container launched with `--network none`; API traffic stays on its loopback |
+| **Host access** | No host volume mounts or forwarded ports; remote Docker contexts and nonlocal `DOCKER_HOST` rejected |
+| **API calls** | SDK calls bound to emulator-issued HTTPS and verified local CA; redirects and external proxies refused |
+| **Experiments** | Fixed allowlist, synthetic names, per-run assertions; cleanup failures cause failing reports |
+| **Important limitation** | This is **not production AWS**. Emulator state is temporary; IAM policy enforcement, API fidelity and service behavior differ |
+
+For a closer look at security constraints, see [SECURITY.md](SECURITY.md). For an explanation of the two execution routes, see [Docker/npm architecture](docs/DOCKER_NPM_BETA.md).
+
+## CI: real tests, not a decorative badge
+
+[![Quality gates](https://github.com/B11-Health/aws-emulator-mcp/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/B11-Health/aws-emulator-mcp/actions/workflows/tests.yml)
+
+GitHub Actions runs these independent gates on pull requests and pushes:
+
+| Gate | Checks performed |
+|:--|:--|
+| Linux / Python 3.10 + 3.12 | Unit tests, source and credential scanning, Bandit medium/high threshold, wheel packaging, MCP protocol tests |
+| Windows source preview | Python/security suite, PowerShell parsing, **non-mutating** install preview (not a cold Docker onboarding test) |
+| npm packaging | CLI tests, source tarball inspection, installed MCP configuration |
+| Official MCP SDK clients | Python and TypeScript interoperability against legacy and modern MCP protocol versions |
+| Docker integration | Signed-emulator Docker image, doctor, real S3/DynamoDB/SQS order demo, **20 API probes**, SDK operations, 32-tool MCP session, cleanup |
+| Signed-emulator E2E | Clean Ubuntu setup, real API tests, repeat reliability measurements and resource cleanup |
+
+[Browse live Actions](https://github.com/B11-Health/aws-emulator-mcp/actions/workflows/tests.yml) · [Release QA evidence](RELEASE_QA.md) · [Known stable-release gates](docs/RELEASE_GATES.md)
+
+## Choose the right tool
+
+- **AWS Emulator itself** provides the API engine, SDK/CLI compatibility, official agent skill and upstream fidelity information. You do not need this MCP bridge to use the emulator directly.
+- **AWS Emulator MCP** offers a client-neutral local MCP interface, safety boundaries, curated experiments and measured read-only probes, plus a broader SDK model bridge.
+- **LocalStack MCP** is a different emulator/integration ecosystem with richer deployment, logs and chaos workflows. We do **not** claim feature parity with it.
+
+See the [competitive benchmark and positioning](docs/COMPETITIVE_BENCHMARK.md) for scope and tradeoffs.
+
+## Contribute to real coverage
+
+The biggest help right now is **independent first-run testing**, reproducible API evidence across more AWS services, and a genuinely useful application-level integration demo. If you find a modeled operation that AWS Emulator returns as unsupported, document the exact emulator version, service, operation and sanitized response—do not treat model presence as proof.
+
+- [Issues and reproducible bug reports](https://github.com/B11-Health/aws-emulator-mcp/issues)
+- [Contributing guide](CONTRIBUTING.md)
+- [Product roadmap](docs/PRODUCT_VISION.md)
+- [Safety disclosures](SECURITY.md)
+- [MIT license](LICENSE)
 
 ---
 
-## Quickest install on Windows
-
-Requirements: Windows with Ubuntu WSL2 already configured, and internet access for the first AWS Emulator download. No Docker or real AWS credentials needed. If WSL is missing, install it using an elevated terminal:
-
-    wsl --install -d Ubuntu
-
-**Install from the public GitHub source, not a ZIP.** Open PowerShell:
-
-    git clone https://github.com/B11-Health/aws-emulator-mcp.git
-    cd aws-emulator-mcp
-    .\install.cmd
-
-Or clone in a Git desktop client and double-click install.cmd inside the checked-out folder. The installer:
-
-1. Copies the MCP project to a stable per-user folder under %LOCALAPPDATA%\AWS-Emulator-MCP\v0.3.0
-2. Reuses a valid local emulator or downloads and verifies the AWS-signed Linux package
-3. Starts or checks local HTTPS and generated emulator-only credentials
-4. Performs STS/S3/DynamoDB/SQS diagnostics, test resources, and scoped cleanup
-5. Runs an independent legacy + modern MCP protocol smoke test and creates client JSON configs
-
-The installed project stays usable even if the original Git checkout is moved or deleted. The installer **never silently edits an existing MCP client configuration**. First-time installation requires downloading the sizable official emulator package, so speed depends on the network.
-
-The generated files are:
-
-- generated/copilot-mcp.windows-wsl.json — native VS Code Copilot configuration (recommended; mcpServers).
-- generated/mcp-client.windows-wsl.json — generic desktop MCP client.
-- generated/vscode-mcp.windows-wsl.json — deprecated editor-managed VS Code configuration (servers).
-
-For current **VS Code Copilot**, double-click **connect-copilot.cmd** after installation. This is an opt-in action separate from install.cmd. It adds only aws-emulator-local to the native Copilot user configuration (under %USERPROFILE%/.copilot/mcp-config.json or %COPILOT_HOME%/mcp-config.json), preserves other entries, and backs up the old file. Run connect-copilot.cmd -Preview to inspect the proposed change without modifying anything. Conflicts and unsupported JSONC are refused. For VS Code opened inside a remote WSL execution environment, use the Linux-native configuration instead of a Windows launcher.
-
-**Double-click demo.cmd** to run the synthetic order scenario and review the report.
-
-## Linux quickstart
-
-Supported and tested path: Debian/Ubuntu on amd64 or arm64, Python 3.10+, curl, GPG, and dpkg-deb. From the extracted project:
-
-    bash install.sh
-
-This uses a rootless, AWS-signature-verified emulator installation. It prints the generated Linux MCP client configurations, including native Copilot. For the order demo:
-
-    bash scripts/order_demo_linux.sh
-
-Official macOS setup relies on Docker. We have not verified a macOS one-click installer in this release.
-
-## A real end-to-end order workflow
-
-The MCP tool **emulator_order_demo** creates a fresh synthetic order and unique local resources. It stores the order in DynamoDB, enqueues its ID in SQS, initially fails to fetch a missing S3 receipt, repairs that by writing the receipt, validates the record and receipt, acknowledges the queue message, and removes only the resources it created. It reports steps, timings, assertions, recovery, and cleanup. This is an isolated synthetic test, not a claim that Lambda or EventBridge automatically executed.
-
-The **emulator_self_test** tool provides a shorter STS/S3/DynamoDB/SQS check with cleanup. The **emulator_doctor** tool checks the executable, credentials, CA, local HTTPS endpoint, and emulated STS identity, giving actionable fixes.
-
-## 29 curated MCP tools
-
-| Category | Tools |
-| --- | --- |
-| Runtime (5) | emulator_status, emulator_start, emulator_stop, emulator_health, emulator_doctor |
-| Identity (1) | emulator_identity |
-| S3 (7) | s3_create_bucket, s3_list_buckets, s3_list_objects, s3_put_object, s3_get_object, s3_delete_object, s3_delete_bucket |
-| DynamoDB (6) | dynamodb_create_table, dynamodb_list_tables, dynamodb_describe_table, dynamodb_put_item, dynamodb_get_item, dynamodb_delete_table |
-| SQS (6) | sqs_create_queue, sqs_list_queues, sqs_send_message, sqs_receive_messages, sqs_delete_message, sqs_delete_queue |
-| Workflows (2) | emulator_self_test, emulator_order_demo |
-
-All tools target the fixed localhost emulator. The Python adapter uses only Python standard-library runtime dependencies. S3 supports UTF-8 text; DynamoDB supports a simple id/message string schema; SQS supports standard queues and text messages.
-
-## Connect to a compatible MCP client
-
-Use the generated JSON from the installer. Recommended default transport is **stdio** with no listener. An opt-in bearer-protected HTTP transport is included but binds to loopback only. **Do not publicly forward the local HTTP port.** ChatGPT web cannot directly connect to a localhost/WSL MCP server; a separately reviewed remote connector is necessary.
-
-Supported protocol eras: MCP 2025-03-26, 2025-06-18, 2025-11-25 and stateless 2026-07-28. Modern ping was removed from the protocol and is correctly rejected. More advanced extensions, streaming, and full AWS API fidelity are not claimed.
-
-## Independent official SDK interoperability
-
-The release pipeline runs both **official MCP SDK clients** against the real server process, not just synthetic fixtures:
-
-- Python SDK v2.3.0: legacy 2025-11-25 and modern 2026-07-28 negotiation, tools/list, and a local read-only tool call.
-- TypeScript SDK v2.4.0: legacy and modern negotiation, 27-tool discovery, and a local read-only tool call.
-
-These are **test-only dependencies** under tests/external_clients. The MCP adapter itself remains standard-library Python. Both test clients run without an emulator or AWS keys for protocol verification.
-
-## Private ChatGPT remote connector (optional)
-
-A separate, audited-by-tests **read-only** remote integration is available
-in remote_connector/README.md. It supports private ChatGPT custom MCP plugins
-over OpenAI client-certificate-authenticated HTTPS, using a WSS **outbound**
-Windows/WSL agent and a private 384-bit relay token. The plugin exposes only
-emulator_status, emulator_doctor and emulator_identity; no resource mutation.
-The core local stdio adapter remains zero-dependency. A real ChatGPT test
-returned Windows emulator version 1.0.322, port 9297 and 6/6 healthy checks.
-This does not constitute a public or multi-user release. Never disable mTLS
-or grant remote write tools without separate per-user OAuth 2.1 review.
-
-## Tests and independent verification
-
-Run the complete local tests:
-
-    python3 -m unittest discover -s tests -v
-
-Run the independent Astra-kit legacy + modern stdio checker:
-
-    python3 scripts/mcp_launch_check.py --out reports/mcp_launch_check.json --min-tools 27 -- python3 -u src/aws_emulator_mcp/server.py
-
-Run the live AWS Emulator integration suite:
-
-    python3 scripts/live_test.py
-
-When executing from an uninstalled source tree, set PYTHONPATH=src or use the supplied install/demo scripts. The CLI entry point for packaged installs is **aws-emulator-mcp-cli**, with doctor, catalog, self-test, and order-demo actions.
-
-The protocol checker and its 29 synthetic-fixture tests were adapted from the GPT-6 Astra launch kit. The checker previously expected ping on MCP 2026-07-28, which the protocol removed. We fixed the **checker** rather than weakening the server. The unit suite, smoke checker, and live emulator test must all pass before publishing; see RELEASE_QA.md for exact evidence and remaining gates.
-
-## Local-only security boundaries
-
-- HTTPS endpoint fixed to 127.0.0.1; TLS verifies the emulator-generated CA.
-- Only emulator-generated credentials; never uses your production AWS profile.
-- Redirects denied and outbound proxy settings ignored for emulator API calls.
-- Explicit schemas, bounded inputs, read-only and destructive tool annotations.
-- No public HTTP listener by default; optional HTTP requires a long bearer token.
-- Demo and self-test only delete unique resources minted in the current run.
-
-AWS Emulator does not enforce production IAM or resource policies. It has partial API fidelity and in-memory state. Successful emulator tests cannot replace cloud integration or production security testing. Read SECURITY.md and the [AWS Emulator docs](https://docs.aws.amazon.com/emulator/latest/userguide/getting-started.html).
-
-## Publication status
-
-**Public developer-preview source is available:** [B11-Health/aws-emulator-mcp](https://github.com/B11-Health/aws-emulator-mcp). A logged-out HTTPS clone, MIT license, and hosted CI have been verified. The earlier promotional video is retired as release evidence; rely on reproducible Docker/npm tests and issue reports. **A public repository is not a stable-release or production-certification claim.** Independent Windows cold-install, end-user desktop MCP experience and outside security review remain open. See [release gates](docs/RELEASE_GATES.md).
-
-## Measurable release benchmark
-
-Run the local engineering gates (Python on Windows automatically routes to WSL):
-
-    python scripts/gtm_benchmark.py --repetitions 5
-
-This measures unit/security tests, independent MCP protocol compatibility, S3/DynamoDB/SQS/STS workflows, p95 order latency, scoped cleanup, and leaked resource inventory. Reports are written under reports/gtm_latest.json and also rendered as a **self-contained, offline evidence dashboard** at reports/gtm_dashboard.html. Open the HTML in a browser to inspect actual scenario latencies, release gates, and cleanup outcomes. The dashboard does not contact external services or claim public release approval. A local pass is **not** public release approval. Independent Windows cold installation, real desktop-host UX, independent security review, public CI visibility and final independent MCP demo are separate gates in docs/RELEASE_GATES.md. See docs/COMPETITIVE_BENCHMARK.md for honest positioning against the official agent skill and LocalStack MCP.
+<sub>**AWS Emulator MCP** is an independent MIT-licensed integration distributed through the B11-Health GitHub account. It is **not** an Amazon Web Services product and is not affiliated with or endorsed by AWS. The official AWS Emulator is separately maintained by AWS and subject to its own license and limitations.</sub>

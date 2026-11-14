@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: AWS Emulator engine issues (upstream)
+    url: https://github.com/aws/aws-emulator/issues
+    about: Use this for core emulator bugs, fidelity gaps or API implementations, not the independent MCP adapter.

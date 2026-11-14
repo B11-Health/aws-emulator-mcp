@@ -1,6 +1,6 @@
 {
   "name": "aws-emulator-mcp",
-  "version": "0.4.0-beta.3",
+  "version": "0.4.0-beta.4",
   "description": "Local-first MCP adapter for the official AWS Emulator with an isolated Docker lab",
   "type": "module",
   "bin": {
@@ -10,9 +10,21 @@
     "node": ">=20"
   },
   "files": [
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "bin/aws-emulator-mcp.mjs",
     "docker/Dockerfile",
     "docker/entrypoint.sh",
+    "docs/assets/architecture.svg",
+    "docs/assets/hero.svg",
+    "docs/assets/real-cli-demo.gif",
+    "docs/assets/real-cli-demo.mp4",
+    "docs/COMPETITIVE_BENCHMARK.md",
+    "docs/COVERAGE.md",
+    "docs/DOCKER_NPM_BETA.md",
+    "docs/EXPERIMENT_LABS.md",
+    "docs/PRODUCT_VISION.md",
+    "docs/WHAT_YOU_CAN_BUILD.md",
     "scripts/install_wsl.sh",
     "src/aws_emulator_mcp/__init__.py",
     "src/aws_emulator_mcp/aws_sdk.py",

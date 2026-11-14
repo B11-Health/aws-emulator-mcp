@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "emulatorVersion": "Version: 1.0.343",
+  "modeledServiceCount": 436,
+  "probedServiceCount": 20,
+  "successfulProbes": 20,
+  "totalProbes": 20,
+  "results": [
+    {
+      "service": "sts",
+      "operation": "GetCallerIdentity",
+      "status": "responded",
+      "durationMs": 197
+    },
+    {
+      "service": "s3",
+      "operation": "ListBuckets",
+      "status": "responded",
+      "durationMs": 207.9
+    },
+    {
+      "service": "dynamodb",
+      "operation": "ListTables",
+      "status": "responded",
+      "durationMs": 173.1
+    },
+    {
+      "service": "sqs",
+      "operation": "ListQueues",
+      "status": "responded",
+      "durationMs": 170
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcs",
+      "status": "responded",
+      "durationMs": 238.3
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctions",
+      "status": "responded",
+      "durationMs": 165.3
+    },
+    {
+      "service": "cloudformation",
+      "operation": "ListStacks",
+      "status": "responded",
+      "durationMs": 228.4
+    },
+    {
+      "service": "iam",
+      "operation": "ListRoles",
+      "status": "responded",
+      "durationMs": 230.2
+    },
+    {
+      "service": "events",
+      "operation": "ListEventBuses",
+      "status": "responded",
+      "durationMs": 479.4
+    },
+    {
+      "service": "sns",
+      "operation": "ListTopics",
+      "status": "responded",
+      "durationMs": 175.1
+    },
+    {
+      "service": "secretsmanager",
+      "operation": "ListSecrets",
+      "status": "responded",
+      "durationMs": 163
+    },
+    {
+      "service": "logs",
+      "operation": "DescribeLogGroups",
+      "status": "responded",
+      "durationMs": 194.2
+    },
+    {
+      "service": "apigateway",
+      "operation": "GetRestApis",
+      "status": "responded",
+      "durationMs": 162.8
+    },
+    {
+      "service": "stepfunctions",
+      "operation": "ListStateMachines",
+      "status": "responded",
+      "durationMs": 183
+    },
+    {
+      "service": "bedrock",
+      "operation": "ListFoundationModels",
+      "status": "responded",
+      "durationMs": 188.5
+    },
+    {
+      "service": "kms",
+      "operation": "ListKeys",
+      "status": "responded",
+      "durationMs": 168
+    },
+    {
+      "service": "rds",
+      "operation": "DescribeDBInstances",
+      "status": "responded",
+      "durationMs": 189.9
+    },
+    {
+      "service": "ecs",
+      "operation": "ListClusters",
+      "status": "responded",
+      "durationMs": 191.7
+    },
+    {
+      "service": "ecr",
+      "operation": "DescribeRepositories",
+      "status": "responded",
+      "durationMs": 223.7
+    },
+    {
+      "service": "ssm",
+      "operation": "DescribeParameters",
+      "status": "responded",
+      "durationMs": 250.3
+    }
+  ],
+  "scope": "Successful responses to selected read-only operations in an isolated local AWS Emulator instance. No AWS fidelity or full service coverage is inferred from this report.",
+  "upstreamFidelity": "https://github.com/aws/aws-emulator/releases"
+}

@@ -14,7 +14,7 @@ function cli(...args) {
 test('help states a limited tool surface, not full AWS parity', () => {
   const result = cli('help');
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /29 curated \+ 2 modeled-SDK tools/);
+  assert.match(result.stdout, /29 curated \+ 3 SDK bridge tools/);
   assert.match(result.stdout, /No AWS account/);
   assert.doesNotMatch(result.stdout, /1000|full AWS API parity/i);
 });
@@ -45,7 +45,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.3');
+  assert.equal(pkg.version, '0.4.0-beta.4');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -81,4 +81,12 @@ test('DOCKER_HOST cannot redirect a local experiment to a remote Docker daemon',
   assert.equal(result.status, 1);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /Refusing nonlocal DOCKER_HOST/);
+});
+
+
+test('coverage command validates arguments before invoking Docker', () => {
+  assert.equal(cli('coverage','--json','--json').status,2);
+  assert.equal(cli('coverage','../../etc/passwd').status,2);
+  assert.equal(cli('coverage','--unsafe-remote').status,2);
+  assert.equal(cli('coverage','ec2','lambda').status,2);
 });

@@ -156,3 +156,8 @@ The first release succeeds when someone can **install it, ask for one concrete e
 ---
 
 **Next:** [Install and run it](../README.md#quickest-install-on-windows) · [Order workflow evidence](../examples/order_workflow.md) · [Security boundaries](../SECURITY.md) · [Official AWS Emulator](https://github.com/aws/aws-emulator)
+
+
+### Beyond the curated S3, SQS and DynamoDB tools
+
+The isolated Docker MCP includes three additional SDK bridge tools, so a local agent can discover any operation modeled by its installed botocore version, invoke those that AWS Emulator implements, and measure **20 allowlisted read-only API probes**. The [verified coverage snapshot](COVERAGE.md) records successful read-only responses from 20 different service areas on AWS Emulator v1.0.343. SDK model discovery is not implementation proof or AWS parity.

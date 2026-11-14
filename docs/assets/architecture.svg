@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description" viewBox="0 0 1260 464">
+<title id="title">AWS Emulator MCP local architecture and security boundary</title>
+<desc id="description">A local MCP client calls the Node launcher, which starts a network-isolated Docker lab with a Python MCP server, the signed official AWS Emulator, and modeled SDK services. Results return as structured evidence. No host mounts, no forwarded ports, no real AWS credentials. A modeled SDK operation does not necessarily work in the emulator.</desc>
+<defs>
+ <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0C172A"/><stop offset="1" stop-color="#12253A"/></linearGradient>
+ <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0 0L10 5L0 10" fill="none" stroke="#75DECE" stroke-width="1.7"/></marker>
+</defs>
+<rect width="1260" height="464" rx="22" fill="url(#bg)"/>
+<text x="44" y="51" fill="#ECF7FF" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="26">The local-first architecture</text>
+<text x="44" y="81" fill="#A2B6C8" font-family="Inter,Arial,sans-serif" font-size="15">An agent gets access to an isolated emulator — not to your production AWS account.</text>
+<rect x="35" y="120" width="236" height="212" rx="17" fill="#13283C" stroke="#426E84" stroke-width="1.5"/>
+<text x="55" y="155" fill="#71E5D1" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">01 / MCP CLIENT</text>
+<text x="55" y="197" fill="#ECF7FF" font-family="Inter,Arial,sans-serif" font-size="24" font-weight="700">Your AI</text>
+<text x="55" y="229" fill="#B7CBDB" font-family="Inter,Arial,sans-serif" font-size="16">VS Code / agent /</text>
+<text x="55" y="251" fill="#B7CBDB" font-family="Inter,Arial,sans-serif" font-size="16">compatible host</text>
+<text x="55" y="300" fill="#7D93A7" font-family="Inter,Arial,sans-serif" font-size="14">Stdio on your machine</text>
+<path d="M277 224H316" stroke="#75DECE" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="328" y="120" width="240" height="212" rx="17" fill="#13283C" stroke="#426E84" stroke-width="1.5"/>
+<text x="348" y="155" fill="#71E5D1" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700">02 / NODE LAUNCHER</text>
+<text x="348" y="195" fill="#ECF7FF" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700">aws-emulator-mcp</text>
+<text x="348" y="230" fill="#B7CBDB" font-family="Inter,Arial,sans-serif" font-size="16">Doctor · Coverage</text>
+<text x="348" y="253" fill="#B7CBDB" font-family="Inter,Arial,sans-serif" font-size="16">Experiments · MCP</text>
+<text x="348" y="300" fill="#7D93A7" font-family="Inter,Arial,sans-serif" font-size="14">Local Docker only</text>
+<path d="M574 224H611" stroke="#75DECE" stroke-width="3" marker-end="url(#arrow)"/>
+<rect x="625" y="110" width="591" height="234" rx="19" fill="#101E2C" stroke="#5B9BA3" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="647" y="143" fill="#92E9D8" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="14">03 / NETWORK-ISOLATED DOCKER LAB</text>
+<rect x="648" y="163" width="248" height="148" rx="13" fill="#1A3145" stroke="#41677C"/>
+<text x="664" y="194" fill="#EFF9FE" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700">Python MCP</text>
+<text x="664" y="223" fill="#BCD1DF" font-family="Inter,Arial,sans-serif" font-size="15">29 curated tools</text>
+<text x="664" y="247" fill="#BCD1DF" font-family="Inter,Arial,sans-serif" font-size="15">3 SDK bridge tools</text>
+<text x="664" y="283" fill="#93AABE" font-family="Inter,Arial,sans-serif" font-size="13">Strict input + local TLS</text>
+<path d="M902 230H932" stroke="#75DECE" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="947" y="163" width="246" height="148" rx="13" fill="#1A3145" stroke="#41677C"/>
+<text x="963" y="194" fill="#EFF9FE" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700">AWS Emulator</text>
+<text x="963" y="222" fill="#BCD1DF" font-family="Inter,Arial,sans-serif" font-size="15">Official signed binary</text>
+<text x="963" y="246" fill="#BCD1DF" font-family="Inter,Arial,sans-serif" font-size="15">AWS API endpoint</text>
+<text x="963" y="281" fill="#93AABE" font-family="Inter,Arial,sans-serif" font-size="13">Fidelity varies by API</text>
+<rect x="35" y="363" width="1181" height="66" rx="13" fill="#13283B" stroke="#365368"/>
+<text x="55" y="391" fill="#91EBDD" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700">RESULT</text>
+<text x="132" y="391" fill="#D6E8F2" font-family="Inter,Arial,sans-serif" font-size="15">Observed API responses + structured assertions + cleanup verification</text>
+<text x="55" y="414" fill="#A0B7C9" font-family="Inter,Arial,sans-serif" font-size="13">No Docker network · No host ports · No host mounts · No production AWS credentials forwarded</text>
+</svg>

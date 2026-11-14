@@ -1,3 +1,10 @@
+## v0.4.0-beta.4 - verified service discovery and coverage reports
+
+- Add dynamic, paginated AWS SDK service and operation discovery across all modeled services.
+- Add bounded read-only SDK coverage probes and a CLI coverage command, with per-operation status and no full AWS API fidelity claim.
+- Improve README, documentation and demo visuals to distinguish 29 curated and 3 isolated SDK tools.
+- Continue the source-only GitHub beta; neither npm nor Docker registries are published.
+
 ## v0.4.0-beta.3 (source beta) - reproducible AWS experiment labs
 
 - Add `aws-emulator-mcp experiments` and `aws-emulator-mcp experiment <id> [--json]` with structured evidence and cleanup, and corresponding `lab_catalog` / `lab_run` MCP tools.

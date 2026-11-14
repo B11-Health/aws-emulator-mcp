@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.3';
+const VERSION = '0.4.0-beta.4';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -34,8 +34,9 @@ Usage: aws-emulator-mcp <command>
 Commands:
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run 29 curated + 2 modeled-SDK tools via local MCP
+  mcp              Run 29 curated + 3 SDK bridge tools via local MCP
   catalog          List implemented MCP tools
+  coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   self-test        Exercise supported services and scoped cleanup
@@ -45,7 +46,7 @@ Commands:
 
 Docker is required to run experiments and MCP tools; listing experiments or printing config needs only Node.
 No AWS account or Python is required on the host.
-Use --json with doctor, demo, self-test, catalog, experiments, or experiment for machine-readable results.\nFirst build downloads and verifies the official AWS Emulator.
+Use --json with doctor, demo, self-test, catalog, coverage, experiments, or experiment for machine-readable results.\nFirst build downloads and verifies the official AWS Emulator.
 Source: ${SOURCE}
 `);
 }
@@ -150,6 +151,21 @@ function renderReport(command, result) {
       '  Duration: ' + (result.duration_ms / 1000).toFixed(2) + ' seconds',
       '  ' + (result.passed ? 'All checks passed; lab resources removed.' :
         'Failure: ' + (result.error || 'inspect JSON evidence')));
+  } else if (command === 'coverage') {
+    lines.push('  Read-only SDK coverage audit', '',
+      '  Emulator: ' + (result.emulatorVersion || 'unknown'),
+      '  SDK-modeled services: ' + result.modeledServiceCount,
+      '  Read-only API probes: ' + result.totalProbes,
+      '  Responded: ' + result.successfulProbes + '/' + result.totalProbes, '');
+    if (result.serviceProbeStatus === 'not_probed') {
+      lines.push('  NOT PROBED: this service has a model but is outside the safe probe list.');
+    }
+    for (const probe of result.results || []) {
+      lines.push('  ' + (probe.status === 'responded' ? green('PASS') : '----') +
+        '  ' + probe.service + '.' + probe.operation + '  (' + probe.status + ')');
+    }
+    lines.push('', '  Smoke responses are NOT proof of full AWS API or IAM fidelity.',
+      '  Upstream fidelity: https://github.com/aws/aws-emulator/releases');
   } else if (command === 'catalog') {
     lines.push('  ' + result.length + ' available MCP tools', '');
     for (const tool of result) lines.push('  - ' + tool.name);
@@ -188,6 +204,25 @@ function config(format = 'copilot') {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'coverage') {
+    const withJson = args.includes('--json');
+    const rest = args.filter(x => x !== '--json');
+    if (args.length > 2 || rest.length > 1 ||
+        (rest.length && !/^[a-z][a-z0-9-]{0,63}$/.test(rest[0])) ||
+        args.filter(x => x === '--json').length > 1) {
+      fail('Usage: aws-emulator-mcp coverage [service] [--json]', 2);
+    }
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const result = await runCaptured(dockerArgs('coverage', [rest[0] || 'all']));
+    let parsed;
+    try { parsed = JSON.parse(result.raw); }
+    catch { fail('Could not parse local coverage response (exit ' + result.code + ')', result.code || 1); }
+    if (withJson) stdout.write(JSON.stringify(parsed, null, 2) + '\n');
+    else renderReport('coverage', parsed);
+    if (result.code !== 0) fail('Read-only coverage checks failed (inspect JSON)', result.code || 1);
+    return;
+  }
   if (command === 'experiments') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
       fail('Usage: aws-emulator-mcp experiments [--json]', 2);

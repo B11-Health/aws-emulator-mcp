@@ -79,6 +79,79 @@ class SDKBridgeTests(unittest.TestCase):
             self.assertNotIn("aws_sdk_invoke", m.FUNCTIONS)
             self.assertEqual(len(m.TOOLS), 29)
 
+    def test_discover_paginates_every_model_and_supports_filtering(self):
+        class Model:
+            operation_names = ["DescribeBar", "CreateFoo", "DescribeFoo", "ListFoos"]
+            def operation_model(self, name):
+                class Operation:
+                    input_shape = None
+                return Operation()
+        class Session:
+            def get_available_services(self): return ["s3", "ec2", "lambda", "iam"]
+            def get_service_model(self, service): return Model()
+        class SessionModule:
+            @staticmethod
+            def get_session(): return Session()
+        fake = (m, SessionModule, None, Exception, Exception)
+        with patch.object(aws_sdk, "_runtime", return_value=fake):
+            page = aws_sdk.discover(offset=1, limit=2)
+            self.assertEqual(page["modeledServiceCount"], 4)
+            self.assertEqual(page["services"], ["iam", "lambda"])
+            self.assertEqual(page["nextOffset"], 3)
+            exact = aws_sdk.discover("s3", query="Describe", offset=1, limit=1)
+            self.assertEqual(exact["matchedOperationCount"], 2)
+            self.assertEqual(exact["operations"][0]["operation"], "DescribeFoo")
+            self.assertEqual(exact["operations"][0]["status"], "modeled_not_verified")
+            self.assertIsNone(exact["nextOffset"])
+
+    def test_discover_rejects_unsafe_page_arguments(self):
+        for offset, limit, query in ((-1, 10, None), (0, 0, None),
+                                     (0, 101, None), (True, 1, None),
+                                     (0, False, None), (0, 10, "x"*65)):
+            with self.subTest(offset=offset,limit=limit), self.assertRaises(ValueError):
+                aws_sdk._page(offset, limit, query)
+
+    def test_readonly_probe_audit_never_calls_arbitrary_method(self):
+        class Session:
+            def get_available_services(self): return ["ec2", "s3"]
+        class SessionModule:
+            @staticmethod
+            def get_session(): return Session()
+        class Meta:
+            method_to_api_mapping={"describe_vpcs":"DescribeVpcs"}
+        class Client:
+            meta=Meta()
+            def describe_vpcs(self): return {"Vpcs":[]}
+        fake=(m,SessionModule,None,Exception,Exception)
+        with patch.object(aws_sdk, "_runtime", return_value=fake), \
+             patch.object(aws_sdk, "_client", return_value=(m,None,Client(),Exception,Exception)) as call, \
+             patch.object(m, "doctor", return_value={"emulator_version":"test-version"}):
+            report=aws_sdk.coverage("ec2")
+            self.assertEqual(report["totalProbes"],1)
+            self.assertEqual(report["successfulProbes"],1)
+            self.assertEqual(report["emulatorVersion"],"test-version")
+            self.assertEqual(report["results"][0]["operation"],"DescribeVpcs")
+            self.assertEqual(report["results"][0]["status"],"responded")
+            call.assert_called_once_with("ec2")
+            other=aws_sdk.coverage("s3")
+            self.assertEqual(other["totalProbes"],1)
+            self.assertEqual(other["results"][0]["status"],"not_modeled")
+            self.assertEqual(aws_sdk.coverage.__doc__.find("AWS fidelity")>=0, True)
+
+    def test_coverage_distinguishes_unprobed_service(self):
+        class Session:
+            def get_available_services(self): return ["ec2", "athena"]
+        class SessionModule:
+            @staticmethod
+            def get_session(): return Session()
+        with patch.object(aws_sdk, "_runtime", return_value=(m,SessionModule,None,Exception,Exception)), \
+             patch.object(m,"doctor",return_value={"emulator_version":"test"}):
+            report=aws_sdk.coverage("athena")
+            self.assertEqual(report["serviceProbeStatus"],"not_probed")
+            self.assertEqual(report["totalProbes"],0)
+            with self.assertRaises(m.LocalError):
+                aws_sdk.coverage("not-real")
+
     def test_model_bridge_requires_container(self):
         if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
             with self.assertRaisesRegex(m.LocalError, "isolated AWS Emulator MCP Docker"):
