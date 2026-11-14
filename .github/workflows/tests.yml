@@ -135,7 +135,7 @@ jobs:
           declared=set(json.loads(pathlib.Path('package.json').read_text())['files'])
           allowed=declared|{'package.json','LICENSE','README.md'}
           assert set(paths)==allowed, {'extra':sorted(set(paths)-allowed),'missing':sorted(allowed-set(paths))}
-          assert 'docs/assets/hero.svg' in paths and 'docs/assets/real-cli-demo.gif' in paths
+          assert 'docs/assets/hero.svg' in paths and 'docs/assets/demos/tour-preview.gif' in paths and 'docs/onboarding/index.html' in paths
           assert 'docs/COVERAGE.md' in paths
           assert not any('__pycache__' in p or p.endswith('.pyc') or '.env' in p or 'credentials' in p.lower() for p in paths)
           print('npm_package_file_count',len(paths),'strict allowlist PASS')

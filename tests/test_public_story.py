@@ -5,7 +5,8 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 PAGES=("README.md","docs/WHAT_YOU_CAN_BUILD.md","docs/LAUNCH_DEMO.md",
-       "docs/linkedin-draft.md","docs/APP_DEBUGGING.md")
+       "docs/linkedin-draft.md","docs/APP_DEBUGGING.md",
+       "docs/ONBOARDING.md","docs/DEMO_GALLERY.md")
 
 class ProductStoryTests(unittest.TestCase):
     def test_internal_markdown_links_resolve(self):
@@ -26,7 +27,7 @@ class ProductStoryTests(unittest.TestCase):
         self.assertIn("Your AWS playground",lead)
         self.assertIn("No AWS account",lead)
         full=(ROOT/"README.md").read_text(encoding="utf-8")
-        for service in ("S3","DynamoDB","SQS","EC2","Lambda","IAM"):
+        for service in ("S3","DynamoDB","SQS","EC2","SNS","IAM"):
             self.assertIn(service,full)
 
     def test_public_identity_has_no_unrelated_nonprofit_brand(self):
@@ -43,7 +44,8 @@ class ProductStoryTests(unittest.TestCase):
             text=(ROOT/file).read_text(encoding="utf-8")
             self.assertIn("read-only",text)
             self.assertIn("29",text)
-        self.assertIn("cannot create", (ROOT/"README.md").read_text(encoding="utf-8"))
+        self.assertIn("does not execute code supplied by an agent",
+                      (ROOT/"README.md").read_text(encoding="utf-8"))
 
     def test_readme_media_is_real_and_repo_local(self):
         import xml.etree.ElementTree as ET
@@ -60,12 +62,15 @@ class ProductStoryTests(unittest.TestCase):
             root=ET.parse(image).getroot()
             self.assertEqual(root.tag,"{http://www.w3.org/2000/svg}svg")
             self.assertIn("title", image.read_text())
-        mp4=ROOT/"docs/assets/real-cli-demo.mp4"
-        gif=ROOT/"docs/assets/real-cli-demo.gif"
-        self.assertTrue(mp4.read_bytes()[4:8]==b"ftyp")
-        self.assertTrue(gif.read_bytes().startswith(b"GIF89a"))
-        self.assertLess(mp4.stat().st_size,5_000_000)
-        self.assertLess(gif.stat().st_size,5_000_000)
+        gif=ROOT/"docs/assets/demos/tour-preview.gif"
+        self.assertTrue(gif.read_bytes().startswith((b"GIF89a",b"GIF87a")))
+        self.assertLess(gif.stat().st_size,3_000_000)
+        for name in ("product-tour","fix-the-bug","getting-started","linkedin-launch"):
+            movie=ROOT/"docs/assets/demos"/(name+".mp4")
+            poster=ROOT/"docs/assets/demos"/(name+"-poster.jpg")
+            self.assertEqual(movie.read_bytes()[4:8],b"ftyp")
+            self.assertTrue(poster.read_bytes().startswith(b"\xff\xd8"))
+            self.assertLess(movie.stat().st_size,5_000_000)
 
     def test_readme_coverage_claims_are_specific_and_verifiable(self):
         import json
@@ -73,8 +78,8 @@ class ProductStoryTests(unittest.TestCase):
         sys.path.insert(0, str(ROOT / "src"))
         from aws_emulator_mcp import aws_sdk
         body=(ROOT/"README.md").read_text(encoding="utf-8")
-        self.assertIn("29 tools",body)
-        self.assertIn("3 additional MCP tools",body)
+        self.assertIn("29 curated MCP tools",body)
+        self.assertIn("5 Docker-only tools",body)
         self.assertIn("436 service models",body)
         self.assertIn("20/20 read-only",body)
         self.assertIn("not yet published on npm",body)
@@ -111,13 +116,27 @@ class ProductStoryTests(unittest.TestCase):
 
     def test_published_demo_scope_matches_actual_test(self):
         readme=(ROOT/"README.md").read_text(encoding="utf-8")
-        playbook=(ROOT/"docs/WHAT_YOU_CAN_BUILD.md").read_text(encoding="utf-8")
-        for page in (readme,playbook):
-            self.assertIn("12",page)
-            self.assertIn("two",page.lower())
-            self.assertRegex(page.lower(),r"\b(?:four|4)\b")
+        self.assertIn("SQS fulfillment messages",readme)
+        self.assertIn("7/7",readme)
+        self.assertIn("2",readme)
+        self.assertIn("1",readme)
         self.assertIn("synthetic",readme.lower())
         self.assertIn("not production aws",readme.lower())
+        self.assertIn("bundled reference fix",readme)
+        self.assertNotIn("Code Gym",readme)
+        self.assertNotIn("Real tools. Real emulator.",readme)
+        self.assertNotIn("Kokoro",readme)
+
+    def test_onboarding_controls_and_saved_evidence(self):
+        text=(ROOT/"docs/onboarding/tour.js").read_text(encoding="utf-8")
+        html=(ROOT/"docs/onboarding/index.html").read_text(encoding="utf-8")
+        for item in ('Find the bug','Verify the fix','20/20','2','1'):
+            self.assertIn(item,text+html)
+        for control in ('id="next"','id="back"','id="play"','id="pointer"'):
+            self.assertIn(control,html)
+        self.assertIn('pointermove',text)
+        self.assertIn('prefers-reduced-motion',
+                      (ROOT/"docs/onboarding/style.css").read_text())
 
 if __name__=="__main__":
     unittest.main()
