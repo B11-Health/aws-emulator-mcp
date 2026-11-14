@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.4 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.5 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
@@ -76,4 +76,15 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.4`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b4`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.5`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b5`. The v0.3.0 Windows source installer remains a separate compatibility path.
+
+## Versioned regression gate (beta.5)
+
+A successful list/describe call is not full service implementation. To find **new failures in the selected 20 read-only probes** after an emulator update, save two reports and compare:
+
+~~~bash
+aws-emulator-mcp coverage --json > current.json
+aws-emulator-mcp coverage-diff path/to/baseline.json current.json --json
+~~~
+
+The comparator checks the exact service+operation set; it refuses incomparable snapshots, flags status degradation, and does not execute either JSON file. CI compares each current probe result to the recorded v1.0.343 smoke baseline. [Coverage methodology](COVERAGE.md).

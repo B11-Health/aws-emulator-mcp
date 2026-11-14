@@ -54,3 +54,8 @@ These are **engineering gates**, not an outside security certification, complete
 Track time-to-first-successful-test, installation completion rate, reproducible issue rate, returning developers and useful contributions. GitHub stars matter, but not as a proxy for actual adoption.
 
 References: https://docs.aws.amazon.com/emulator/ and https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http
+
+
+## v0.4.0-beta.5 candidate — additional bounded verification
+
+The current source adds five stateful synthetic experiments (SNS/SQS, EC2 network control plane, EventBridge event bus, SSM Parameter Store, and Secrets Manager) and a local coverage snapshot comparator. A valid regression comparison requires identical API probe sets; a drop from a previously successful operation produces a failing exit status. This does **not** verify arbitrary AWS operations, encryption, IAM, event routing, production network behavior or security. Final release approval still requires independent Windows/macOS cold onboarding, a public source tag, and external review.

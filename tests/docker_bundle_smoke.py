@@ -54,8 +54,13 @@ def verify():
     assert labs.returncode == 0, labs.stderr[-800:]
     available = json.loads(labs.stdout)
     assert [x["id"] for x in available["experiments"]] == [
-        "order-recovery", "s3-recovery", "dynamodb-overwrite"]
-    for experiment in ("s3-recovery", "dynamodb-overwrite"):
+        "order-recovery", "s3-recovery", "dynamodb-overwrite",
+        "sns-sqs-delivery", "ec2-vpc-lifecycle", "eventbridge-bus",
+        "ssm-parameter", "secretsmanager-secret"]
+    for experiment in ("s3-recovery", "dynamodb-overwrite",
+                       "sns-sqs-delivery", "ec2-vpc-lifecycle",
+                       "eventbridge-bus", "ssm-parameter",
+                       "secretsmanager-secret"):
         attempt = run("experiment", extra=[experiment], json_mode=True, timeout=120)
         assert attempt.returncode == 0, attempt.stderr[-800:]
         proof = json.loads(attempt.stdout)
@@ -76,6 +81,21 @@ def verify():
     assert evidence["totalProbes"] == 20
     assert evidence["successfulProbes"] == 20, evidence
     assert all(row["status"] == "responded" for row in evidence["results"])
+    from tempfile import NamedTemporaryFile
+    with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp:
+        temp.write(json.dumps(evidence))
+        current = temp.name
+    try:
+        baseline = ROOT / "docs/evidence/coverage-aws-emulator-1.0.343.json"
+        diff = run("coverage-diff", json_mode=True, extra=[str(baseline), current])
+        assert diff.returncode == 0, diff.stderr[-900:]
+        comparison = json.loads(diff.stdout)
+        assert comparison["passed"] and comparison["comparable"]
+        assert not comparison["regressions"]
+        print("SDK_REGRESSION_DIFF_PASS", comparison["baselineVersion"],
+              "vs", comparison["currentVersion"], flush=True)
+    finally:
+        Path(current).unlink(missing_ok=True)
     print("SDK_COVERAGE_PASS", evidence["successfulProbes"],
           "of", evidence["totalProbes"], "read-only API probes across models",
           evidence["modeledServiceCount"], flush=True)
@@ -126,7 +146,7 @@ def verify():
     assert bucket not in [b["Name"] for b in final], "Emulated SDK bucket leaked"
     assert rows[11]["result"]["isError"]
     assert "Operation not present" in rows[11]["result"]["content"][0]["text"]
-    assert len(content(rows[12])["experiments"]) == 3
+    assert len(content(rows[12])["experiments"]) == 8
     proof=content(rows[13])
     assert proof["passed"] and proof["experiment"] == "s3-recovery"
     assert all(x["passed"] for x in proof["cleanup"])

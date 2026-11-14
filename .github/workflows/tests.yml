@@ -141,7 +141,7 @@ jobs:
           print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.4.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.5.tgz
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/aws-emulator-mcp-mcp-config.json
           python3 - <<'PY'
           import json
@@ -162,7 +162,7 @@ jobs:
       - name: Install the packed npm package in isolation
         run: |
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.4.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.5.tgz
       - name: Build signed official emulator and run actual Docker MCP demo and SDK API calls
         run: |
           export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
@@ -187,10 +187,24 @@ jobs:
           for row in j["results"]:
               print("|",row["service"],"|",row["operation"],"|",row["status"],"|")
           PY_END
+      - name: Compare current API smoke results against last published baseline
+        run: |
+          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs coverage-diff             docs/evidence/coverage-aws-emulator-1.0.343.json reports/ci_coverage.json --json > reports/ci_coverage_diff.json
+          python3 - <<'PY_END' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          result=json.loads(Path("reports/ci_coverage_diff.json").read_text())
+          assert result["passed"] and result["comparable"]
+          print("### AWS Emulator fixed-probe regression check")
+          print("- Baseline:",result["baselineVersion"])
+          print("- Current:",result["currentVersion"])
+          print("- Regressions:",len(result["regressions"]))
+          print("- Exact operation set matched; **no general AWS parity implied**.")
+          PY_END
       - name: Verify no production credentials are available to the image
         run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.4 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.4 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
+          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.5 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
+          docker image inspect aws-emulator-mcp:0.4.0-beta.5 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E

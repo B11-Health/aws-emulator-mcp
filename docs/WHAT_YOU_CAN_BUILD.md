@@ -161,3 +161,19 @@ The first release succeeds when someone can **install it, ask for one concrete e
 ### Beyond the curated S3, SQS and DynamoDB tools
 
 The isolated Docker MCP includes three additional SDK bridge tools, so a local agent can discover any operation modeled by its installed botocore version, invoke those that AWS Emulator implements, and measure **20 allowlisted read-only API probes**. The [verified coverage snapshot](COVERAGE.md) records successful read-only responses from 20 different service areas on AWS Emulator v1.0.343. SDK model discovery is not implementation proof or AWS parity.
+
+
+### Five additional verified AWS-style lab workflows (beta.5)
+
+Use the isolated Docker CLI to discover and run eight total missions, or call the existing `lab_catalog` / `lab_run` tools from a trusted local MCP client:
+
+~~~bash
+aws-emulator-mcp experiments
+aws-emulator-mcp experiment sns-sqs-delivery
+aws-emulator-mcp experiment ec2-vpc-lifecycle
+aws-emulator-mcp experiment eventbridge-bus
+aws-emulator-mcp experiment ssm-parameter
+aws-emulator-mcp experiment secretsmanager-secret
+~~~
+
+**Important distinctions:** the SNS/SQS lab verifies actual message delivery (with explicit queue policy), while the EventBridge lab checks bus creation and successful event submission **without claiming event routing**. The EC2 experiment tests control-plane resource lifecycle **without launching a VM or transmitting network traffic**. Parameter Store and Secrets Manager use synthetic values; they do not validate production IAM, encryption or rotation.

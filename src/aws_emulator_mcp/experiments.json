@@ -4,7 +4,11 @@
     {
       "id": "order-recovery",
       "title": "Recover a broken three-service order workflow",
-      "services": ["S3", "DynamoDB", "SQS"],
+      "services": [
+        "S3",
+        "DynamoDB",
+        "SQS"
+      ],
       "goal": "Create an order, intentionally discover a missing receipt, repair it, verify all services and clean up",
       "expectedFailure": "S3 404 for the receipt before it exists",
       "caveat": "This is a synthetic workflow, not actual payment processing or event-driven Lambda execution"
@@ -12,7 +16,9 @@
     {
       "id": "s3-recovery",
       "title": "S3 contract: break, repair and verify",
-      "services": ["S3"],
+      "services": [
+        "S3"
+      ],
       "goal": "Observe an expected missing-key error, create the object, verify the exact bytes and list operation, then clean up",
       "expectedFailure": "S3 404 for a missing object",
       "caveat": "Validates only the S3 operations executed locally, not full S3 fidelity"
@@ -20,10 +26,63 @@
     {
       "id": "dynamodb-overwrite",
       "title": "DynamoDB last-write-wins demonstration",
-      "services": ["DynamoDB"],
+      "services": [
+        "DynamoDB"
+      ],
       "goal": "Write a draft value, verify it, overwrite the same key, prove the current value changed and clean up",
       "expectedFailure": null,
       "caveat": "An intentional overwrite demonstration, not a concurrency, transactional or IAM test"
+    },
+    {
+      "id": "sns-sqs-delivery",
+      "title": "Prove SNS event delivery into SQS",
+      "services": [
+        "SNS",
+        "SQS"
+      ],
+      "goal": "Create a real topic and queue, configure an explicit SNS-to-SQS policy, subscribe, publish a synthetic event, receive and acknowledge it, then remove the subscription, queue and topic",
+      "expectedFailure": null,
+      "caveat": "Demonstrates one emulated SNS-to-SQS delivery and acknowledgement, not exactly-once messaging, live AWS IAM enforcement or Lambda execution"
+    },
+    {
+      "id": "ec2-vpc-lifecycle",
+      "title": "Provision and inspect an isolated EC2 network",
+      "services": [
+        "EC2"
+      ],
+      "goal": "Create an emulated VPC, subnet and security group; describe the resources, delete them in dependency order and verify the VPC is absent",
+      "expectedFailure": null,
+      "caveat": "Emulated control-plane resource lifecycles only; no EC2 compute instances, network traffic or real VPC networking"
+    },
+    {
+      "id": "eventbridge-bus",
+      "title": "Exercise an EventBridge event-bus API lifecycle",
+      "services": [
+        "EventBridge"
+      ],
+      "goal": "Create an event bus, verify it exists, submit a synthetic event with no targets, delete the bus and verify absence",
+      "expectedFailure": null,
+      "caveat": "PutEvents acknowledgement only; no targets, event routing, consumer invocation or delivery guarantees are tested"
+    },
+    {
+      "id": "ssm-parameter",
+      "title": "Write, read and delete a synthetic SSM parameter",
+      "services": [
+        "SSM Parameter Store"
+      ],
+      "goal": "Write a uniquely named synthetic String parameter, verify the exact value, remove the parameter and confirm it is absent",
+      "expectedFailure": "ParameterNotFound after deletion",
+      "caveat": "Plaintext synthetic parameters only; not SecureString, IAM authorization, encryption or production configuration security"
+    },
+    {
+      "id": "secretsmanager-secret",
+      "title": "Create, read and delete a synthetic secret",
+      "services": [
+        "Secrets Manager"
+      ],
+      "goal": "Create a uniquely named synthetic secret, compare its value locally without returning it as evidence, request deletion and verify it is absent from the active inventory",
+      "expectedFailure": null,
+      "caveat": "Synthetic values only; a pending-deletion record may persist after DeleteSecret. This does not test KMS encryption, IAM access control, rotation or real secret handling"
     }
   ]
 }

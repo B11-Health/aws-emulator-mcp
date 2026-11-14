@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 const requirePackage = () => readFileSync(new URL('../package.json', import.meta.url), 'utf8');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.4');
+  assert.equal(pkg.version, '0.4.0-beta.5');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -59,7 +60,9 @@ test('experiment list works without Docker and includes clear coverage caveats',
   const registry = JSON.parse(result.stdout);
   assert.equal(registry.schemaVersion, 1);
   assert.deepEqual(registry.experiments.map(x => x.id),
-    ['order-recovery', 's3-recovery', 'dynamodb-overwrite']);
+    ['order-recovery', 's3-recovery', 'dynamodb-overwrite',
+     'sns-sqs-delivery', 'ec2-vpc-lifecycle', 'eventbridge-bus',
+     'ssm-parameter', 'secretsmanager-secret']);
   for (const experiment of registry.experiments) {
     assert.ok(experiment.services.length);
     assert.ok(experiment.caveat);
@@ -89,4 +92,63 @@ test('coverage command validates arguments before invoking Docker', () => {
   assert.equal(cli('coverage','../../etc/passwd').status,2);
   assert.equal(cli('coverage','--unsafe-remote').status,2);
   assert.equal(cli('coverage','ec2','lambda').status,2);
+});
+
+test('coverage-diff validates a matching baseline without Docker', () => {
+  const baseline = path.join(ROOT, 'docs', 'evidence', 'coverage-aws-emulator-1.0.343.json');
+  const result = cli('coverage-diff', baseline, baseline, '--json');
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.passed, true);
+  assert.equal(report.comparable, true);
+  assert.equal(report.baseline.probed, 20);
+  assert.equal(report.regressions.length, 0);
+});
+
+test('coverage-diff refuses API response regressions and reports the exact operation', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'aws-mcp-regression-'));
+  try {
+    const baseline = path.join(ROOT, 'docs', 'evidence', 'coverage-aws-emulator-1.0.343.json');
+    const changed = JSON.parse(readFileSync(baseline, 'utf8'));
+    const failingKey = changed.results[0].service + '.' + changed.results[0].operation;
+    changed.emulatorVersion = 'synthetic-regression-version';
+    changed.results[0].status = 'not_implemented';
+    changed.successfulProbes = 19;
+    const after = path.join(directory, 'after.json');
+    writeFileSync(after, JSON.stringify(changed));
+    const result = cli('coverage-diff', baseline, after, '--json');
+    assert.equal(result.status, 1);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.passed, false);
+    assert.equal(report.comparable, true);
+    assert.deepEqual(report.regressions.map(x => x.operation), [failingKey]);
+    assert.equal(report.regressions[0].after, 'not_implemented');
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('coverage-diff rejects mismatched probe sets and corrupted evidence', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'aws-mcp-coverage-input-'));
+  try {
+    const baseline = path.join(ROOT, 'docs', 'evidence', 'coverage-aws-emulator-1.0.343.json');
+    const reduced = JSON.parse(readFileSync(baseline, 'utf8'));
+    reduced.results.pop();
+    reduced.successfulProbes--;
+    reduced.totalProbes--;
+    const partial = path.join(directory, 'partial.json');
+    writeFileSync(partial, JSON.stringify(reduced));
+    const mismatch = cli('coverage-diff', baseline, partial, '--json');
+    assert.equal(mismatch.status, 2);
+    const detail = JSON.parse(mismatch.stdout);
+    assert.equal(detail.comparable, false);
+    assert.equal(detail.missing.length, 1);
+    assert.equal(detail.passed, false);
+    const corrupt = path.join(directory, 'corrupt.json');
+    writeFileSync(corrupt, '{"results": "fake"}');
+    assert.equal(cli('coverage-diff', baseline, corrupt).status, 2);
+    const duplicate = JSON.parse(readFileSync(baseline, 'utf8'));
+    duplicate.results[1] = { ...duplicate.results[0] };
+    writeFileSync(corrupt, JSON.stringify(duplicate));
+    assert.equal(cli('coverage-diff', baseline, corrupt).status, 2);
+    assert.equal(cli('coverage-diff', 'https://example.org/secret', baseline).status, 2);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });

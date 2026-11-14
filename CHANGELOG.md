@@ -1,3 +1,11 @@
+## v0.4.0-beta.5 — stateful AWS experiments and versioned regression checks
+
+- Added five synthetic SDK-backed experiments: real SNS-to-SQS message delivery and acknowledgement with explicit queue policy, EC2 VPC/subnet/security-group management, EventBridge bus and event submission, SSM Parameter Store, and Secrets Manager create/read/delete.
+- Eight allowlisted experiments total. Each reports observed API assertions and run-scoped cleanup; undelivered messages and cleanup failures fail the run.
+- Added a local-only coverage-diff command: compares two signed-emulator read-only probe snapshots, identifies operations that regress, and rejects incomparable or malformed reports. CI now checks against the recorded v1.0.343 baseline.
+- Signed AWS Emulator v1.0.353 verified locally: eight labs, 20/20 selected read-only probes and no regressions from v1.0.343. This is not an AWS service-fidelity certification.
+- GitHub-source beta only; no npm registry/Docker registry release claimed.
+
 ## v0.4.0-beta.4 - verified service discovery and coverage reports
 
 - Add dynamic, paginated AWS SDK service and operation discovery across all modeled services.

@@ -32,7 +32,7 @@
 
 - **Ask an agent to explore AWS APIs, not just recite documentation.** Browse the installed AWS SDK's service models, select modeled operations, and invoke them against an **emulated localhost endpoint**—without using a real AWS profile.
 - **Measure what actually works.** A built-in, read-only coverage probe runs 20 allowlisted operations and reports their observed outcomes, separately from the much larger SDK model inventory.
-- **Run reproducible experiments.** Give an agent three synthetic missions: S3 missing-object recovery, a DynamoDB overwrite, and an S3 + SQS + DynamoDB order workflow. Each returns assertions, expected errors, timing, and scoped cleanup evidence.
+- **Run reproducible experiments.** Give an agent eight synthetic missions across eight service families: the original S3/DynamoDB/SQS flows plus actual SNS-to-SQS delivery, EC2 VPC/subnet/security-group lifecycle, EventBridge event-bus ingestion, SSM parameters, and synthetic Secrets Manager values. Each returns assertions, expected errors, timing, and scoped cleanup evidence.
 - **Keep the boundary visible.** The default Docker lab has no external network, host file mounts, forwarded ports, or production AWS credentials. It uses a signed official AWS Emulator binary.
 
 ## Quick start
@@ -46,7 +46,9 @@ npm install -g "github:B11-Health/aws-emulator-mcp#master"
 aws-emulator-mcp doctor                      # Verify the isolated local emulator
 aws-emulator-mcp coverage                    # 20 real read-only API probes
 aws-emulator-mcp experiments                 # See the available lab missions
-aws-emulator-mcp experiment s3-recovery      # Reproduce a 404, repair it, verify cleanup
+aws-emulator-mcp experiment s3-recovery       # Reproduce a 404, repair it, verify cleanup
+aws-emulator-mcp experiment sns-sqs-delivery   # Prove a published SNS event arrives in SQS
+aws-emulator-mcp experiment ec2-vpc-lifecycle  # Create/inspect/remove a VPC, subnet and security group
 aws-emulator-mcp config vscode               # Generate your editor's MCP config
 ~~~
 
@@ -60,7 +62,7 @@ The npm install step installs the launcher; it does **not** start Docker. Your f
 
 <p align="center"><sub><a href="docs/assets/real-cli-demo.mp4">Watch the original 24-second MP4</a> · Actual CLI execution on AWS Emulator 1.0.343 · Silent, no generated narration, no simulated API responses.</sub></p>
 
-The `s3-recovery` lab confirms **6/6 assertions, 1/1 expected error and 3/3 cleanup checks**. The separate synthetic order demo performs **12 steps, two recovery checks and four cleanups**. These are developer tests, **not production payment processing, automatic Lambda execution, or AWS security validation**.
+The `s3-recovery` lab confirms **6/6 assertions, 1/1 expected error and 3/3 cleanup checks**. The `sns-sqs-delivery` lab proves message delivery and acknowledgement **after configuring the queue policy**; the EC2 lab provisions and removes dependent resources rather than merely listing VPCs. The separate synthetic order demo performs **12 steps, two recovery checks and four cleanups**. These are developer tests, **not production payment processing, automatic Lambda execution, or AWS security validation**.
 
 ## How much of AWS can it reach?
 
@@ -102,6 +104,18 @@ aws_sdk_invoke({ "service": "ec2", "operation": "DescribeVpcs", "parameters": {}
 
 **[See every measured operation, methodology and limitations →](docs/COVERAGE.md)**
 
+### Compare emulator versions without assuming AWS parity
+
+Save a snapshot with the installed CLI, then compare the **same fixed read-only API probe set** against a previous run. The command exits nonzero when a previously responding API regresses; it rejects mismatched probe sets rather than reporting a misleading pass.
+
+~~~bash
+aws-emulator-mcp coverage --json > current-coverage.json
+aws-emulator-mcp coverage-diff docs/evidence/coverage-aws-emulator-1.0.343.json current-coverage.json
+~~~
+
+The baseline JSON file lives in the [repository](docs/evidence/coverage-aws-emulator-1.0.343.json); when running from elsewhere, use an absolute path or your own prior report. This is a **20-operation smoke regression check**, not a compatibility percentage. See the [coverage methodology](docs/COVERAGE.md) for status classifications.
+
+
 AWS publishes its own [emulator fidelity reports with releases](https://github.com/aws/aws-emulator/releases). Our probe results are a much narrower smoke test, **not an AWS parity percentage**.
 
 ## Connect an AI agent
@@ -129,7 +143,7 @@ Copy the generated JSON into your supported local MCP client's configuration. Th
 | **Network** | Container launched with `--network none`; API traffic stays on its loopback |
 | **Host access** | No host volume mounts or forwarded ports; remote Docker contexts and nonlocal `DOCKER_HOST` rejected |
 | **API calls** | SDK calls bound to emulator-issued HTTPS and verified local CA; redirects and external proxies refused |
-| **Experiments** | Fixed allowlist, synthetic names, per-run assertions; cleanup failures cause failing reports |
+| **Experiments** | Eight fixed synthetic missions, per-run assertions; cleanup failures cause failing reports |
 | **Important limitation** | This is **not production AWS**. Emulator state is temporary; IAM policy enforcement, API fidelity and service behavior differ |
 
 For a closer look at security constraints, see [SECURITY.md](SECURITY.md). For an explanation of the two execution routes, see [Docker/npm architecture](docs/DOCKER_NPM_BETA.md).

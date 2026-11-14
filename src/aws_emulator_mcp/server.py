@@ -693,7 +693,7 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
 
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
-VERSION="0.4.0b4"
+VERSION="0.4.0b5"
 PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
 SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
 SERVER_CAPS={"tools":{"listChanged":False}}

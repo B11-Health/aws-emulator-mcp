@@ -1,3 +1,5 @@
+> **v0.4.0-beta.5 developer-preview candidate**: Eight scoped synthetic experiments and the fixed 20-operation regression comparator passed local Docker acceptance on signed AWS Emulator v1.0.353. The previous v1.0.343 baseline also passed 20/20 with zero detected regressions. **Independent CI, cold Windows/macOS onboarding and external security review must still be checked separately.** This note supersedes the beta.4 version heading below for the source branch; keep the historical beta.4 evidence as dated engineering records.
+
 # AWS Emulator MCP — current developer-preview QA
 
 **Current source release:** `0.4.0-beta.4` (npm notation), `0.4.0b4` (Python notation). Repository: [B11-Health/aws-emulator-mcp](https://github.com/B11-Health/aws-emulator-mcp). Product identity: **AWS Emulator MCP**. Reviewed November 14, 2026.

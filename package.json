@@ -1,6 +1,6 @@
 {
   "name": "aws-emulator-mcp",
-  "version": "0.4.0-beta.4",
+  "version": "0.4.0-beta.5",
   "description": "Local-first MCP adapter for the official AWS Emulator with an isolated Docker lab",
   "type": "module",
   "bin": {

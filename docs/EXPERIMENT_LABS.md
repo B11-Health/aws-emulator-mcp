@@ -11,6 +11,11 @@ aws-emulator-mcp experiments
 aws-emulator-mcp experiment s3-recovery
 aws-emulator-mcp experiment dynamodb-overwrite --json > experiment-evidence.json
 aws-emulator-mcp experiment order-recovery
+aws-emulator-mcp experiment sns-sqs-delivery
+aws-emulator-mcp experiment ec2-vpc-lifecycle
+aws-emulator-mcp experiment eventbridge-bus
+aws-emulator-mcp experiment ssm-parameter
+aws-emulator-mcp experiment secretsmanager-secret
 ```
 
 An AI assistant with a local MCP connection can call `lab_catalog` to find supported experiments, then `lab_run` with an `experiment` from the allowlist. There is no shell execution, user-supplied script, external URL, or arbitrary resource selector in these tools.
@@ -20,6 +25,12 @@ An AI assistant with a local MCP connection can call `lab_catalog` to find suppo
 | `s3-recovery` | S3 CreateBucket, GetObject, PutObject, ListObjectsV2, DeleteObject, DeleteBucket, ListBuckets | Missing object returns 404 before it is written | Delete the object, bucket, and verify absence |
 | `dynamodb-overwrite` | DynamoDB CreateTable, PutItem, GetItem, DeleteTable, ListTables | None: demonstrates an intentional overwrite, **not** a concurrency fault | Delete the table and verify absence |
 | `order-recovery` | S3 + DynamoDB + SQS synthetic order lifecycle | S3 receipt missing before repair | Four scoped cleanup actions |
+| `sns-sqs-delivery` | SNS CreateTopic/Subscribe/Publish + an explicit SQS queue policy; verify an actual delivered marker and acknowledgement | None; **published** does not equal **delivered** | Unsubscribe, delete queue/topic, verify SNS topic absent |
+| `ec2-vpc-lifecycle` | EC2 Create/DescribeVpc, Subnet and SecurityGroup | None; no network packets or EC2 compute | Delete security group, subnet, VPC; verify absence |
+| `eventbridge-bus` | EventBridge CreateEventBus, ListEventBuses, PutEvents | None; **no routing/targets tested** | Delete event bus and verify absence |
+| `ssm-parameter` | SSM PutParameter/GetParameter/GetParameters | None; synthetic String value | Delete parameter and verify absent |
+| `secretsmanager-secret` | Secrets Manager CreateSecret/GetSecretValue/ListSecrets | None; deletion tombstone can remain | Delete synthetic secret and verify absence from active listing |
+
 
 ## What evidence looks like
 
@@ -31,8 +42,8 @@ Each JSON report includes a stable schema version, experiment identifier, servic
 
 1. Add externally reviewable, versioned experiment manifests with strict validation and no arbitrary code execution.
 2. Generate reproducible GitHub Actions artifacts so a failed PR produces the exact tested API sequence and sanitized results.
-3. Compare recorded assertions across emulator versions and distinguish **implemented**, **unsupported (501)**, and **untested**, without conflating SDK model discovery with coverage.
+3. **Extend** the shipped read-only coverage snapshot comparator to stateful workflows with versioned synthetic fixtures, while distinguishing **implemented**, **unsupported (501)**, and **untested**.
 4. Connect project-specific integration tests in an explicitly opted-in sandbox, preserving the current no-mount/no-network default for built-in experiments.
 5. Create agent debugging challenges where a solver receives failure evidence and must produce a passing patch, graded against held-out tests.
 
-These are roadmap ideas, not shipped capabilities. The initial registry has three allowlisted synthetic experiments.
+These are roadmap ideas, not shipped capabilities. The current registry has eight allowlisted synthetic experiments.
