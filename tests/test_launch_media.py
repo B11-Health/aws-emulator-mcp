@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import shutil
+import sys
 import subprocess
 import unittest
 
@@ -29,6 +30,7 @@ class LaunchMediaTests(unittest.TestCase):
         self.assertTrue(preview.read_bytes().startswith((b"GIF89a", b"GIF87a")))
         self.assertLess(preview.stat().st_size, 3_000_000)
 
+    @unittest.skipIf(sys.platform == "win32", "Codec validation runs on the Linux CI media gate")
     @unittest.skipUnless(shutil.which("ffprobe"), "ffprobe not available")
     def test_clip_dimensions_duration_and_silent_delivery(self):
         for name, (w, h, minimum, maximum) in VIDEOS.items():
