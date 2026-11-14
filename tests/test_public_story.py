@@ -61,7 +61,7 @@ class ProductStoryTests(unittest.TestCase):
             self.assertLess(image.stat().st_size,100_000)
             root=ET.parse(image).getroot()
             self.assertEqual(root.tag,"{http://www.w3.org/2000/svg}svg")
-            self.assertIn("title", image.read_text())
+            self.assertIn("title", image.read_text(encoding="utf-8"))
         gif=ROOT/"docs/assets/demos/tour-preview.gif"
         self.assertTrue(gif.read_bytes().startswith((b"GIF89a",b"GIF87a")))
         self.assertLess(gif.stat().st_size,3_000_000)
@@ -85,7 +85,7 @@ class ProductStoryTests(unittest.TestCase):
         self.assertIn("not yet published on npm",body)
         self.assertNotIn("img.shields.io/npm/v/",body)
         self.assertIn("actions/workflows/tests.yml/badge.svg?branch=master",body)
-        evidence=json.loads((ROOT/"docs/evidence/coverage-aws-emulator-1.0.343.json").read_text())
+        evidence=json.loads((ROOT/"docs/evidence/coverage-aws-emulator-1.0.343.json").read_text(encoding="utf-8"))
         self.assertEqual(evidence["modeledServiceCount"],436)
         self.assertEqual(evidence["successfulProbes"],20)
         self.assertEqual([(item["service"],item["operation"]) for item in evidence["results"]],
@@ -94,7 +94,7 @@ class ProductStoryTests(unittest.TestCase):
 
     def test_real_app_debugging_evidence_is_verifiable(self):
         import json
-        data=json.loads((ROOT/"docs/evidence/app-debug-aws-emulator-1.0.365.json").read_text())
+        data=json.loads((ROOT/"docs/evidence/app-debug-aws-emulator-1.0.365.json").read_text(encoding="utf-8"))
         self.assertTrue(data["passed"])
         self.assertTrue(data["bugReproduced"])
         self.assertTrue(data["referenceFixVerified"])
@@ -136,7 +136,7 @@ class ProductStoryTests(unittest.TestCase):
             self.assertIn(control,html)
         self.assertIn('pointermove',text)
         self.assertIn('prefers-reduced-motion',
-                      (ROOT/"docs/onboarding/style.css").read_text())
+                      (ROOT/"docs/onboarding/style.css").read_text(encoding="utf-8"))
 
 if __name__=="__main__":
     unittest.main()
