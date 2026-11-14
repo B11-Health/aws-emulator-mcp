@@ -13,3 +13,6 @@
 *.toml text eol=lf
 *.ps1 text eol=crlf
 *.cmd text eol=crlf
+
+# Unified diffs use space-prefixed context lines; these are not trailing data whitespace.
+*.patch text eol=lf whitespace=-blank-at-eol

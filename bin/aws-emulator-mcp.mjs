@@ -9,7 +9,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.5';
+const VERSION = '0.4.0-beta.6';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -40,6 +40,8 @@ Commands:
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
+  app-debug [mode] Run the packaged order-intake bug/fix against real AWS APIs
+                   Modes: compare (default), buggy, fixed
   self-test        Exercise supported services and scoped cleanup
   build            Build the image from the signed official AWS package
   config [format]  Print MCP configuration: copilot or vscode
@@ -152,6 +154,32 @@ function renderReport(command, result) {
       '  Duration: ' + (result.duration_ms / 1000).toFixed(2) + ' seconds',
       '  ' + (result.passed ? 'All checks passed; lab resources removed.' :
         'Failure: ' + (result.error || 'inspect JSON evidence')));
+  } else if (command === 'app-debug') {
+    const evidence = result.variant === 'compare' ? result : result.result;
+    if (result.variant === 'compare') {
+      lines.push('  ' + mark(result.passed) + '  Order-intake application debugging lab',
+        '  Application: examples/order-intake',
+        '  Services: DynamoDB, S3, SQS',
+        '  Broken app:  ' + (result.bugReproduced ? 'BUG REPRODUCED' : 'NOT REPRODUCED'),
+        '    Accepted submissions: ' + result.before.observed.acceptedSubmissions,
+        '    SQS events: ' + result.before.observed.queueEvents,
+        '  Reference fix: ' + (result.referenceFixVerified ? 'VERIFIED' : 'FAILED'),
+        '    Accepted submissions: ' + result.after.observed.acceptedSubmissions,
+        '    SQS events: ' + result.after.observed.queueEvents,
+        '  Cleanup: ' + (result.before.cleanup.every(x => x.passed) &&
+          result.after.cleanup.every(x => x.passed) ? 'VERIFIED BOTH RUNS' : 'FAILED'),
+        '  Patch: examples/order-intake/reference.patch',
+        '  NOTE: the packaged reference patch was tested; arbitrary agent patches are not executed.');
+    } else {
+      lines.push('  ' + mark(result.passed) +
+        '  Order-intake application ' + result.variant + ' variant',
+        '  Accepted submissions: ' + evidence.observed.acceptedSubmissions,
+        '  SQS events: ' + evidence.observed.queueEvents,
+        '  Assertions: ' + evidence.assertions.filter(x => x.passed).length +
+          '/' + evidence.assertions.length,
+        '  Cleanup: ' + evidence.cleanup.filter(x => x.passed).length +
+          '/' + evidence.cleanup.length);
+    }
   } else if (command === 'coverage') {
     lines.push('  Read-only SDK coverage audit', '',
       '  Emulator: ' + (result.emulatorVersion || 'unknown'),
@@ -298,6 +326,27 @@ function config(format = 'copilot') {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'app-debug') {
+    const wantsJson = args.includes('--json');
+    const rest = args.filter(x => x !== '--json');
+    if (args.length > 2 || rest.length > 1 ||
+        args.filter(x => x === '--json').length > 1 ||
+        (rest.length && !['compare', 'buggy', 'fixed'].includes(rest[0]))) {
+      fail('Usage: aws-emulator-mcp app-debug [compare|buggy|fixed] [--json]', 2);
+    }
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const result = await runCaptured(dockerArgs('app-debug', [rest[0] || 'compare']));
+    let parsed;
+    try { parsed = JSON.parse(result.raw); }
+    catch { fail('Could not parse packaged app-debug result (exit ' + result.code + ')',
+                 result.code || 1); }
+    if (wantsJson) stdout.write(JSON.stringify(parsed, null, 2) + '\n');
+    else renderReport('app-debug', parsed);
+    if (result.code !== 0 || !parsed.passed)
+      fail('Order-intake application assertions or cleanup failed', result.code || 1);
+    return;
+  }
   if (command === 'coverage-diff') {
     const wantsJson = args.includes('--json');
     const rest = args.filter(x => x !== '--json');

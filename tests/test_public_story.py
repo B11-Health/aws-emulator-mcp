@@ -5,7 +5,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 PAGES=("README.md","docs/WHAT_YOU_CAN_BUILD.md","docs/LAUNCH_DEMO.md",
-       "docs/linkedin-draft.md")
+       "docs/linkedin-draft.md","docs/APP_DEBUGGING.md")
 
 class ProductStoryTests(unittest.TestCase):
     def test_internal_markdown_links_resolve(self):
@@ -86,6 +86,21 @@ class ProductStoryTests(unittest.TestCase):
         self.assertEqual([(item["service"],item["operation"]) for item in evidence["results"]],
                          list(aws_sdk.READ_ONLY_PROBES))
         self.assertTrue(all(item["status"]=="responded" for item in evidence["results"]))
+
+    def test_real_app_debugging_evidence_is_verifiable(self):
+        import json
+        data=json.loads((ROOT/"docs/evidence/app-debug-aws-emulator-1.0.365.json").read_text())
+        self.assertTrue(data["passed"])
+        self.assertTrue(data["bugReproduced"])
+        self.assertTrue(data["referenceFixVerified"])
+        self.assertEqual(data["before"]["observed"]["queueEvents"],2)
+        self.assertEqual(data["after"]["observed"]["queueEvents"],1)
+        for run in ("before","after"):
+            self.assertEqual(len(data[run]["cleanup"]),7)
+            self.assertTrue(all(item["passed"] for item in data[run]["cleanup"]))
+        import hashlib
+        self.assertEqual(data["referencePatchSha256"],
+            hashlib.sha256((ROOT/"examples/order-intake/reference.patch").read_bytes()).hexdigest())
 
     def test_local_command_examples_exist(self):
         for name in ("install.cmd","demo.cmd","install.sh",

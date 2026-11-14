@@ -11,6 +11,7 @@ ENV HOME=/home/emulatormcp PYTHONUNBUFFERED=1 PYTHONPATH=/opt/aws-emulator-mcp/s
  AWS_EMULATOR_MCP_ISOLATED_LAB=1 PATH=/opt/aws-emulator-mcp-venv/bin:$PATH
 WORKDIR /opt/aws-emulator-mcp
 COPY --chown=10001:10001 src/aws_emulator_mcp ./src/aws_emulator_mcp
+COPY --chown=10001:10001 examples/order-intake ./examples/order-intake
 COPY --chown=10001:10001 scripts/install_wsl.sh ./scripts/install_wsl.sh
 COPY --chown=10001:10001 docker/entrypoint.sh ./docker/entrypoint.sh
 USER 10001:10001

@@ -80,3 +80,14 @@ AWS Emulator MCP now pages through the installed AWS SDK service and operation c
 Five additional **real emulator experiments** now exercise SNS-to-SQS delivery (including a scoped queue policy), EC2 VPC/subnet/security-group management, EventBridge event-bus ingestion, SSM Parameter Store, and synthetic Secrets Manager records. All use disposable names and verify cleanup. These are not equivalent to service-wide AWS fidelity or to a generic application debugger.
 
 The CLI now compares two operation-level read-only snapshots and fails on newly broken responses. **Full cloud regression radar remains a roadmap item**: it still needs held-out workflows, broader write/read/delete coverage, cross-version stateful baselines and reproducible application repairs.
+
+
+## Verified application-debugging reference case (beta.6)
+
+The tool now packages a real, deliberately buggy Python order-intake app:
+a duplicate retry emits two SQS messages. Its reviewed reference patch
+uses a DynamoDB conditional write; real emulator tests confirm one accepted
+order and one SQS event. Both runs independently verify seven cleanup
+steps. The source, assertions and patch are agent-inspectable through local
+MCP. This is **not yet an arbitrary-repository autonomous fixer**.
+See [application debugging](APP_DEBUGGING.md).

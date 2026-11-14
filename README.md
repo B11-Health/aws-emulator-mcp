@@ -33,6 +33,7 @@
 - **Ask an agent to explore AWS APIs, not just recite documentation.** Browse the installed AWS SDK's service models, select modeled operations, and invoke them against an **emulated localhost endpoint**—without using a real AWS profile.
 - **Measure what actually works.** A built-in, read-only coverage probe runs 20 allowlisted operations and reports their observed outcomes, separately from the much larger SDK model inventory.
 - **Run reproducible experiments.** Give an agent eight synthetic missions across eight service families: the original S3/DynamoDB/SQS flows plus actual SNS-to-SQS delivery, EC2 VPC/subnet/security-group lifecycle, EventBridge event-bus ingestion, SSM parameters, and synthetic Secrets Manager values. Each returns assertions, expected errors, timing, and scoped cleanup evidence.
+- **Verify a real application bug and patch.** Run a Python order-intake application twice: a duplicate retry emits **two SQS fulfillment messages**; a DynamoDB conditional-write reference patch emits **one**, with both runs independently verifying all resource cleanup.
 - **Keep the boundary visible.** The default Docker lab has no external network, host file mounts, forwarded ports, or production AWS credentials. It uses a signed official AWS Emulator binary.
 
 ## Quick start
@@ -49,10 +50,36 @@ aws-emulator-mcp experiments                 # See the available lab missions
 aws-emulator-mcp experiment s3-recovery       # Reproduce a 404, repair it, verify cleanup
 aws-emulator-mcp experiment sns-sqs-delivery   # Prove a published SNS event arrives in SQS
 aws-emulator-mcp experiment ec2-vpc-lifecycle  # Create/inspect/remove a VPC, subnet and security group
+aws-emulator-mcp app-debug compare           # Broken vs patched app: 2 -> 1 events
 aws-emulator-mcp config vscode               # Generate your editor's MCP config
 ~~~
 
 The npm install step installs the launcher; it does **not** start Docker. Your first runtime command (for example, `doctor`) builds the local Docker image when needed and verifies the **official AWS-signed emulator package**. Subsequent runtime commands reuse that local image. For fully reproducible use, pin a tested Git commit instead of the moving `master` branch. See the [Docker/npm setup guide](docs/DOCKER_NPM_BETA.md).
+
+## Application debugging: real code, verified fix
+
+Our bundled Python **order-intake application** uses DynamoDB, S3 and SQS.
+A client retry exposes an actual duplicate-event bug. The included reference
+patch prevents duplicates after a successful first write.
+
+| Measured outcome | Buggy app | Reference fix |
+|:--|--:|--:|
+| Accepted submissions after two identical requests | **2 — FAIL** | **1 — PASS** |
+| Fulfillment messages actually received from SQS | **2 — FAIL** | **1 — PASS** |
+| Independent resource-cleanup checks | **7/7** | **7/7** |
+
+~~~bash
+aws-emulator-mcp app-debug compare
+aws-emulator-mcp app-debug compare --json > order-app-evidence.json
+~~~
+
+An MCP agent can inspect the actual buggy source with `app_debug_catalog`,
+and reproduce the bug and the packaged reference fix using
+`app_debug_run`. Only the reviewed source variants are executed:
+**arbitrary agent-generated Python or patches are not executed**.
+Read the [app debugging walkthrough](docs/APP_DEBUGGING.md) and
+[exact source diff](examples/order-intake/reference.patch).
+The [recorded v1.0.365 before/after JSON](docs/evidence/app-debug-aws-emulator-1.0.365.json) is available for inspection; it is evidence of these specific API calls, not production service parity.
 
 ## Watch the real CLI demo
 
@@ -71,6 +98,7 @@ The `s3-recovery` lab confirms **6/6 assertions, 1/1 expected error and 3/3 clea
 | Layer | What is available | What it proves |
 |:--|:--|:--|
 | **Curated MCP surface** | **29 tools** for local lifecycle, STS, S3, DynamoDB, SQS and experiments | Tested, bounded developer workflows |
+| **Application debugging** | **2 Docker-only tools:** `app_debug_catalog`, `app_debug_run` | Inspect actual Python source and validate a before/after patch against independent emulated AWS resources |
 | **Isolated SDK bridge** | **3 additional MCP tools:** `aws_sdk_discover`, `aws_sdk_invoke`, `aws_sdk_coverage` | Discover and call APIs through installed SDK models, only inside Docker |
 | **SDK model inventory** | **436 service models**, observed with pinned botocore 1.44.2 | The installed SDK knows the API *shapes*, **not** their implementation status |
 | **Observed local API probes** | **20/20 read-only calls responded** on AWS Emulator **1.0.343** (November 13, 2026) | Those specific operations returned successfully against an isolated fresh emulator |
