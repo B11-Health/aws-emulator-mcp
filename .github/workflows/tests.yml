@@ -91,8 +91,12 @@ jobs:
           python-version: '3.12'
       - name: Source integrity scan on independent Windows
         run: python scripts/release_scan.py
-      - name: Launch media asset checks on Windows
-        run: python -m unittest tests.test_launch_media -v
+      - name: Media signatures and posters on Windows
+        run: python -m unittest tests.test_launch_media.LaunchMediaTests.test_asset_structure_and_bounded_file_sizes -v
+      - name: Offline tour static assets on Windows
+        run: python -m unittest tests.test_launch_media.LaunchMediaTests.test_onboarding_site_is_self_contained -v
+      - name: Launch copy consistency on Windows
+        run: python -m unittest tests.test_launch_media.LaunchMediaTests.test_launch_copy_is_brand_consistent -v
       - name: README links and published claims on Windows
         run: python -m unittest tests.test_public_story -v
       - name: Remaining Python tests on Windows
