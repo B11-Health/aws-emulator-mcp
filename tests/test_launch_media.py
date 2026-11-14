@@ -52,9 +52,9 @@ class LaunchMediaTests(unittest.TestCase):
                 self.assertLess(duration, maximum)
 
     def test_onboarding_site_is_self_contained(self):
-        html = (ROOT / "docs/onboarding/index.html").read_text()
-        js = (ROOT / "docs/onboarding/tour.js").read_text()
-        css = (ROOT / "docs/onboarding/style.css").read_text()
+        html = (ROOT / "docs/onboarding/index.html").read_text(encoding="utf-8")
+        js = (ROOT / "docs/onboarding/tour.js").read_text(encoding="utf-8")
+        css = (ROOT / "docs/onboarding/style.css").read_text(encoding="utf-8")
         self.assertIn('src="./tour.js"', html)
         self.assertIn('href="./style.css"', html)
         self.assertIn('pointermove', js)
@@ -64,8 +64,8 @@ class LaunchMediaTests(unittest.TestCase):
         self.assertNotIn("<iframe", html)
 
     def test_launch_copy_is_brand_consistent(self):
-        readme = (ROOT / "README.md").read_text()
-        linkedin = (ROOT / "docs/linkedin-draft.md").read_text()
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        linkedin = (ROOT / "docs/linkedin-draft.md").read_text(encoding="utf-8")
         for artifact in (readme, linkedin):
             self.assertIn("AWS Emulator MCP", artifact)
             for banned in (
@@ -74,7 +74,7 @@ class LaunchMediaTests(unittest.TestCase):
                 "Kokoro voice", "84-second continuous screen recording",
             ):
                 self.assertNotIn(banned, artifact)
-        self.assertIn("ONE RETRY. TWO EVENTS.", (ROOT / "scripts/render_launch_social.py").read_text())
+        self.assertIn("ONE RETRY. TWO EVENTS.", (ROOT / "scripts/render_launch_social.py").read_text(encoding="utf-8"))
         self.assertIn("not yet published on npm", readme.lower())
 
 
