@@ -93,6 +93,14 @@ jobs:
         run: |
           python scripts/release_scan.py
           python -m unittest discover -s tests -q
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - name: Verify Windows npm tarball contains no bytecode or unexpected files
+        shell: pwsh
+        run: |
+          npm pack --dry-run --json | Out-File -Encoding utf8 "$env:RUNNER_TEMP/npm-pack.json"
+          python -c "import json,os,pathlib; d=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'npm-pack.json').read_text(encoding='utf-8-sig'))[0]; allowed=set(json.loads(pathlib.Path('package.json').read_text())['files'])|{'package.json','LICENSE','README.md'}; actual={x['path'] for x in d['files']}; assert actual==allowed, {'extra':sorted(actual-allowed),'missing':sorted(allowed-actual)}; assert not any('__pycache__' in x or x.endswith('.pyc') for x in actual); print('Windows npm package exact allowlist PASS',len(actual))"
       - name: PowerShell syntax and non-mutating Windows installation preview
         shell: pwsh
         run: |
@@ -123,11 +131,14 @@ jobs:
           data=json.load(open('/tmp/aws-emulator-mcp-npm-package.json'))[0]
           paths=[f['path'] for f in data['files']]
           assert data['name']=='aws-emulator-mcp'
-          assert 'docker/Dockerfile' in paths and 'bin/aws-emulator-mcp.mjs' in paths
+          import pathlib
+          declared=set(json.loads(pathlib.Path('package.json').read_text())['files'])
+          allowed=declared|{'package.json','LICENSE','README.md'}
+          assert set(paths)==allowed, {'extra':sorted(set(paths)-allowed),'missing':sorted(allowed-set(paths))}
           assert 'docs/assets/hero.svg' in paths and 'docs/assets/real-cli-demo.gif' in paths
           assert 'docs/COVERAGE.md' in paths
-          assert not any('/.env' in p or 'credentials' in p.lower() for p in paths)
-          print('npm_package_file_count',len(paths))
+          assert not any('__pycache__' in p or p.endswith('.pyc') or '.env' in p or 'credentials' in p.lower() for p in paths)
+          print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
           npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.4.tgz
