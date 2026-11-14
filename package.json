@@ -46,7 +46,12 @@
     "ai-agents",
     "docker",
     "devtools",
-    "local-cloud"
+    "local-cloud",
+    "aws-sdk",
+    "mcp-server",
+    "model-context-protocol",
+    "cloud-testing",
+    "infrastructure-testing"
   ],
   "scripts": {
     "test": "node --test tests/node_cli.test.mjs",
