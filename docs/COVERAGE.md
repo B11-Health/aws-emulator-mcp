@@ -93,3 +93,21 @@ AWS publishes [official AWS Emulator releases and fidelity scores](https://githu
 ## Improving coverage responsibly
 
 Contributions should come with the exact version, API operation, arguments, expected behavior, an isolated reproducible test and a sanitized result. We will not add a green check for a service based only on an SDK model being present. Refer to [CONTRIBUTING.md](../CONTRIBUTING.md) and [the real-Docker smoke test](../tests/docker_bundle_smoke.py).
+
+
+## Automated regression comparison (beta.5)
+
+The source-only Node CLI can compare two saved, schema-validated coverage snapshots **without running Docker**:
+
+~~~bash
+aws-emulator-mcp coverage --json > current.json
+aws-emulator-mcp coverage-diff docs/evidence/coverage-aws-emulator-1.0.343.json current.json --json
+~~~
+
+- **Exit 0:** the identical operation set is comparable, and no previously successful read-only call regressed. Other non-success status changes are reported separately.
+- **Exit 1:** at least one operation that returned successfully before now reports an error, is unimplemented, or is not modeled.
+- **Exit 2:** input is invalid, unsafe, too large (over 256 KiB), duplicated, or the two probe sets differ. Missing operations are **not** silently treated as a pass.
+- The comparison records both emulator versions and the exact changed operations. It reads local JSON and never executes it, issues AWS requests, or contacts the network.
+- **Only the 20 selected, zero-argument read-only calls are covered.** The comparator cannot detect regressions in Lambda execution, networking, IAM, message fanout, or other untested operations. For these, use reproducible stateful integration labs and AWS's official fidelity reports.
+
+CI reruns the current signed emulator's probes and compares them to the [historical 1.0.343 snapshot](evidence/coverage-aws-emulator-1.0.343.json). A green comparison establishes only that these selected responses did not regress.

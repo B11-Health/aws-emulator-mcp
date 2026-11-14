@@ -73,3 +73,10 @@ AWS already ships the emulator, an agent skill, isolated instances, and official
 ## Coverage transparency shipped in beta.4
 
 AWS Emulator MCP now pages through the installed AWS SDK service and operation catalog and can run 20 explicitly bounded, read-only API probes against an isolated emulator. This is deliberately separate from AWS's official fidelity measurements: a modeled operation or a successful List/Describe call is not evidence of a complete service implementation. See [coverage methodology](COVERAGE.md).
+
+
+## Statefully verified developer labs + bounded regression check (beta.5)
+
+Five additional **real emulator experiments** now exercise SNS-to-SQS delivery (including a scoped queue policy), EC2 VPC/subnet/security-group management, EventBridge event-bus ingestion, SSM Parameter Store, and synthetic Secrets Manager records. All use disposable names and verify cleanup. These are not equivalent to service-wide AWS fidelity or to a generic application debugger.
+
+The CLI now compares two operation-level read-only snapshots and fails on newly broken responses. **Full cloud regression radar remains a roadmap item**: it still needs held-out workflows, broader write/read/delete coverage, cross-version stateful baselines and reproducible application repairs.

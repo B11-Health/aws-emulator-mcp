@@ -112,7 +112,7 @@ class ExperimentTests(unittest.TestCase):
                  "params": {"name": "lab_catalog", "arguments": {}}}
         result=aws.handle(message)["result"]
         self.assertFalse(result["isError"])
-        self.assertEqual(len(json.loads(result["content"][0]["text"])["experiments"]),3)
+        self.assertEqual(len(json.loads(result["content"][0]["text"])["experiments"]),8)
         message["params"]={"name":"lab_run", "arguments":{"experiment":"../bad"}}
         result=aws.handle(message)["result"]
         self.assertTrue(result["isError"])

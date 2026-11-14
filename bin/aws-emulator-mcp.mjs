@@ -5,11 +5,11 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.4';
+const VERSION = '0.4.0-beta.5';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -37,6 +37,7 @@ Commands:
   mcp              Run 29 curated + 3 SDK bridge tools via local MCP
   catalog          List implemented MCP tools
   coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
+  coverage-diff     Compare two saved coverage snapshots and fail on regressions
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   self-test        Exercise supported services and scoped cleanup
@@ -193,6 +194,99 @@ function runCaptured(args) {
     child.on('close', code => resolve({ code: code ?? 1, raw: Buffer.concat(output).toString('utf8') }));
   });
 }
+// Bounded, read-only comparison of snapshots from the allowlisted SDK
+// coverage probe. No shell, network, remote URL, or arbitrary code execution.
+const COVERAGE_STATUSES = new Set([
+  'responded', 'not_implemented', 'api_error', 'not_modeled', 'error'
+]);
+function readCoverageSnapshot(filename) {
+  let info, data;
+  try {
+    info = lstatSync(filename);
+    if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024 ||
+        info.size === 0) throw Error('Snapshot is not a small regular file');
+    data = JSON.parse(readFileSync(filename, 'utf8'));
+  } catch {
+    fail('Cannot read a valid local coverage snapshot (max 256 KiB)', 2);
+  }
+  const invalid = !data || data.schemaVersion !== 1 ||
+    !Array.isArray(data.results) || data.results.length < 1 ||
+    data.results.length > 200 || data.totalProbes !== data.results.length ||
+    typeof data.emulatorVersion !== 'string' ||
+    data.emulatorVersion.length > 100 ||
+    !Number.isInteger(data.successfulProbes) ||
+    data.successfulProbes < 0 || data.successfulProbes > data.totalProbes;
+  if (invalid) fail('Invalid coverage snapshot schema; use coverage --json', 2);
+  const keys = new Set();
+  for (const row of data.results) {
+    if (!row || typeof row.service !== 'string' ||
+        typeof row.operation !== 'string' ||
+        !/^[a-z][a-z0-9-]{0,63}$/.test(row.service) ||
+        !/^[A-Z][A-Za-z0-9]{0,80}$/.test(row.operation) ||
+        !COVERAGE_STATUSES.has(row.status)) {
+      fail('Invalid service, operation or probe status in coverage snapshot', 2);
+    }
+    const key = row.service + '.' + row.operation;
+    if (keys.has(key)) fail('Duplicate API probe in coverage snapshot', 2);
+    keys.add(key);
+  }
+  if (data.successfulProbes !== data.results.filter(x => x.status === 'responded').length)
+    fail('Coverage snapshot success count does not match API results', 2);
+  return data;
+}
+function compareCoverage(before, after) {
+  const key = x => x.service + '.' + x.operation;
+  const old = new Map(before.results.map(x => [key(x), x.status]));
+  const now = new Map(after.results.map(x => [key(x), x.status]));
+  const missing = [...old.keys()].filter(x => !now.has(x)).sort();
+  const added = [...now.keys()].filter(x => !old.has(x)).sort();
+  const comparable = missing.length === 0 && added.length === 0;
+  const regressions = [], improvements = [], changed = [];
+  if (comparable) {
+    for (const k of [...old.keys()].sort()) {
+      const left = old.get(k), right = now.get(k);
+      if (left === right) continue;
+      const row = { operation: k, before: left, after: right };
+      if (left === 'responded' && right !== 'responded') regressions.push(row);
+      else if (left !== 'responded' && right === 'responded') improvements.push(row);
+      else changed.push(row);
+    }
+  }
+  return {
+    schemaVersion: 1, comparable, passed: comparable && regressions.length === 0,
+    baselineVersion: before.emulatorVersion, currentVersion: after.emulatorVersion,
+    baseline: { successful: before.successfulProbes, probed: before.totalProbes },
+    current: { successful: after.successfulProbes, probed: after.totalProbes },
+    regressions, improvements, changed, missing, added,
+    note: 'Compares only matching, allowlisted read-only API probe responses; not full AWS fidelity or compatibility.'
+  };
+}
+function renderDiff(report) {
+  const lines = ['',
+    '  AWS EMULATOR MCP / COVERAGE REGRESSION CHECK',
+    '  ------------------------------------------------',
+    '  Baseline: ' + report.baselineVersion +
+      '  (' + report.baseline.successful + '/' + report.baseline.probed + ')',
+    '  Current:  ' + report.currentVersion +
+      '  (' + report.current.successful + '/' + report.current.probed + ')',
+    '  Comparison: ' + (report.comparable ? 'same operation set' : 'NOT COMPARABLE'),
+    '  Regressions: ' + report.regressions.length,
+    '  Improvements: ' + report.improvements.length,
+    '  Other changes: ' + report.changed.length
+  ];
+  for (const row of report.regressions)
+    lines.push('  REGRESSION ' + row.operation + ': ' + row.before + ' -> ' + row.after);
+  for (const row of report.improvements)
+    lines.push('  IMPROVEMENT ' + row.operation + ': ' + row.before + ' -> ' + row.after);
+  for (const k of report.missing)
+    lines.push('  MISSING CURRENT PROBE ' + k);
+  for (const k of report.added)
+    lines.push('  ADDED CURRENT PROBE ' + k);
+  lines.push('', '  ' + (report.passed ? 'PASS' : 'FAIL') +
+    '  Snapshot comparison only; no AWS production fidelity claim.', '');
+  stdout.write(lines.join('\n') + '\n');
+}
+
 function config(format = 'copilot') {
   if (!['copilot', 'vscode'].includes(format)) fail('config format: copilot or vscode', 2);
   const launch = { type: 'stdio', command: execPath, args: [fileURLToPath(import.meta.url), 'mcp'] };
@@ -204,6 +298,22 @@ function config(format = 'copilot') {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'coverage-diff') {
+    const wantsJson = args.includes('--json');
+    const rest = args.filter(x => x !== '--json');
+    if (args.length < 2 || args.length > 3 || rest.length !== 2 ||
+        args.filter(x => x === '--json').length > 1 ||
+        rest.some(x => x.startsWith('-') || /^(https?:|file:)/i.test(x))) {
+      fail('Usage: aws-emulator-mcp coverage-diff <baseline.json> <current.json> [--json]', 2);
+    }
+    const report = compareCoverage(
+      readCoverageSnapshot(rest[0]), readCoverageSnapshot(rest[1]));
+    if (wantsJson) stdout.write(JSON.stringify(report, null, 2) + '\n');
+    else renderDiff(report);
+    if (!report.comparable) fail('Coverage snapshots have different probe sets', 2);
+    if (!report.passed) fail('One or more read-only API responses regressed', 1);
+    return;
+  }
   if (command === 'coverage') {
     const withJson = args.includes('--json');
     const rest = args.filter(x => x !== '--json');
