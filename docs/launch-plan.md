@@ -1,8 +1,10 @@
+> **Historical launch strategy, not current release documentation.** The [README](../README.md), [coverage report](COVERAGE.md), and [current QA summary](../RELEASE_QA.md) supersede the tool counts and launch media below.
+
 # A launch developers can reproduce
 
 ## Recommendation
 
-Position the project as **your own AWS playground, controlled by an AI assistant**. The first impression must show a developer creating a bucket, storing a record, sending a message, and inspecting what actually happened. A multi-service test and error-recovery demonstration prove this isn't just a chat explanation. The 27-tool catalog is supporting evidence, not the headline. See WHAT_YOU_CAN_BUILD.md and LAUNCH_DEMO.md.
+Position the project as **your own AWS playground, controlled by an AI assistant**. The first impression must show a developer creating a bucket, storing a record, sending a message, and inspecting what actually happened. A multi-service test and error-recovery demonstration prove this isn't just a chat explanation. The curated tool catalog is supporting evidence, not the headline. See WHAT_YOU_CAN_BUILD.md and LAUNCH_DEMO.md.
 
 Thousands of stars is an ambition, not a forecast. The first useful signal is
 whether developers outside this project can install it and reproduce the demo.

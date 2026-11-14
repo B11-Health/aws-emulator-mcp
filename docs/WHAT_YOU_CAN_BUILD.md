@@ -8,7 +8,7 @@ The resources are **synthetic and temporary**, and the emulator's fidelity is li
 
 ## Start here: the 3-minute experience
 
-After installing and connecting the **local 27-tool MCP**, ask:
+After installing and connecting the **local MCP (29 curated tools; three additional SDK bridge tools inside Docker)**, ask:
 
 > **Check the AWS Emulator, then run the synthetic order-processing demo. Show every AWS service operation, the deliberate missing-receipt error, how it was recovered, and the cleanup checks.**
 

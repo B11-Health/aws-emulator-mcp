@@ -1,4 +1,24 @@
-> Current project name: **AWS Emulator MCP**. Source repository: **B11-Health/aws-emulator-mcp**. Historic Code Gym launch notes below are retained only as dated prior evidence, not current branding. The prior video is not approved as product demonstration.
+# AWS Emulator MCP — current developer-preview QA
+
+**Current source release:** `0.4.0-beta.4` (npm notation), `0.4.0b4` (Python notation). Repository: [B11-Health/aws-emulator-mcp](https://github.com/B11-Health/aws-emulator-mcp). Product identity: **AWS Emulator MCP**. Reviewed November 14, 2026.
+
+## Latest evidence — current public source
+
+- [PR #14](https://github.com/B11-Health/aws-emulator-mcp/pull/14) merged after [seven of seven GitHub CI jobs passed on the exact PR head](https://github.com/B11-Health/aws-emulator-mcp/actions/runs/43556695779): Windows 2025 source preview, Python 3.10 / 3.12, npm packaging, official Python + TypeScript MCP SDK clients, Docker integration, and signed-emulator live E2E.
+- **155 Python tests executed, two skipped, zero failures**; **10 Node CLI tests passed**; medium/high Bandit static security findings **zero**. Heuristic tracked-source credential scan passed. These scans do not constitute an outside security audit.
+- Native stdlib MCP: **29 curated tools**. Isolated Docker MCP: **32 tools**, including three SDK bridge tools. AWS SDK discovery exposes **436 modeled services**; modeled does not mean implemented or production-fidelity.
+- Real, isolated API checks: **20 of 20 selected read-only operations responded** against official AWS Emulator **v1.0.343**. See [the operation-level coverage snapshot](docs/COVERAGE.md). This does not prove general API availability, IAM behavior, actual Lambda invocations or Bedrock inference.
+- Signed Docker installation, synthetic order recovery, SDK S3 CRUD, MCP handshake, and scoped cleanup passed the integration run. The npm tarball uses an exact **26-file allowlist**; generated Python bytecode files are not included.
+- The redesigned README includes real SVG artwork and a **silent 24-second terminal recording** of actual CLI calls; the earlier narrated promotional video is retired.
+- **Still open:** independent cold Windows/macOS Docker onboarding, external security review, production IAM/fidelity validation (not promised), npm registry publication, stable release tagging, and independent real desktop-agent UX testing.
+
+**Status:** public **source-only developer beta**. No stable release, npm registry availability, external certification, or full AWS service coverage is claimed. Release criteria: [docs/RELEASE_GATES.md](docs/RELEASE_GATES.md).
+
+---
+
+## Historical QA archive: v0.3.0 and earlier
+
+The evidence below is retained as **historical engineering records** only. It includes dated references to a separate nonprofit's earlier announcement, outdated MCP tool counts and a video that is no longer an approved launch demo. **Do not use archived claims to describe the current product.**
 
 # AWS Emulator MCP v0.3.0 — release QA
 
