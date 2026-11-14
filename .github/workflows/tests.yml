@@ -89,10 +89,18 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: '3.12'
-      - name: Unit and security suite on independent Windows
-        run: |
-          python scripts/release_scan.py
-          python -m unittest discover -s tests -q
+      - name: Source integrity scan on independent Windows
+        run: python scripts/release_scan.py
+      - name: Media signatures and posters on Windows
+        run: python -m unittest tests.test_launch_media.LaunchMediaTests.test_asset_structure_and_bounded_file_sizes -v
+      - name: Offline tour static assets on Windows
+        run: python -m unittest tests.test_launch_media.LaunchMediaTests.test_onboarding_site_is_self_contained -v
+      - name: Launch copy consistency on Windows
+        run: python -m unittest tests.test_launch_media.LaunchMediaTests.test_launch_copy_is_brand_consistent -v
+      - name: README links and published claims on Windows
+        run: python -m unittest tests.test_public_story -v
+      - name: Remaining Python tests on Windows
+        run: python -m unittest discover -s tests -q
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
@@ -135,7 +143,7 @@ jobs:
           declared=set(json.loads(pathlib.Path('package.json').read_text())['files'])
           allowed=declared|{'package.json','LICENSE','README.md'}
           assert set(paths)==allowed, {'extra':sorted(set(paths)-allowed),'missing':sorted(allowed-set(paths))}
-          assert 'docs/assets/hero.svg' in paths and 'docs/assets/real-cli-demo.gif' in paths
+          assert 'docs/assets/hero.svg' in paths and 'docs/assets/demos/tour-preview.gif' in paths and 'docs/onboarding/index.html' in paths
           assert 'docs/COVERAGE.md' in paths
           assert not any('__pycache__' in p or p.endswith('.pyc') or '.env' in p or 'credentials' in p.lower() for p in paths)
           print('npm_package_file_count',len(paths),'strict allowlist PASS')
