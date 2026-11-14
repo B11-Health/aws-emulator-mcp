@@ -13,6 +13,8 @@ reports
 remote_connector
 tests
 docs
-examples
+examples/*
+!examples/order-intake/
+!examples/order-intake/**
 *.log
 *.mp4

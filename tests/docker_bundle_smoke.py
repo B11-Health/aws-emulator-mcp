@@ -100,6 +100,30 @@ def verify():
           "of", evidence["totalProbes"], "read-only API probes across models",
           evidence["modeledServiceCount"], flush=True)
 
+    app = run("app-debug", json_mode=True, extra=["compare"], timeout=150)
+    assert app.returncode == 0, app.stderr[-1000:]
+    comparison = json.loads(app.stdout)
+    assert comparison["schemaVersion"] == 1
+    assert comparison["case"] == "duplicate-order-event"
+    assert comparison["passed"] and comparison["bugReproduced"]
+    assert comparison["referenceFixVerified"]
+    assert comparison["emulatorVersion"] and "Version:" in comparison["emulatorVersion"]
+    assert comparison["before"]["passed"] is False
+    assert comparison["after"]["passed"] is True
+    assert comparison["before"]["observed"]["acceptedSubmissions"] == 2
+    assert comparison["before"]["observed"]["queueEvents"] == 2
+    assert comparison["after"]["observed"]["acceptedSubmissions"] == 1
+    assert comparison["after"]["observed"]["queueEvents"] == 1
+    for variant in ("before", "after"):
+        assert len(comparison[variant]["cleanup"]) == 7
+        assert all(x["passed"] for x in comparison[variant]["cleanup"])
+    assert "ConditionExpression" in comparison["referencePatch"]
+    from hashlib import sha256
+    expected_patch = ROOT / "examples/order-intake/reference.patch"
+    assert comparison["referencePatchSha256"] == sha256(expected_patch.read_bytes()).hexdigest()
+    print("APPLICATION_DEBUG_PASS", "duplicate events 2 -> 1",
+          "cleaned before and after", flush=True)
+
     bucket = "cg-sdk-qa-" + uuid.uuid4().hex[:14]
     key = "proof.txt"
     text = "isolated-sdk-model-bridge-verified"
@@ -124,17 +148,22 @@ def verify():
         msg(13, "lab_run", {"experiment": "s3-recovery"}),
         msg(14, "aws_sdk_coverage", {"service": "ec2"}),
         msg(15, "aws_sdk_discover", {"service":"ec2", "limit":10, "offset":10, "query":"Describe"}),
+        msg(16, "app_debug_catalog"),
+        msg(17, "app_debug_run", {"variant":"compare"}),
+        msg(18, "app_debug_run", {"variant":"../untrusted"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
-    r = run("mcp", payload, timeout=100)
+    r = run("mcp", payload, timeout=180)
     assert r.returncode == 0, r.stderr[-1000:]
     rows = {x["id"]: x for line in r.stdout.splitlines() if line.strip()
             for x in [json.loads(line)]}
     assert len(rows) == len(calls), (rows.keys(), r.stderr[:200])
     tools = rows[1]["result"]["tools"]
     names = {x["name"] for x in tools}
-    assert len(tools) == 32
-    assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage", "emulator_order_demo", "lab_catalog", "lab_run"} <= names
+    assert len(tools) == 34
+    assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage",
+            "emulator_order_demo", "lab_catalog", "lab_run",
+            "app_debug_catalog", "app_debug_run"} <= names
     assert content(rows[2])["modeledOperationCount"] >= 100
     assert content(rows[3])["passed"] and content(rows[4])["passed"]
     for i in range(5, 11):
@@ -159,6 +188,19 @@ def verify():
     assert len(described["operations"]) == 10
     assert all("Describe" in row["operation"] for row in described["operations"])
 
+    case = content(rows[16])
+    assert case["case"] == "duplicate-order-event"
+    assert "def submit_order" in case["buggySource"]
+    assert "ConditionExpression" not in case["buggySource"]
+    proof = content(rows[17])
+    assert proof["passed"] and proof["bugReproduced"] and proof["referenceFixVerified"]
+    assert proof["before"]["observed"]["queueEvents"] == 2
+    assert proof["after"]["observed"]["queueEvents"] == 1
+    assert rows[18]["result"]["isError"]
+    assert "Unknown packaged app-debug variant" in rows[18]["result"]["content"][0]["text"]
+
+    print("DOCKER_APP_DEBUG_MCP_PASS", "agent-inspectable source, 2 -> 1 events",
+          "and strict variant rejection", flush=True)
     print("DOCKER_SDK_PASS", len(tools), "tools, S3 CRUD + cleanup, modeled S3/DDB operations", flush=True)
     print("VERIFIED: no host mounts, ports, AWS account or container external network required", flush=True)
 

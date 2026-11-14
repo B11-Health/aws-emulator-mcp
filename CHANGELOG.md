@@ -1,3 +1,16 @@
+## v0.4.0-beta.6 — real application debugging case (source candidate)
+
+- Adds a genuine executable Python order-intake sample, an intentionally
+  broken version, a reviewed conditional-write fix, and an applicable diff.
+- `aws-emulator-mcp app-debug compare` runs each version against
+  fresh local DynamoDB, S3 and SQS resources, verifies duplicate event counts,
+  and fails if assertions or scoped cleanup fail.
+- Docker-only `app_debug_catalog` and `app_debug_run`
+  tools expose the source and reproducible verification: 29 native curated
+  tools remain unchanged; isolated Docker provides 34 total MCP tools.
+- It does **not** execute arbitrary user/agent code or establish crash-atomic
+  messaging, production IAM correctness, or broad AWS service fidelity.
+
 ## v0.4.0-beta.5 — stateful AWS experiments and versioned regression checks
 
 - Added five synthetic SDK-backed experiments: real SNS-to-SQS message delivery and acknowledgement with explicit queue policy, EC2 VPC/subnet/security-group management, EventBridge bus and event submission, SSM Parameter Store, and Secrets Manager create/read/delete.

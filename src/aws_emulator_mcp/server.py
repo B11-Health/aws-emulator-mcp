@@ -690,10 +690,30 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
         }
     FUNCTIONS.update(aws_sdk_discover=aws_sdk.discover,
                      aws_sdk_coverage=aws_sdk.coverage, aws_sdk_invoke=aws_sdk.invoke)
+    from aws_emulator_mcp import app_debug
+    TOOLS.extend([
+        spec("app_debug_catalog",
+             "Inspect the bundled Python order-intake app bug, invariants and source; no arbitrary source execution.",
+             {}),
+        spec("app_debug_run",
+             "Reproduce the bundled order retry bug, run reference fixed application against fresh local AWS Emulator resources, and verify cleanup; variant buggy|fixed|compare only.",
+             {"variant": STR}),
+    ])
+    for extra in TOOLS[-2:]:
+        extra["annotations"] = {
+            "readOnlyHint": extra["name"] == "app_debug_catalog",
+            "destructiveHint": extra["name"] == "app_debug_run",
+            "idempotentHint": extra["name"] == "app_debug_catalog",
+            "openWorldHint": False,
+        }
+    FUNCTIONS.update(app_debug_catalog=app_debug.catalog,
+                     app_debug_run=app_debug.run)
+
+
 
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
-VERSION="0.4.0b5"
+VERSION="0.4.0b6"
 PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
 SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
 SERVER_CAPS={"tools":{"listChanged":False}}
@@ -807,7 +827,7 @@ def handle(msg):
             return _rpc_error(rid,-32602,"Invalid tool arguments")
         try:
             value=FUNCTIONS[name](**args)
-            failed_selftest=(name in ("emulator_self_test","emulator_order_demo","lab_run") and
+            failed_selftest=(name in ("emulator_self_test","emulator_order_demo","lab_run","app_debug_run") and
                              isinstance(value,dict) and not value.get("passed",False))
             result={"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],
                     "isError":failed_selftest}

@@ -141,7 +141,7 @@ jobs:
           print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.5.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.6.tgz
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/aws-emulator-mcp-mcp-config.json
           python3 - <<'PY'
           import json
@@ -162,7 +162,14 @@ jobs:
       - name: Install the packed npm package in isolation
         run: |
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.5.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.6.tgz
+      - name: Verify the reference patch applies to the actual buggy application
+        run: |
+          temp_dir="$(mktemp -d)"
+          cp examples/order-intake/buggy/order_service.py "$temp_dir/order_service.py"
+          (cd "$temp_dir" && git apply "$GITHUB_WORKSPACE/examples/order-intake/reference.patch")
+          cmp "$temp_dir/order_service.py" examples/order-intake/fixed/order_service.py
+          rm -rf "$temp_dir"
       - name: Build signed official emulator and run actual Docker MCP demo and SDK API calls
         run: |
           export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
@@ -203,8 +210,8 @@ jobs:
           PY_END
       - name: Verify no production credentials are available to the image
         run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.5 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.5 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
+          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.6 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
+          docker image inspect aws-emulator-mcp:0.4.0-beta.6 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E

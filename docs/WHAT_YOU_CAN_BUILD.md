@@ -177,3 +177,14 @@ aws-emulator-mcp experiment secretsmanager-secret
 ~~~
 
 **Important distinctions:** the SNS/SQS lab verifies actual message delivery (with explicit queue policy), while the EventBridge lab checks bus creation and successful event submission **without claiming event routing**. The EC2 experiment tests control-plane resource lifecycle **without launching a VM or transmitting network traffic**. Parameter Store and Secrets Manager use synthetic values; they do not validate production IAM, encryption or rotation.
+
+
+### Debug a real app bug (beta.6)
+
+Ask your local AI agent to inspect `app_debug_catalog` source,
+reproduce a duplicate-order failure, and propose a conditional DynamoDB
+write. `app_debug_run` verifies both packaged variants against
+fresh local emulator resources. **Two SQS events before, one after**,
+with seven cleanup checks each. Arbitrary agent-generated code is not
+executed by this developer beta.
+[Read the complete debugging walkthrough](APP_DEBUGGING.md).

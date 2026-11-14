@@ -46,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.5');
+  assert.equal(pkg.version, '0.4.0-beta.6');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -151,4 +151,16 @@ test('coverage-diff rejects mismatched probe sets and corrupted evidence', () =>
     assert.equal(cli('coverage-diff', baseline, corrupt).status, 2);
     assert.equal(cli('coverage-diff', 'https://example.org/secret', baseline).status, 2);
   } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('app-debug restricts execution to packaged variants before Docker is called', () => {
+  assert.equal(cli('app-debug', '../../etc/passwd').status, 2);
+  assert.equal(cli('app-debug', 'https://example.com').status, 2);
+  assert.equal(cli('app-debug', '--shell').status, 2);
+  assert.equal(cli('app-debug', 'compare', '--unsafe').status, 2);
+  assert.equal(cli('app-debug', 'fixed', '--json', '--json').status, 2);
+  const result = cli('help');
+  assert.match(result.stdout, /app-debug/);
+  assert.match(result.stdout, /compare \(default\), buggy, fixed/);
 });

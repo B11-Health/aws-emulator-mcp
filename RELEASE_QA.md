@@ -1,3 +1,19 @@
+# v0.4.0-beta.6 candidate — application debugging evidence
+
+Local QA against signed **AWS Emulator v1.0.365** reproduced an order intake
+bug (**2 accepted submissions, 2 SQS events**) and verified the packaged
+reference patch (**1 accepted submission, 1 SQS event**), with **7/7 scoped
+cleanup checks** for both independent Docker runs. The exact Python source,
+unified patch, and runner are reviewable in the repository.
+Hosted CI will be verified against the exact reviewed PR head before merging;
+independent first-run Windows/macOS Docker onboarding, arbitrary user-code
+patch execution, npm registry publication and external security review
+remain open.
+
+---
+
+## Historical beta.5 and earlier QA
+
 > **v0.4.0-beta.5 developer-preview candidate**: Eight scoped synthetic experiments and the fixed 20-operation regression comparator passed local Docker acceptance on signed AWS Emulator v1.0.353. The previous v1.0.343 baseline also passed 20/20 with zero detected regressions. **Independent CI, cold Windows/macOS onboarding and external security review must still be checked separately.** This note supersedes the beta.4 version heading below for the source branch; keep the historical beta.4 evidence as dated engineering records.
 
 # AWS Emulator MCP — current developer-preview QA

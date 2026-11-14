@@ -1,0 +1,47 @@
+--- a/order_service.py
++++ b/order_service.py
+@@ -1,22 +1,32 @@
+-"""A minimal order-intake application with an intentional retry bug.
++"""A minimal order-intake application with a retry guard.
+ 
+-This is application code: SDK clients and resource names are injected, not
+-wired to AWS Emulator or to any production account.
++The fix prevents a *successfully completed* duplicate request from
++publishing another message. It is not a transactional outbox: crashes
++between DynamoDB, S3 and SQS still require production-grade recovery.
+ """
+ import json
+ 
++from botocore.exceptions import ClientError
++
+ 
+ def submit_order(dynamodb, s3, sqs, *, table, bucket, queue_url, order):
+-    """Store an order, write its receipt, and queue a fulfillment event."""
++    """Store an order once, then write its receipt and queue fulfillment."""
+     body = json.dumps(order, sort_keys=True, separators=(",", ":"))
+-    dynamodb.put_item(
+-        TableName=table,
+-        Item={
+-            "id": {"S": order["id"]},
+-            "sku": {"S": order["sku"]},
+-            "status": {"S": "queued"},
+-        },
+-    )
++    try:
++        dynamodb.put_item(
++            TableName=table,
++            Item={
++                "id": {"S": order["id"]},
++                "sku": {"S": order["sku"]},
++                "status": {"S": "queued"},
++            },
++            ConditionExpression="attribute_not_exists(#pk)",
++            ExpressionAttributeNames={"#pk": "id"},
++        )
++    except ClientError as exc:
++        if exc.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
++            raise
++        return {"accepted": False, "status": "duplicate"}
+     s3.put_object(
+         Bucket=bucket,
+         Key="receipts/" + order["id"] + ".json",

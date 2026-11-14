@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "case": "duplicate-order-event",
+  "variant": "compare",
+  "passed": true,
+  "bugReproduced": true,
+  "referenceFixVerified": true,
+  "before": {
+    "variant": "buggy",
+    "passed": false,
+    "verifiedAccount": "000000000000",
+    "emulatorVersion": "Version: 1.0.365",
+    "assertions": [
+      {
+        "name": "first submission accepted",
+        "passed": true
+      },
+      {
+        "name": "duplicate retry rejected",
+        "passed": false
+      },
+      {
+        "name": "exactly one accepted submission",
+        "passed": false
+      },
+      {
+        "name": "exactly one SQS fulfillment event",
+        "passed": false
+      },
+      {
+        "name": "event body matches logical order",
+        "passed": true
+      },
+      {
+        "name": "DynamoDB row matches submitted order",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches submitted order",
+        "passed": true
+      }
+    ],
+    "observed": {
+      "acceptedSubmissions": 2,
+      "queueEvents": 2,
+      "duplicateSuppressed": false,
+      "dbOrderPresent": true,
+      "receiptMatches": true
+    },
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify SQS queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "error": "A duplicate-order invariant or resource cleanup failed",
+    "duration_ms": 7184.3
+  },
+  "after": {
+    "variant": "fixed",
+    "passed": true,
+    "verifiedAccount": "000000000000",
+    "emulatorVersion": "Version: 1.0.365",
+    "assertions": [
+      {
+        "name": "first submission accepted",
+        "passed": true
+      },
+      {
+        "name": "duplicate retry rejected",
+        "passed": true
+      },
+      {
+        "name": "exactly one accepted submission",
+        "passed": true
+      },
+      {
+        "name": "exactly one SQS fulfillment event",
+        "passed": true
+      },
+      {
+        "name": "event body matches logical order",
+        "passed": true
+      },
+      {
+        "name": "DynamoDB row matches submitted order",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches submitted order",
+        "passed": true
+      }
+    ],
+    "observed": {
+      "acceptedSubmissions": 1,
+      "queueEvents": 1,
+      "duplicateSuppressed": true,
+      "dbOrderPresent": true,
+      "receiptMatches": true
+    },
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify SQS queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "error": null,
+    "duration_ms": 6909.4
+  },
+  "emulatorVersion": "Version: 1.0.365",
+  "referencePatch": "--- a/order_service.py\n+++ b/order_service.py\n@@ -1,22 +1,32 @@\n-\"\"\"A minimal order-intake application with an intentional retry bug.\n+\"\"\"A minimal order-intake application with a retry guard.\n \n-This is application code: SDK clients and resource names are injected, not\n-wired to AWS Emulator or to any production account.\n+The fix prevents a *successfully completed* duplicate request from\n+publishing another message. It is not a transactional outbox: crashes\n+between DynamoDB, S3 and SQS still require production-grade recovery.\n \"\"\"\n import json\n \n+from botocore.exceptions import ClientError\n+\n \n def submit_order(dynamodb, s3, sqs, *, table, bucket, queue_url, order):\n-    \"\"\"Store an order, write its receipt, and queue a fulfillment event.\"\"\"\n+    \"\"\"Store an order once, then write its receipt and queue fulfillment.\"\"\"\n     body = json.dumps(order, sort_keys=True, separators=(\",\", \":\"))\n-    dynamodb.put_item(\n-        TableName=table,\n-        Item={\n-            \"id\": {\"S\": order[\"id\"]},\n-            \"sku\": {\"S\": order[\"sku\"]},\n-            \"status\": {\"S\": \"queued\"},\n-        },\n-    )\n+    try:\n+        dynamodb.put_item(\n+            TableName=table,\n+            Item={\n+                \"id\": {\"S\": order[\"id\"]},\n+                \"sku\": {\"S\": order[\"sku\"]},\n+                \"status\": {\"S\": \"queued\"},\n+            },\n+            ConditionExpression=\"attribute_not_exists(#pk)\",\n+            ExpressionAttributeNames={\"#pk\": \"id\"},\n+        )\n+    except ClientError as exc:\n+        if exc.response.get(\"Error\", {}).get(\"Code\") != \"ConditionalCheckFailedException\":\n+            raise\n+        return {\"accepted\": False, \"status\": \"duplicate\"}\n     s3.put_object(\n         Bucket=bucket,\n         Key=\"receipts/\" + order[\"id\"] + \".json\",\n",
+  "referencePatchSha256": "d2f320be52577a9e1c0b11934dd05b9f8c4530c9d3c2b3735eef8e2952e10425",
+  "sourcePaths": {
+    "buggy": "examples/order-intake/buggy/order_service.py",
+    "fixed": "examples/order-intake/fixed/order_service.py"
+  },
+  "limitations": "Tests one successful order followed by an identical retry with local DynamoDB/S3/SQS operations. Conditional writes prevent repeated publishes only when the initial operation completed; this is not a transactional outbox, a production IAM/security assessment, or full AWS API fidelity."
+}

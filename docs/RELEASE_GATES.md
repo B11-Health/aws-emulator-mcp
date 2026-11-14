@@ -59,3 +59,14 @@ References: https://docs.aws.amazon.com/emulator/ and https://modelcontextprotoc
 ## v0.4.0-beta.5 candidate — additional bounded verification
 
 The current source adds five stateful synthetic experiments (SNS/SQS, EC2 network control plane, EventBridge event bus, SSM Parameter Store, and Secrets Manager) and a local coverage snapshot comparator. A valid regression comparison requires identical API probe sets; a drop from a previously successful operation produces a failing exit status. This does **not** verify arbitrary AWS operations, encryption, IAM, event routing, production network behavior or security. Final release approval still requires independent Windows/macOS cold onboarding, a public source tag, and external review.
+
+
+## v0.4.0-beta.6 application debugging acceptance
+
+GitHub's Docker job must test the **installed npm tarball**, not merely a
+working tree. It must observe 2 SQS messages from the deliberately broken
+application and exactly 1 from the patched application, verify their
+DynamoDB/S3 invariants and 7/7 resource-cleanup checks in each run, check
+an actual unified patch, and reject untrusted variant/URL/script arguments.
+No claim of production AWS security, crash-atomic messaging or arbitrary
+repository support follows from this bounded demo.
