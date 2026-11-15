@@ -60,7 +60,8 @@
     "src/aws_emulator_mcp/failure_lab.py",
     "examples/reliability-lab/README.md",
     "examples/reliability-lab/recovery/order_service.py",
-    "docs/FAILURE_LAB.md"
+    "docs/FAILURE_LAB.md",
+    "docs/evidence/failure-lab-aws-emulator-1.0.385.json"
   ],
   "license": "MIT",
   "repository": {

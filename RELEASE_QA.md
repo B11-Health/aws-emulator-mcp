@@ -4,7 +4,7 @@ A signed AWS Emulator v1.0.385 Docker QA run verified the three reliability
 outcomes: 0 messages for the fragile pre-send timeout; 1 message and 1
 consumer-effect marker after pending-state recovery; and 2 messages with
 only 1 consumer-effect marker after a synthetic lost acknowledgement.
-All 21 scenario-scoped cleanup checks passed. Faults were injected at the
+All 21 scenario-scoped cleanup checks passed. The redacted recorded evidence is in `docs/evidence/failure-lab-aws-emulator-1.0.385.json`. Faults were injected at the
 SDK boundary and did not represent AWS service outages. Full hosted CI
 must pass on the final beta.8 source commit before merging.
 

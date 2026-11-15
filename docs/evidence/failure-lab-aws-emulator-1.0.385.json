@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "scenario": "compare",
+  "passed": true,
+  "missingEventReproduced": true,
+  "presendRecoveryVerified": true,
+  "lostAckDedupeVerified": true,
+  "baseline": {
+    "schemaVersion": 1,
+    "scenario": "fragile-before-send",
+    "passed": true,
+    "applicationRecovered": false,
+    "verifiedAccount": "000000000000",
+    "emulatorVersion": "Version: 1.0.385",
+    "faultSource": "in-process SDK wrapper",
+    "assertions": [
+      {
+        "name": "one synthetic timeout injected at SDK boundary",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches the submitted order",
+        "passed": true
+      },
+      {
+        "name": "retry did not accept a second logical order",
+        "passed": true
+      },
+      {
+        "name": "prematurely marked queued before attempted SQS publish",
+        "passed": true
+      },
+      {
+        "name": "retry suppressed by previous conditional write",
+        "passed": true
+      },
+      {
+        "name": "missing fulfillment event reproduced",
+        "passed": true
+      }
+    ],
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify isolated queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic S3 receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "observed": {
+      "firstCallErrorCode": "RequestTimeout",
+      "statusAfterFault": "queued",
+      "statusAfterRetry": "queued",
+      "queueEvents": 0,
+      "consumerEffectMarkers": 0,
+      "duplicatesIgnored": 0,
+      "retryOutcome": "duplicate",
+      "receiptMatches": true,
+      "injectedFaults": 1,
+      "forwardedSqsCalls": 0
+    },
+    "error": null,
+    "durationMs": 7831.1,
+    "limitations": "One fault is injected inside a local Python SDK wrapper, not by the AWS Emulator service or a live network. Real emulator calls persist synthetic S3/DynamoDB/SQS resources. The recovered producer is at-least-once; the single synthetic consumer-effect marker is idempotent, but neither broker exactly-once semantics nor production AWS fidelity, IAM, security or crash atomicity is established."
+  },
+  "presendRecovery": {
+    "schemaVersion": 1,
+    "scenario": "recover-before-send",
+    "passed": true,
+    "applicationRecovered": true,
+    "verifiedAccount": "000000000000",
+    "emulatorVersion": "Version: 1.0.385",
+    "faultSource": "in-process SDK wrapper",
+    "assertions": [
+      {
+        "name": "one synthetic timeout injected at SDK boundary",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches the submitted order",
+        "passed": true
+      },
+      {
+        "name": "retry did not accept a second logical order",
+        "passed": true
+      },
+      {
+        "name": "pending work persisted after failed acknowledgement",
+        "passed": true
+      },
+      {
+        "name": "retry completed pending work",
+        "passed": true
+      },
+      {
+        "name": "event payload and stable event id independently verified",
+        "passed": true
+      },
+      {
+        "name": "retry after presend failure publishes one event",
+        "passed": true
+      },
+      {
+        "name": "consumer effect recorded exactly once",
+        "passed": true
+      }
+    ],
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify isolated queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic S3 receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "observed": {
+      "firstCallErrorCode": "RequestTimeout",
+      "statusAfterFault": "pending",
+      "statusAfterRetry": "queued",
+      "queueEvents": 1,
+      "consumerEffectMarkers": 1,
+      "duplicatesIgnored": 0,
+      "retryOutcome": "queued",
+      "receiptMatches": true,
+      "injectedFaults": 1,
+      "forwardedSqsCalls": 1
+    },
+    "error": null,
+    "durationMs": 6807.9,
+    "limitations": "One fault is injected inside a local Python SDK wrapper, not by the AWS Emulator service or a live network. Real emulator calls persist synthetic S3/DynamoDB/SQS resources. The recovered producer is at-least-once; the single synthetic consumer-effect marker is idempotent, but neither broker exactly-once semantics nor production AWS fidelity, IAM, security or crash atomicity is established."
+  },
+  "lostAckRecovery": {
+    "schemaVersion": 1,
+    "scenario": "recover-lost-ack",
+    "passed": true,
+    "applicationRecovered": true,
+    "verifiedAccount": "000000000000",
+    "emulatorVersion": "Version: 1.0.385",
+    "faultSource": "in-process SDK wrapper",
+    "assertions": [
+      {
+        "name": "one synthetic timeout injected at SDK boundary",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches the submitted order",
+        "passed": true
+      },
+      {
+        "name": "retry did not accept a second logical order",
+        "passed": true
+      },
+      {
+        "name": "pending work persisted after failed acknowledgement",
+        "passed": true
+      },
+      {
+        "name": "retry completed pending work",
+        "passed": true
+      },
+      {
+        "name": "event payload and stable event id independently verified",
+        "passed": true
+      },
+      {
+        "name": "lost acknowledgement forwarded original SQS send",
+        "passed": true
+      },
+      {
+        "name": "consumer effect is recorded once despite duplicate messages",
+        "passed": true
+      }
+    ],
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify isolated queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic S3 receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "observed": {
+      "firstCallErrorCode": "RequestTimeout",
+      "statusAfterFault": "pending",
+      "statusAfterRetry": "queued",
+      "queueEvents": 2,
+      "consumerEffectMarkers": 1,
+      "duplicatesIgnored": 1,
+      "retryOutcome": "queued",
+      "receiptMatches": true,
+      "injectedFaults": 1,
+      "forwardedSqsCalls": 2
+    },
+    "error": null,
+    "durationMs": 6848.0,
+    "limitations": "One fault is injected inside a local Python SDK wrapper, not by the AWS Emulator service or a live network. Real emulator calls persist synthetic S3/DynamoDB/SQS resources. The recovered producer is at-least-once; the single synthetic consumer-effect marker is idempotent, but neither broker exactly-once semantics nor production AWS fidelity, IAM, security or crash atomicity is established."
+  },
+  "limitations": "One fault is injected inside a local Python SDK wrapper, not by the AWS Emulator service or a live network. Real emulator calls persist synthetic S3/DynamoDB/SQS resources. The recovered producer is at-least-once; the single synthetic consumer-effect marker is idempotent, but neither broker exactly-once semantics nor production AWS fidelity, IAM, security or crash atomicity is established."
+}

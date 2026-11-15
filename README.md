@@ -55,7 +55,7 @@ The [Failure Lab](docs/FAILURE_LAB.md) reproduces a missing fulfillment event
 from a fragile order workflow, verifies a recoverable pending-state approach,
 and shows why an idempotent consumer matters when SQS deliveries duplicate.
 The fault is injected at the local SDK boundary; the state changes are
-verified through actual AWS Emulator APIs. Your agent can use
+verified through actual AWS Emulator APIs. [Recorded run evidence](docs/evidence/failure-lab-aws-emulator-1.0.385.json). Your agent can use
 `failure_lab_catalog` to inspect both reviewed application sources and their
 diff, then `failure_lab_run` to verify the measured behavior without executing
 arbitrary code.

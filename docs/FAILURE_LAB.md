@@ -38,6 +38,9 @@ These counts were observed locally on signed AWS Emulator **v1.0.385**
 (November 14, 2026). The reproducible runner reports the exact emulator
 version it observes when you rerun the tests.
 
+[Inspect the captured JSON assertion and cleanup evidence](evidence/failure-lab-aws-emulator-1.0.385.json).
+This is a snapshot of one recorded local run, not a claim about later emulator versions.
+
 ### Where is the fault injected?
 
 The `InjectSendFailure` wrapper intercepts one `sqs.send_message` call:

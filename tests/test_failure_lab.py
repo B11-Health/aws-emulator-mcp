@@ -235,6 +235,22 @@ class FailureLabTests(unittest.TestCase):
         with patch.object(lab, "_run_one", side_effect=[fake, dict(fake, passed=False), fake]):
             self.assertFalse(lab.run("compare")["passed"])
 
+    def test_saved_emulator_evidence_is_consistent_and_synthetic(self):
+        evidence_path = ROOT / "docs/evidence/failure-lab-aws-emulator-1.0.385.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        self.assertTrue(evidence["passed"])
+        expected = {"baseline": (0, 0), "presendRecovery": (1, 1),
+                    "lostAckRecovery": (2, 1)}
+        for scenario, (events, effects) in expected.items():
+            with self.subTest(scenario=scenario):
+                row = evidence[scenario]
+                self.assertEqual(row["verifiedAccount"], "000000000000")
+                self.assertEqual(row["observed"]["queueEvents"], events)
+                self.assertEqual(row["observed"]["consumerEffectMarkers"], effects)
+                self.assertEqual(len(row["cleanup"]), 7)
+                self.assertTrue(all(x["passed"] for x in row["cleanup"]))
+        self.assertNotIn("AWS_SECRET_ACCESS_KEY", evidence_path.read_text())
+
     def test_only_docker_server_exposes_failure_lab_tools(self):
         names = {tool["name"] for tool in aws.TOOLS}
         self.assertNotIn("failure_lab_run", names)
