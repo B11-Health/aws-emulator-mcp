@@ -28,7 +28,7 @@
     <img src="docs/assets/demos/tour-preview.gif" width="860" alt="Guided walkthrough: connect, reproduce a duplicate-order bug, verify the fix, and explore AWS service experiments">
   </a>
 </p>
-<p align="center"><sub><a href="docs/assets/demos/product-tour.mp4">Watch the guided walkthrough (25s)</a> · <a href="docs/assets/demos/fix-the-bug.mp4">Bug-fix demo (22s)</a> · <a href="docs/assets/demos/getting-started.mp4">Getting started (16s)</a></sub></p>
+<p align="center"><sub><a href="docs/assets/demos/product-tour.mp4">Watch the guided walkthrough (25s)</a> · <a href="docs/assets/demos/fix-the-bug.mp4">Bug-fix demo (22s)</a> · <a href="docs/assets/demos/getting-started.mp4">Getting started (16s)</a> · <a href="docs/assets/demos/failure-lab.mp4">Failure Lab (20s)</a></sub></p>
 
 ## See what your agent can do
 

@@ -30,6 +30,10 @@ SCENES = {
     "getting-started": [
         ("start", 5500), ("explore", 4600), ("start", 2800)
     ],
+    "failure-lab": [
+        ("start", 1800), ("fault", 5600), ("bug", 2400),
+        ("fault", 5800)
+    ],
 }
 
 
@@ -85,6 +89,8 @@ def capture(name, steps):
                 click(page, '[data-step="2"]')
             elif command == "explore":
                 click(page, '[data-step="3"]')
+            elif command == "fault":
+                click(page, '[data-step="4"]')
             elif command == "start":
                 if page.locator("body").get_attribute("data-step") != "0":
                     click(page, '[data-step="0"]')

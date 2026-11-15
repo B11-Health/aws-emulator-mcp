@@ -42,6 +42,19 @@ recoverable pending-state strategy, and verifies one consumer-effect marker
 after two SQS messages caused by a lost acknowledgement.
 [See the scenario and source](FAILURE_LAB.md).
 
+## Failure Lab: missing events and lost acknowledgements · 20 seconds
+
+[![Watch the Failure Lab recovery tour](assets/demos/failure-lab-poster.jpg)](assets/demos/failure-lab.mp4)
+
+**[Watch: Failure Lab](assets/demos/failure-lab.mp4)** — A guided pointer highlights
+three measured outcomes: zero messages from a fragile retry, one message
+after pending-state recovery, and two delivered messages with one idempotent
+consumer-effect marker after an acknowledgement was lost.
+
+The clip is a browser walkthrough of [recorded signed-emulator evidence](evidence/failure-lab-aws-emulator-1.0.385.json).
+It does not show a live terminal or claim that the emulator itself dropped a
+packet. [Reproduce the scenario](FAILURE_LAB.md).
+
 ## Explore the interactive onboarding
 
 The [tour source](onboarding/index.html) includes step navigation and a pointer-follow highlight. To run the interactive version after cloning the repository, from its root:
@@ -50,7 +63,7 @@ The [tour source](onboarding/index.html) includes step navigation and a pointer-
 python3 -m http.server 8765 --bind 127.0.0.1
 ~~~
 
-Then open **http://127.0.0.1:8765/docs/onboarding/**. The tour works without a network connection or Docker and does not execute API calls. You can use the step buttons, arrow controls, or **Play tour** to move through the four stages. The guided pointer and hover highlight work with a mouse; touch screens use the step controls.
+Then open **http://127.0.0.1:8765/docs/onboarding/**. The tour works without a network connection or Docker and does not execute API calls. You can use the step buttons, arrow controls, or **Play tour** to move through the five stages. The guided pointer and hover highlight work with a mouse; touch screens use the step controls.
 
 ## Reproduce the demonstrated application test
 

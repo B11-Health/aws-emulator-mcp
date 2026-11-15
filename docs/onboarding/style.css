@@ -8,3 +8,17 @@
 .controls{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px}.progress{display:flex;align-items:center;gap:10px;color:#a4b5ca;font-size:10px;white-space:nowrap}.bar{width:126px;height:5px;border-radius:99px;overflow:hidden;background:#304158}.bar i{display:block;width:25%;height:100%;background:var(--mint);border-radius:99px;transition:width .35s}.control-buttons{display:flex;gap:8px}.control{background:#1d2c45;color:#dae8f8;font-weight:750;font-size:11px;min-width:83px;border-radius:10px;border:1px solid #425670;padding:11px 13px}.control:hover{border-color:#8ac5ed}.control:disabled{opacity:.35;cursor:not-allowed}.control.primary{background:var(--mint);color:#102939;border-color:var(--mint)}footer{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:16px 2px 0;font-size:10px;color:#93a7be}footer a{color:#a5c9e9}.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px #7ce2b922;margin-right:8px}
 #pointer{position:fixed;left:-100px;top:-100px;pointer-events:none;z-index:80;opacity:0;filter:drop-shadow(0 3px 5px #000b);transition:opacity .15s}#pointer-halo{position:fixed;left:-100px;top:-100px;width:40px;height:40px;border:1px solid #8deac490;background:#8deac415;border-radius:50%;pointer-events:none;z-index:79;opacity:0;transform:translate(-14px,-14px);transition:opacity .15s}body.pointer-on #pointer,body.pointer-on #pointer-halo{opacity:1}#pointer-ring{position:fixed;width:22px;height:22px;border-radius:50%;border:2px solid var(--mint);left:-100px;top:-100px;pointer-events:none;opacity:0;z-index:78;transform:translate(-12px,-12px)}#pointer-ring.ping{animation:ring .55s ease-out}@keyframes ring{0%{opacity:1;transform:translate(-12px,-12px) scale(.5)}100%{opacity:0;transform:translate(-12px,-12px) scale(2.3)}}
 @media(max-width:850px){.shell{padding:15px}.intro{padding:24px 0}.quick-facts,.nav-right span,.step small,.side-title,.side-foot{display:none}.workbench{grid-template-columns:1fr}.sidebar{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px}.step{justify-content:center;padding:9px 5px;gap:6px}.number{width:23px;height:23px;border-radius:6px}.step b{font-size:10px}.workspace{padding:17px}.panels{grid-template-columns:1fr}.results,.terminal{min-height:195px}.intro h1{letter-spacing:-1px}.controls{flex-wrap:wrap}footer{flex-wrap:wrap}}@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Keep the fifth tour stage readable without clipping the workspace on mobile. */
+@media (max-width:850px) {
+  .workbench { grid-template-columns:minmax(0,1fr); }
+  .sidebar { min-width:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px; }
+  .step { min-width:0;flex-direction:column;justify-content:center;text-align:center;padding:8px 2px;gap:5px; }
+  .step .number { flex-shrink:0; }
+  .step b { font-size:9.5px;line-height:1.2;overflow-wrap:anywhere; }
+  .workspace { min-width:0; }
+  .workspace-title { flex-direction:column;gap:10px; }
+  .context-tag { align-self:flex-start; }
+  .panels { grid-template-columns:minmax(0,1fr); }
+  .terminal,.results,.controls { min-width:0; }
+}

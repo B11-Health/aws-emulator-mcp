@@ -66,7 +66,7 @@ class ProductStoryTests(unittest.TestCase):
         gif=ROOT/"docs/assets/demos/tour-preview.gif"
         self.assertTrue(gif.read_bytes().startswith((b"GIF89a",b"GIF87a")))
         self.assertLess(gif.stat().st_size,3_000_000)
-        for name in ("product-tour","fix-the-bug","getting-started","linkedin-launch"):
+        for name in ("product-tour","fix-the-bug","getting-started","linkedin-launch","failure-lab"):
             movie=ROOT/"docs/assets/demos"/(name+".mp4")
             poster=ROOT/"docs/assets/demos"/(name+"-poster.jpg")
             self.assertEqual(movie.read_bytes()[4:8],b"ftyp")

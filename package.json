@@ -61,7 +61,9 @@
     "examples/reliability-lab/README.md",
     "examples/reliability-lab/recovery/order_service.py",
     "docs/FAILURE_LAB.md",
-    "docs/evidence/failure-lab-aws-emulator-1.0.385.json"
+    "docs/evidence/failure-lab-aws-emulator-1.0.385.json",
+    "docs/assets/demos/failure-lab.mp4",
+    "docs/assets/demos/failure-lab-poster.jpg"
   ],
   "license": "MIT",
   "repository": {
