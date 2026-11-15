@@ -1,3 +1,7 @@
 # Architecture Studio artifacts are content-hashed; preserve exact LF bytes on every OS.
 examples/architecture/reference/** text eol=lf
 examples/architecture/order-intake.json text eol=lf
+# Legacy app-debug evidence also hashes these exact source/patch bytes.
+examples/order-intake/reference.patch text eol=lf
+examples/order-intake/buggy/order_service.py text eol=lf
+examples/order-intake/fixed/order_service.py text eol=lf
