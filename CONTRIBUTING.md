@@ -10,6 +10,15 @@ Thank you for helping make local cloud experimentation more reliable.
 4. Use a disposable emulator to run scripts/live_test.py.
 5. Attach a concise reproduction with the emulator version, MCP protocol version, expected behavior, actual result, and sanitized evidence. Do not include credentials, customer data, or private host paths.
 
+## Independent technical reviews
+
+We welcome reviewers who wouldn't use the project. Please start with the
+[community review checklist](docs/COMMUNITY_REVIEW.md) and the
+[structured field-report form](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml).
+Tell us which steps failed, which features duplicate native AWS Emulator
+tooling, or which reliability experiment would affect your decision to adopt.
+Do not imply AWS sponsorship or endorsement.
+
 ## Good first contributions
 
 - Add one AWS Emulator operation with a strict JSON Schema, tests, and clearly described fidelity limitations.

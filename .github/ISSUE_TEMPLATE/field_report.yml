@@ -1,0 +1,91 @@
+name: Developer field report and expert review
+description: Tell us where this independent AWS Emulator MCP adapter is valuable, confusing, missing a capability, or wrong
+title: "[Field report] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We want critical feedback from AWS practitioners and coding-agent developers, including people who decide **not** to use this MCP.
+
+        **Independent project:** This is an adapter built on the [official AWS Emulator](https://github.com/aws/aws-emulator), not an AWS product or endorsed AWS integration. An AWS SDK API model appearing in the catalog does *not* prove that the emulator implements it.
+
+        Please use **synthetic test data only**. Remove credentials, production account IDs, proprietary code, customer records, private URLs and local filesystem paths before posting. Report security disclosures privately using [SECURITY.md](https://github.com/B11-Health/aws-emulator-mcp/blob/master/SECURITY.md).
+  - type: dropdown
+    id: feedback-type
+    attributes:
+      label: What kind of feedback is this?
+      options:
+        - I tried installing or connecting an MCP client
+        - I ran a local contract or Failure Lab test
+        - I tested a GitHub pull-request gate
+        - This duplicates tools or workflows I already use
+        - I want a specific AWS service or SDK operation tested
+        - I found a documentation or onboarding problem
+        - Other honest product feedback
+    validations:
+      required: true
+  - type: dropdown
+    id: context
+    attributes:
+      label: Where did you test?
+      options:
+        - Windows + Docker Desktop
+        - macOS + Docker Desktop
+        - Linux + Docker Engine
+        - GitHub Actions
+        - Haven't tested yet — design review only
+        - Other environment
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to accomplish?
+      description: A single concrete workflow or question is more helpful than a feature wishlist.
+      placeholder: "I wanted my coding agent to verify the effects of an SQS retry before a PR merges..."
+    validations:
+      required: true
+  - type: textarea
+    id: observation
+    attributes:
+      label: What happened? What would have made this useful?
+      description: Include a redacted 2-3 step reproduction or the alternative tool/workflow you'd use instead.
+      placeholder: "I expected... Instead... I'd switch to this tool if..."
+    validations:
+      required: true
+  - type: input
+    id: service
+    attributes:
+      label: AWS service or SDK operation (optional)
+      description: Name the exact operation; please distinguish unimplemented emulator APIs from MCP bugs.
+      placeholder: "sqs.SendMessage, dynamodb.PutItem, etc."
+  - type: input
+    id: versions
+    attributes:
+      label: Versions or client, if known (optional)
+      placeholder: "MCP beta, emulator version, Docker and AI client versions"
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized test evidence (optional)
+      description: Only include synthetic values, expected vs observed status, and cleanup results.
+      render: json
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How much does this affect adoption?
+      options:
+        - Blocker — cannot start or trust the workflow
+        - High — would change my decision to use it
+        - Medium — useful improvement
+        - Low — polish or documentation
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked that my report contains no credentials, private URLs, customer data or production identifiers.
+          required: true

@@ -20,7 +20,8 @@
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
   <a href="#connect-your-ai-assistant">Connect your assistant</a> ·
-  <a href="docs/COVERAGE.md">Service coverage</a>
+  <a href="docs/COVERAGE.md">Service coverage</a> ·
+  <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a>
 </p>
 
 <p align="center">
@@ -110,6 +111,18 @@ jobs:
 Add 1-6 JSON files to `.aws-emulator/contracts`. You can also run
 `aws-emulator-mcp gate .aws-emulator/contracts` locally before pushing.
 [**Copy the workflow, choose example contracts, and inspect the security limits.**](docs/CI_CONTRACT_GATE.md)
+
+## AWS builders: what would you change?
+
+AWS already provides a local emulator and its own agent workflows. This is an
+**independent MCP adapter**, not an AWS product or endorsement. We'd value a
+hard technical review of the added layer: the isolated tool surface, bounded
+failure contracts, PR-gate evidence, and first-run developer experience.
+
+**[Give critical feedback — even if you wouldn't use it](docs/COMMUNITY_REVIEW.md).**
+The [field-report form](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml)
+asks for a concrete scenario, observations, and redacted evidence. The aim is
+to learn what is useful, redundant, or misleading.
 
 ## Get started
 
