@@ -1,7 +1,8 @@
 (function () {
   "use strict";
   // Recorded measurements from docs/evidence/app-debug-aws-emulator-1.0.365.json
-  // and an isolated 20-operation coverage run on AWS Emulator v1.0.365.
+  // an isolated 20-operation coverage run on AWS Emulator v1.0.365,
+  // and docs/evidence/failure-lab-aws-emulator-1.0.385.json.
   // This interface is an interactive explanation, NOT a live terminal.
   const scenes = [
     {
@@ -35,6 +36,14 @@
       terminal: '<span class="cmd">$</span> aws-emulator-mcp experiments\n<span class="good">✓</span> SNS → SQS message delivery\n<span class="good">✓</span> EC2 VPC and subnet lifecycle\n<span class="good">✓</span> EventBridge event bus\n<span class="good">✓</span> SSM parameter round trip\n<span class="good">✓</span> S3, DynamoDB and Secrets Manager\n\n<span class="cmd">$</span> aws-emulator-mcp coverage\n<span class="good">✓</span> 20 / 20 selected read-only probes responded',
       result: "Keep building", status: "8 LABS", metrics: [["8", "Guided experiments", "blue"], ["20/20", "Selected API probes", "green"]],
       note: "Explore API models, test supported operations and read scoped cleanup reports. Service coverage varies."
+    },
+    {
+      eyebrow: "05 / RECOVER", name: "Failure Lab", title: "What if the reply never arrives?",
+      subtitle: "A lost SQS response can mean missing work or duplicate deliveries. Test both paths.",
+      tag: "RETRY · SQS · DYNAMODB", file: "recorded / SDK-boundary fault lab",
+      terminal: '<span class="cmd">$</span> aws-emulator-mcp failure-lab compare\n\n<span class="dim"># Synthetic timeout before the SQS request</span>\n<span class="bad">✕</span> Fragile retry: <span class="bad">0</span> fulfillment events\n<span class="good">✓</span> Pending-state retry: <span class="good">1</span> event\n\n<span class="dim"># Synthetic loss of the send acknowledgement</span>\n<span class="good">✓</span> Emulated queue deliveries: <span class="good">2</span>\n<span class="good">✓</span> Idempotent consumer markers: <span class="good">1</span>\n<span class="good">✓</span> Scoped cleanup checks: <span class="good">21 / 21</span>',
+      result: "Recovery evidence", status: "VERIFIED", metrics: [["0 → 1", "Missing event recovered", "green"], ["2 → 1", "Deliveries → effect markers", "blue"]],
+      note: "Recorded results from signed AWS Emulator 1.0.385. Faults were injected at the local SDK boundary; the other API calls ran inside the emulator."
     }
   ];
   let index = 0, timer = null;

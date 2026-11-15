@@ -41,6 +41,12 @@ The comparison returns a nonzero exit status if it cannot reproduce the bug, ver
 
 [View the source and patch](APP_DEBUGGING.md) · [Watch the walkthrough](DEMO_GALLERY.md)
 
+You can also investigate retry behavior with
+`aws-emulator-mcp failure-lab compare`. It reproduces a missing SQS event,
+then verifies pending-state recovery and duplicate-safe consumer markers.
+[Watch the guided Failure Lab clip](assets/demos/failure-lab.mp4) or
+[inspect the saved result](evidence/failure-lab-aws-emulator-1.0.385.json).
+
 ## 4. Connect an AI assistant
 
 Generate configuration appropriate to your client:
@@ -75,6 +81,6 @@ To explore the workflow before installing Docker, clone this repository and run 
 python3 -m http.server 8765 --bind 127.0.0.1
 ~~~
 
-Then open **http://127.0.0.1:8765/docs/onboarding/**. The tour shows recorded results, navigates between stages, and highlights the pointer during mouse interaction. It requires no external service or account.
+Then open **http://127.0.0.1:8765/docs/onboarding/**. The five-stage tour shows recorded results, navigates between stages, and highlights the pointer during mouse interaction. It requires no external service or account.
 
 Need help? [Open an issue](https://github.com/B11-Health/aws-emulator-mcp/issues) with your operating system, Node and Docker versions, the exact command, and a sanitized error.

@@ -12,6 +12,7 @@ VIDEOS = {
     "fix-the-bug": ("1280", "720", 20, 24),
     "getting-started": ("1280", "720", 14, 18),
     "linkedin-launch": ("1080", "1350", 18, 24),
+    "failure-lab": ("1280", "720", 18, 23),
 }
 
 
@@ -59,7 +60,12 @@ class LaunchMediaTests(unittest.TestCase):
         self.assertIn('href="./style.css"', html)
         self.assertIn('pointermove', js)
         self.assertIn("const scenes", js)
+        self.assertIn('data-step="4"', html)
+        self.assertIn("failure-lab compare", js)
+        self.assertIn("FIVE STEPS", html)
         self.assertIn("prefers-reduced-motion", css)
+        self.assertIn("grid-template-columns:repeat(5,minmax(0,1fr))", css)
+        self.assertIn(".workspace { min-width:0; }", css)
         self.assertNotIn("https://fonts.googleapis", html + css)
         self.assertNotIn("<iframe", html)
 
