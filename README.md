@@ -16,6 +16,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.11">Latest GitHub release</a> ·
   <a href="#get-started">Get started</a> ·
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
@@ -24,6 +25,33 @@
   <a href="docs/COVERAGE.md">Service coverage</a> ·
   <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a>
 </p>
+
+## Explore the actual outputs first
+
+**No AWS account, website or Docker required to inspect the artifacts.**
+The [v0.4.0-beta.11 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.11)
+includes six downloadable, SHA-256-verified assets: the actual architecture
+diagram, editable draw.io source, CloudFormation YAML, an example archive,
+an npm package, and checksums.
+
+| Preview | What it proves | |
+|:--|:--|:--|
+| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.11/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
+| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.11/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
+| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.11/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
+| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.11/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
+
+**Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
+and npm; Docker is not needed for generation):
+
+```bash
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
+aws-emulator-mcp architecture demo
+```
+
+The application actor and diagram arrows are conceptual, **not a deployed
+application or IAM wiring**. Running the generated SDK contract later
+requires local Docker. No command here deploys to a real AWS account.
 
 <p align="center">
   <a href="docs/assets/demos/product-tour.mp4">
@@ -150,7 +178,10 @@ to learn what is useful, redundant, or misleading.
 
 ## Get started
 
-**Requires:** Node.js 20+, running Docker Desktop or Docker Engine, and an internet connection for the first image build.
+**Requirements depend on what you want to do:** Node.js 20+ and Git are sufficient to
+generate Architecture Studio artifacts. **Docker Desktop or Docker Engine is
+only needed when running the local AWS Emulator** and SDK tests. The first
+Docker image build requires an internet connection and sufficient free disk space.
 
 ~~~bash
 npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
