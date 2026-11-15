@@ -2,34 +2,58 @@
 
 AWS Emulator MCP connects a compatible local AI assistant to a disposable AWS development lab. You can run the examples directly from your terminal, or let the agent operate the local MCP tools.
 
-## 1. Prepare your computer
+## 1. See the real output on GitHub (no install)
 
-Install **Node.js 20 or later** and **Docker Engine or Docker Desktop**, then start Docker. You do not need an AWS account or local AWS credentials. The first command that starts an emulator builds an image using AWS's signed Linux package, so you need an internet connection for the initial build and sufficient disk space (the cached image is over 1 GB).
+The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.11)
+includes a viewable SVG, an editable draw.io diagram, actual CloudFormation
+YAML, a synthetic SDK contract, a bundled example archive and checksums.
+This is the GitHub repository itself: there is no separate product website.
 
-| Operating system | Setup |
-|:--|:--|
-| Windows 11 | Use Node.js and Docker Desktop with **Linux containers**. Run commands in PowerShell. |
-| macOS | Use Node.js and Docker Desktop, with Docker running before the first command. |
-| Linux | Use Node.js and a working local Docker Engine socket. |
+[Open the diagram](../examples/architecture/reference/diagram.svg) ·
+[Inspect CloudFormation](../examples/architecture/reference/template.yaml) ·
+[Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.11)
 
-Automated Linux acceptance tests pass. Independent first-use Docker acceptance tests on a clean Windows/macOS computer are still welcome: [report your setup experience](https://github.com/B11-Health/aws-emulator-mcp/issues).
+## 2. Install and generate the architecture (no Docker)
 
-## 2. Install the launcher
+Install **Node.js 20 or later**, Git and npm. Initial package installation
+requires internet access, but generating the blueprint does not require
+Docker, an AWS account, or production credentials.
 
 ~~~bash
 npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
-aws-emulator-mcp doctor
+aws-emulator-mcp architecture demo
 ~~~
 
-The package is distributed from the GitHub repository until its first npm registry release. The `doctor` command checks Docker and the local emulator.
+Open `reports/architecture-studio/diagram.svg`, edit
+`diagram.drawio` in diagrams.net, or review `template.yaml`.
+These are resources and conceptual flows, not a deployed application.
 
-For reproducibility, use the tagged version above or an exact tested commit SHA rather than a moving branch. The full [installation notes](DOCKER_NPM_BETA.md) cover technical details.
+The package is distributed from the GitHub repository until its first npm
+registry release. Pin this tested tag or an exact commit for reproducibility;
+see the [installation notes](DOCKER_NPM_BETA.md).
 
-## 3. Try the order-intake demo
+## 3. Start Docker to run local AWS API tests
+
+Docker is only required for emulator-backed operations. Install and start
+Docker Engine or Docker Desktop, then run the health check. You do not need
+an AWS account or local AWS credentials. The first emulator command builds a
+local image using AWS's signed Linux package, requires internet connectivity,
+and needs sufficient free space (the cached image is over 1 GB).
+
+| Operating system | Emulator requirements |
+|:--|:--|
+| Windows 11 | Docker Desktop with **Linux containers**; commands work in PowerShell. |
+| macOS | Docker Desktop running. |
+| Linux | A working local Docker Engine socket. |
 
 ~~~bash
+aws-emulator-mcp doctor
 aws-emulator-mcp app-debug compare
 ~~~
+
+Automated Linux acceptance tests pass. Independent first-use Docker
+acceptance on a clean Windows/macOS machine is welcome:
+[report your setup experience](https://github.com/B11-Health/aws-emulator-mcp/issues).
 
 The CLI runs the same logical order twice through the example Python app, first with a duplicate-message bug and then with the packaged reference fix.
 

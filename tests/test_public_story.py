@@ -61,6 +61,24 @@ class ProductStoryTests(unittest.TestCase):
             self.assertIn("id: " + field, form)
         self.assertIn("No AWS", readme)
 
+    def test_github_only_first_impression_and_docker_optional(self):
+        import json
+        tag = "v" + json.loads((ROOT / "package.json").read_text())["version"]
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        onboarding = (ROOT / "docs/ONBOARDING.md").read_text(encoding="utf-8")
+        release = ("https://github.com/B11-Health/aws-emulator-mcp/"
+                   "releases/tag/" + tag)
+        self.assertIn(release, readme)
+        self.assertIn(release, onboarding)
+        self.assertIn("## Explore the actual outputs first", readme)
+        self.assertIn("Docker is not needed for generation", readme)
+        self.assertIn("## 2. Install and generate the architecture (no Docker)", onboarding)
+        self.assertIn("## 3. Start Docker to run local AWS API tests", onboarding)
+        for item in ("diagram.svg", "diagram.drawio", "template.yaml", "contract.json"):
+            self.assertIn(item, readme)
+        self.assertIn("not a deployed", onboarding)
+        self.assertNotIn("product website at http", readme.lower())
+
     def test_no_remote_write_claim(self):
         for file in ("README.md","docs/WHAT_YOU_CAN_BUILD.md"):
             text=(ROOT/file).read_text(encoding="utf-8")
