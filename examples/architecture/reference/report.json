@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "name": "order-intake",
+  "validated": {
+    "manifest": true,
+    "cloudFormationSyntax": "generated; not independently checked against AWS",
+    "awsDeployment": false,
+    "emulatorContractExecuted": false,
+    "graphNodes": 3,
+    "conceptualFlows": 3
+  },
+  "resources": [
+    {
+      "id": "ReceiptsBucket",
+      "type": "s3-bucket",
+      "cloudFormationType": "AWS::S3::Bucket"
+    },
+    {
+      "id": "OrdersTable",
+      "type": "dynamodb-table",
+      "cloudFormationType": "AWS::DynamoDB::Table"
+    },
+    {
+      "id": "FulfillmentQueue",
+      "type": "sqs-queue",
+      "cloudFormationType": "AWS::SQS::Queue"
+    }
+  ],
+  "warnings": [
+    "The OrderApp actor and arrows are conceptual; CloudFormation does not deploy an application, IAM policy, trigger or resource-to-resource integration.",
+    "The contract creates separate, synthetic emulator resources; it does not test a deployed CloudFormation stack.",
+    "CloudFormation resource properties have not been validated by a live AWS account. Review with cfn-lint, IAM/security tools and a real change set before deploying.",
+    "Actual AWS resources can incur charges; S3 and DynamoDB data-bearing resources have Retain deletion policies."
+  ],
+  "sourceSha256": "5e2644b2f47dff4dbeb4be783307f50049dfbf6bffee7286a9b047f873938216",
+  "artifacts": {
+    "architecture.json": {
+      "sha256": "5e2644b2f47dff4dbeb4be783307f50049dfbf6bffee7286a9b047f873938216",
+      "bytes": 908
+    },
+    "template.json": {
+      "sha256": "ef280545090b06689b6efb824b6bdb4b04587d2533cecadda9366c593e97c856",
+      "bytes": 2066
+    },
+    "template.yaml": {
+      "sha256": "f4283127b59ed79ae11f46512669b2b90cadf88c15fe75076c4598e66720211d",
+      "bytes": 1638
+    },
+    "diagram.svg": {
+      "sha256": "33ba4fa2c54977543bc977a8e9443d962ff3fbf7261769ef3a69f066128225ef",
+      "bytes": 3858
+    },
+    "diagram.drawio": {
+      "sha256": "0fb7015149debdc4caaf39a3b923d963a38bfd2012f8430ce51ba88a7c4654ef",
+      "bytes": 2553
+    },
+    "contract.json": {
+      "sha256": "244a5b961275886f92f373fcccaa211c86c76de340e445e522e80d8d02f3d390",
+      "bytes": 4409
+    }
+  }
+}

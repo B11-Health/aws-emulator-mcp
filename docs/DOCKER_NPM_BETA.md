@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.10 GitHub-source candidate**; use a published and
+This is the **v0.4.0-beta.11 GitHub-source candidate**; use a published and
 tested Git tag or exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
@@ -98,7 +98,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.10`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b10`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.11`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b11`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 
@@ -138,8 +138,8 @@ This does not execute developer application source or simulate a real outage.
 [Details](CONTRACT_TESTING.md).
 
 
-The current tagged source release is
-`v0.4.0-beta.10`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
+The current version of this source release is
+`v0.4.0-beta.11`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
 are welcome from AWS builders and coding-agent developers.
 
 ## Beta.10: run the contracts in a pull request
@@ -151,3 +151,15 @@ and record sanitized step-level evidence. GitHub automatically displays a
 summary and a downloadable seven-day artifact, and marks the job failed
 if any assertion fails. It uses `pull_request` and read-only repository
 permissions, without AWS credentials or branch-protection changes.
+
+
+## Beta.11: offline architecture blueprints
+
+`aws-emulator-mcp architecture demo` generates deterministic CloudFormation
+YAML/JSON, SVG, editable draw.io, a synthetic 14-step AWS SDK contract and
+source hashes for an S3/DynamoDB/SQS blueprint. Generation is pure local Node
+without Docker, AWS credentials or cloud mutations. The diagrams' actor and
+arrows are conceptual; only the three physical resources appear in the
+template. Independent CI lints the reference template with cfn-lint 1.46.0
+and validates the generated contract against the signed isolated emulator.
+[Architecture Studio guide](ARCHITECTURE_STUDIO.md).

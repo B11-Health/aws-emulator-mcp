@@ -17,7 +17,7 @@ Automated Linux acceptance tests pass. Independent first-use Docker acceptance t
 ## 2. Install the launcher
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.10"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
 aws-emulator-mcp doctor
 ~~~
 

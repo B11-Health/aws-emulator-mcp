@@ -1,6 +1,6 @@
 {
   "name": "aws-emulator-mcp",
-  "version": "0.4.0-beta.10",
+  "version": "0.4.0-beta.11",
   "description": "Local-first MCP adapter for the official AWS Emulator with an isolated Docker lab",
   "type": "module",
   "bin": {
@@ -69,7 +69,17 @@
     "scripts/contract_pr_gate.mjs",
     "docs/CI_CONTRACT_GATE.md",
     "examples/ci-contracts/01-s3-roundtrip.json",
-    "examples/ci-contracts/02-sqs-lost-ack.json"
+    "examples/ci-contracts/02-sqs-lost-ack.json",
+    "scripts/architecture_studio.mjs",
+    "examples/architecture/order-intake.json",
+    "docs/ARCHITECTURE_STUDIO.md",
+    "examples/architecture/reference/architecture.json",
+    "examples/architecture/reference/template.json",
+    "examples/architecture/reference/template.yaml",
+    "examples/architecture/reference/diagram.svg",
+    "examples/architecture/reference/diagram.drawio",
+    "examples/architecture/reference/contract.json",
+    "examples/architecture/reference/report.json"
   ],
   "license": "MIT",
   "repository": {
@@ -92,10 +102,14 @@
     "fault-injection",
     "reliability-testing",
     "github-actions",
-    "ci-contract-tests"
+    "ci-contract-tests",
+    "cloudformation",
+    "architecture-diagrams",
+    "infrastructure-as-code",
+    "drawio"
   ],
   "scripts": {
-    "test": "node --test tests/node_cli.test.mjs tests/contract_gate.test.mjs",
+    "test": "node --test tests/node_cli.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs",
     "pack:check": "npm pack --dry-run --json",
     "qa": "npm test && npm run pack:check"
   }

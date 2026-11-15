@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="order-intake conceptual AWS architecture">
+<title>order-intake / AWS architecture</title>
+<desc>Conceptual actor and flows, with deployable CloudFormation S3, DynamoDB and SQS resources. No app, IAM or integration wiring is deployed.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#506a81"/></marker></defs>
+<rect width="1200" height="560" rx="18" fill="#f8fafc"/>
+<text x="65" y="52" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#16334d">order-intake</text>
+<text x="65" y="80" font-family="Arial,sans-serif" font-size="14" fill="#53697d">Architecture blueprint · not a deployed application</text>
+<rect x="75" y="220" width="275" height="90" rx="15" fill="#153e58" stroke="#153e58" data-actor-id="OrderApp"/>
+<text x="96" y="258" font-family="Arial,sans-serif" font-size="19" font-weight="700" fill="#fff">Order API (conceptual)</text>
+<text x="96" y="284" font-family="Arial,sans-serif" font-size="12" fill="#c7e7ff">Conceptual · not deployed</text>
+<path data-flow="OrderApp:ReceiptsBucket" d="M350 265 C485 265 585 132.5 723 132.5" fill="none" stroke="#506a81" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="520" y="187" font-family="Arial,sans-serif" font-size="13" fill="#41596f">Save receipt</text>
+<rect x="735" y="85" width="370" height="95" rx="14" fill="#e8f1ff" stroke="#3766ac" stroke-width="2" data-resource-id="ReceiptsBucket" data-type="s3-bucket"/>
+<text x="759" y="117" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#3766ac">S3</text>
+<text x="759" y="144" font-family="Arial,sans-serif" font-size="19" font-weight="600" fill="#17334c">Receipt storage</text>
+<text x="759" y="164" font-family="Arial,sans-serif" font-size="12" fill="#4d6475">ReceiptsBucket · AWS::S3::Bucket</text>
+<path data-flow="OrderApp:OrdersTable" d="M350 265 C485 265 585 267.5 723 267.5" fill="none" stroke="#506a81" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="520" y="254" font-family="Arial,sans-serif" font-size="13" fill="#41596f">Store order</text>
+<rect x="735" y="220" width="370" height="95" rx="14" fill="#f4eaff" stroke="#7548ae" stroke-width="2" data-resource-id="OrdersTable" data-type="dynamodb-table"/>
+<text x="759" y="252" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#7548ae">DynamoDB</text>
+<text x="759" y="279" font-family="Arial,sans-serif" font-size="19" font-weight="600" fill="#17334c">Order records</text>
+<text x="759" y="299" font-family="Arial,sans-serif" font-size="12" fill="#4d6475">OrdersTable · AWS::DynamoDB::Table</text>
+<path data-flow="OrderApp:FulfillmentQueue" d="M350 265 C485 265 585 402.5 723 402.5" fill="none" stroke="#506a81" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="520" y="322" font-family="Arial,sans-serif" font-size="13" fill="#41596f">Publish event</text>
+<rect x="735" y="355" width="370" height="95" rx="14" fill="#fff0dd" stroke="#b86b20" stroke-width="2" data-resource-id="FulfillmentQueue" data-type="sqs-queue"/>
+<text x="759" y="387" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#b86b20">SQS</text>
+<text x="759" y="414" font-family="Arial,sans-serif" font-size="19" font-weight="600" fill="#17334c">Fulfillment events</text>
+<text x="759" y="434" font-family="Arial,sans-serif" font-size="12" fill="#4d6475">FulfillmentQueue · AWS::SQS::Queue</text>
+<rect x="65" y="506" width="1070" height="36" rx="8" fill="#edf2f7"/>
+<text x="82" y="529" font-family="Arial,sans-serif" font-size="12" fill="#425a70">Solid boxes = CloudFormation resources · dark box and arrows = conceptual app flow, not implemented IAM or integrations</text>
+</svg>

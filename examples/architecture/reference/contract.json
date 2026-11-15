@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "name": "order-intake-api-smoke",
+  "steps": [
+    {
+      "id": "s3create",
+      "service": "s3",
+      "operation": "CreateBucket",
+      "parameters": {
+        "Bucket": {
+          "$fixture": "bucket"
+        }
+      }
+    },
+    {
+      "id": "s3put",
+      "service": "s3",
+      "operation": "PutObject",
+      "parameters": {
+        "Bucket": {
+          "$fixture": "bucket"
+        },
+        "Key": "receipt.txt",
+        "Body": "demo"
+      }
+    },
+    {
+      "id": "s3read",
+      "service": "s3",
+      "operation": "GetObject",
+      "parameters": {
+        "Bucket": {
+          "$fixture": "bucket"
+        },
+        "Key": "receipt.txt"
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "ContentLength",
+            "equals": 4
+          }
+        ]
+      }
+    },
+    {
+      "id": "s3delete",
+      "service": "s3",
+      "operation": "DeleteObject",
+      "parameters": {
+        "Bucket": {
+          "$fixture": "bucket"
+        },
+        "Key": "receipt.txt"
+      }
+    },
+    {
+      "id": "s3remove",
+      "service": "s3",
+      "operation": "DeleteBucket",
+      "parameters": {
+        "Bucket": {
+          "$fixture": "bucket"
+        }
+      }
+    },
+    {
+      "id": "ddbcreate",
+      "service": "dynamodb",
+      "operation": "CreateTable",
+      "parameters": {
+        "TableName": {
+          "$fixture": "table"
+        },
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "orderId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "orderId",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    },
+    {
+      "id": "ddbput",
+      "service": "dynamodb",
+      "operation": "PutItem",
+      "parameters": {
+        "TableName": {
+          "$fixture": "table"
+        },
+        "Item": {
+          "orderId": {
+            "S": {
+              "$fixture": "id"
+            }
+          },
+          "status": {
+            "S": "received"
+          }
+        }
+      }
+    },
+    {
+      "id": "ddbget",
+      "service": "dynamodb",
+      "operation": "GetItem",
+      "parameters": {
+        "TableName": {
+          "$fixture": "table"
+        },
+        "Key": {
+          "orderId": {
+            "S": {
+              "$fixture": "id"
+            }
+          }
+        }
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "Item.status.S",
+            "equals": "received"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ddbremove",
+      "service": "dynamodb",
+      "operation": "DeleteTable",
+      "parameters": {
+        "TableName": {
+          "$fixture": "table"
+        }
+      }
+    },
+    {
+      "id": "sqscreate",
+      "service": "sqs",
+      "operation": "CreateQueue",
+      "parameters": {
+        "QueueName": {
+          "$fixture": "queue"
+        }
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "exists": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "sqssend",
+      "service": "sqs",
+      "operation": "SendMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "sqscreate.QueueUrl"
+        },
+        "MessageBody": "fulfillment-event"
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "MessageId",
+            "exists": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "sqsreceive",
+      "service": "sqs",
+      "operation": "ReceiveMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "sqscreate.QueueUrl"
+        },
+        "MaxNumberOfMessages": 1
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "equals": "fulfillment-event"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sqsack",
+      "service": "sqs",
+      "operation": "DeleteMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "sqscreate.QueueUrl"
+        },
+        "ReceiptHandle": {
+          "$ref": "sqsreceive.Messages.0.ReceiptHandle"
+        }
+      }
+    },
+    {
+      "id": "sqsremove",
+      "service": "sqs",
+      "operation": "DeleteQueue",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "sqscreate.QueueUrl"
+        }
+      }
+    }
+  ]
+}

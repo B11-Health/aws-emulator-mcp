@@ -19,6 +19,7 @@
   <a href="#get-started">Get started</a> ·
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
+  <a href="docs/ARCHITECTURE_STUDIO.md">Architecture Studio</a> ·
   <a href="#connect-your-ai-assistant">Connect your assistant</a> ·
   <a href="docs/COVERAGE.md">Service coverage</a> ·
   <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a>
@@ -85,6 +86,29 @@ failure/retry experiments for AWS API workflows expressed as JSON, without
 executing application source code.
 [See the contract format, failure examples, and security boundaries](docs/CONTRACT_TESTING.md).
 
+## Design infrastructure and export visual AWS diagrams
+
+Architecture Studio compiles **one typed architecture manifest** into
+CloudFormation YAML/JSON, an SVG diagram, an **editable draw.io file**, and
+a separate synthetic emulator API test. The first release supports S3,
+DynamoDB and SQS without needing an AWS account or Docker to generate files.
+
+```bash
+aws-emulator-mcp architecture demo
+# Files appear in reports/architecture-studio/
+# Open diagram.svg or edit diagram.drawio
+```
+
+[![Generated AWS Emulator MCP Architecture Studio diagram](examples/architecture/reference/diagram.svg)](examples/architecture/reference/diagram.svg)
+
+The application box and arrows illustrate **conceptual flow**. Only the
+S3, DynamoDB and SQS resources are represented in CloudFormation; no
+application handler, IAM permissions, service integration or live stack is
+created. The generated `contract.json` separately exercises synthetic AWS
+SDK equivalents inside the isolated emulator when you choose to run it.
+
+[**Inspect the manifest, template, diagrams and limits.**](docs/ARCHITECTURE_STUDIO.md)
+
 ## Make failed AWS contracts block a pull request
 
 Your agent writes a small JSON contract, and a GitHub Action runs it in a
@@ -103,7 +127,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.10
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.11
         with:
           directory: .aws-emulator/contracts
 ```
@@ -129,7 +153,7 @@ to learn what is useful, redundant, or misleading.
 **Requires:** Node.js 20+, running Docker Desktop or Docker Engine, and an internet connection for the first image build.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.10"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
 
 # Run the before-and-after application test
 aws-emulator-mcp app-debug compare

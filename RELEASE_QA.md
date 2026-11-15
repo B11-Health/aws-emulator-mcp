@@ -1,3 +1,20 @@
+# v0.4.0-beta.11 candidate — Architecture Studio
+
+The offline generator emits seven deterministic artifacts from a reviewed
+three-service manifest: CloudFormation YAML/JSON, SVG, editable draw.io,
+synthetic local API contract, canonical manifest and SHA-256 report.
+The template passes independently installed cfn-lint 1.46.0. SVG and
+draw.io structures parse as XML and have exactly the same resource IDs as
+the CloudFormation JSON. The reference diagram was rendered and inspected.
+
+The generated contract was tested against signed AWS Emulator v1.0.385:
+14/14 AWS SDK lifecycle steps passed with S3/DynamoDB/SQS, using an
+emulator-only Docker image with the bounded DynamoDB ACTIVE readiness
+fix installed. This does not deploy CloudFormation or a live application.
+Independent GitHub CI on the final reviewed commit is still required.
+
+---
+
 # v0.4.0-beta.10 candidate - PR contract checks
 
 The local contract gate runner has regression tests for plan selection,
