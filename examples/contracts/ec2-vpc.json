@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "ec2-vpc-lifecycle",
+  "steps": [
+    {
+      "id": "vpc",
+      "service": "ec2",
+      "operation": "CreateVpc",
+      "parameters": {"CidrBlock": "10.73.0.0/16"},
+      "expect": {"assertions": [{"path": "Vpc.VpcId", "exists": true}]}
+    },
+    {
+      "id": "subnet",
+      "service": "ec2",
+      "operation": "CreateSubnet",
+      "parameters": {
+        "VpcId": {"$ref": "vpc.Vpc.VpcId"},
+        "CidrBlock": "10.73.1.0/24"
+      },
+      "expect": {"assertions": [{"path": "Subnet.SubnetId", "exists": true}]}
+    },
+    {
+      "id": "inspect",
+      "service": "ec2",
+      "operation": "DescribeSubnets",
+      "parameters": {"SubnetIds": [{"$ref": "subnet.Subnet.SubnetId"}]},
+      "expect": {"assertions": [
+        {"path": "Subnets.0.VpcId", "equals": {"$ref": "vpc.Vpc.VpcId"}}
+      ]}
+    },
+    {
+      "id": "delete_subnet",
+      "service": "ec2",
+      "operation": "DeleteSubnet",
+      "parameters": {"SubnetId": {"$ref": "subnet.Subnet.SubnetId"}}
+    },
+    {
+      "id": "delete_vpc",
+      "service": "ec2",
+      "operation": "DeleteVpc",
+      "parameters": {"VpcId": {"$ref": "vpc.Vpc.VpcId"}}
+    }
+  ]
+}

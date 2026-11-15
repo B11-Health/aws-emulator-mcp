@@ -1,3 +1,19 @@
+# v0.4.0-beta.7 candidate — replayable AWS SDK contracts
+
+In the November 14, 2026 development environment, the signed AWS Emulator
+v1.0.385 was built into a separate QA Docker image. A full local Docker
+acceptance run passed: doctor, existing order demo, seven additional experiments,
+20/20 selected read-only API probes, previous-version coverage comparison,
+application bug/fix, three replayable contract examples (3/3, 5/5, 5/5),
+expected false assertion failure, and Docker MCP contract isolation.
+
+At that time, 183 Python tests (2 skipped), 15 Node tests and an exact 50-file
+npm package allowlist passed. The same branch must pass hosted Linux/Windows,
+official MCP client and signed-emulator gates before merging. No external
+security certification or npm registry publication is claimed.
+
+---
+
 # v0.4.0-beta.6 candidate — application debugging evidence
 
 Local QA against signed **AWS Emulator v1.0.365** reproduced an order intake

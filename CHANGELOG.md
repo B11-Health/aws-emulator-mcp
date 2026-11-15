@@ -1,3 +1,18 @@
+## v0.4.0-beta.7 — replayable AWS SDK contracts (source candidate)
+
+- Introduced `contract demo|<plan.json>` and Docker MCP tools `contract_guide`
+  and `contract_run`: bounded declarative AWS SDK API sequences with fixtures,
+  references, explicit assertions, expected errors and redacted evidence.
+- MCP contract execution uses a dedicated emulator process, isolated temporary
+  HOME/credentials and random loopback port for every request. CLI tests run in
+  disposable network-disabled Docker containers, with no host mounts.
+- Three replayable examples cover S3 write/read, SQS delivery/acknowledgement and
+  EC2 VPC/subnet lifecycles. All passed local integration checks against signed
+  AWS Emulator v1.0.385. An intentionally false assertion failed as required.
+- Added negative security, schema, packaging, CLI and Docker MCP regression
+  gates. This remains a GitHub source beta, not a published npm release or
+  production AWS security/fidelity claim.
+
 ## v0.4.0-beta.6 — real application debugging case (source candidate)
 
 - Adds a genuine executable Python order-intake sample, an intentionally
