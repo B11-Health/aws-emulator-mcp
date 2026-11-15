@@ -6,6 +6,7 @@ Neither code, endpoints, resource names nor scripts may be supplied by callers.
 """
 from __future__ import annotations
 
+import difflib
 import hashlib
 import importlib.util
 import json
@@ -32,8 +33,20 @@ LIMITATIONS = (
 
 
 def catalog():
+    """Expose only two packaged, reviewed source files to the coding agent."""
+    fragile_source = FRAGILE.read_text(encoding="utf-8")
+    recovery_source = RECOVERABLE.read_text(encoding="utf-8")
+    diff = "".join(difflib.unified_diff(
+        fragile_source.splitlines(keepends=True),
+        recovery_source.splitlines(keepends=True),
+        fromfile="a/examples/order-intake/fixed/order_service.py",
+        tofile="b/examples/reliability-lab/recovery/order_service.py",
+    ))
     return {
         "schemaVersion": 1,
+        "fragileSource": fragile_source,
+        "recoverableSource": recovery_source,
+        "sourceDiff": diff,
         "title": "Prove retry recovery, lost acknowledgements and duplicate-safe effects",
         "scenarios": list(SCENARIOS),
         "services": ["DynamoDB", "S3", "SQS"],
@@ -59,7 +72,7 @@ def catalog():
         "instructions": (
             "Call failure_lab_run with scenario='compare' to reproduce the "
             "original missing-event failure and verify the two recovery cases. "
-            "The lab runs only bundled reviewed sources; arbitrary code is not accepted."
+            "Inspect fragileSource, recoverableSource and sourceDiff. The lab runs only bundled reviewed sources; arbitrary code is not accepted."
         ),
         "limitations": LIMITATIONS,
     }

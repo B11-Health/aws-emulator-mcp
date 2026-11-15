@@ -19,7 +19,7 @@ aws-emulator-mcp failure-lab compare --json > failure-evidence.json
 ```
 
 Your AI assistant can also call `failure_lab_catalog` to inspect the scenario
-definitions and source hashes, and `failure_lab_run` with
+definitions, complete reviewed application source, unified diff and source hashes, and `failure_lab_run` with
 `{"scenario":"compare"}` to execute it over the local Docker MCP connection.
 
 The individual scenarios are `fragile-before-send`, `recover-before-send`,

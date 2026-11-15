@@ -56,7 +56,9 @@ from a fragile order workflow, verifies a recoverable pending-state approach,
 and shows why an idempotent consumer matters when SQS deliveries duplicate.
 The fault is injected at the local SDK boundary; the state changes are
 verified through actual AWS Emulator APIs. Your agent can use
-`failure_lab_catalog` and `failure_lab_run` without executing arbitrary code.
+`failure_lab_catalog` to inspect both reviewed application sources and their
+diff, then `failure_lab_run` to verify the measured behavior without executing
+arbitrary code.
 
 ## Test an AWS workflow of your own
 

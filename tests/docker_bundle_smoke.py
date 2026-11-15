@@ -282,6 +282,9 @@ def verify():
 
     lab_catalog = content(rows[23])
     assert len(lab_catalog["scenarios"]) == 4
+    assert "def submit_order" in lab_catalog["fragileSource"]
+    assert "pending" in lab_catalog["recoverableSource"]
+    assert "--- a/examples/order-intake/fixed/order_service.py" in lab_catalog["sourceDiff"]
     assert "local Python SDK wrapper" in lab_catalog["limitations"]
     lab_evidence = content(rows[24])
     assert lab_evidence["passed"] and lab_evidence["scenario"] == "recover-before-send"
