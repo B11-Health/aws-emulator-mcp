@@ -109,6 +109,18 @@ jobs:
         run: |
           npm pack --dry-run --json | Out-File -Encoding utf8 "$env:RUNNER_TEMP/npm-pack.json"
           python -c "import json,os,pathlib; d=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'npm-pack.json').read_text(encoding='utf-8-sig'))[0]; allowed=set(json.loads(pathlib.Path('package.json').read_text())['files'])|{'package.json','LICENSE','README.md'}; actual={x['path'] for x in d['files']}; assert actual==allowed, {'extra':sorted(actual-allowed),'missing':sorted(allowed-actual)}; assert not any('__pycache__' in x or x.endswith('.pyc') for x in actual); print('Windows npm package exact allowlist PASS',len(actual))"
+      - name: Verify deterministic Architecture Review on Windows
+        shell: pwsh
+        run: |
+          node bin/aws-emulator-mcp.mjs architecture review examples/architecture/review/before.json examples/architecture/review/after.json reports/ci-blueprint-review --json | Out-Null
+          foreach ($name in @('architecture-diff.svg','report.json','summary.md')) {
+            $expected = Join-Path "examples/architecture/review/reference" $name
+            $actual = Join-Path "reports/ci-blueprint-review" $name
+            if (-not (Test-Path $actual)) { throw "Missing review file: $name" }
+            if ((Get-FileHash -Algorithm SHA256 $expected).Hash -ne (Get-FileHash -Algorithm SHA256 $actual).Hash) {
+              throw "Architecture Review is not deterministic: $name"
+            }
+          }
       - name: Verify offline Architecture Studio generation on Windows
         shell: pwsh
         run: |
@@ -161,12 +173,35 @@ jobs:
           print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.11.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.12.tgz
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/aws-emulator-mcp-mcp-config.json
           python3 - <<'PY'
           import json
           conf=json.load(open('/tmp/aws-emulator-mcp-mcp-config.json'))
           assert conf['mcpServers']['aws-emulator-local']['type']=='stdio'
+          PY
+
+      - name: Verify installed architecture review and real output provenance
+        run: |
+          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs architecture review \
+            examples/architecture/review/before.json \
+            examples/architecture/review/after.json reports/ci-review --json > /tmp/aws-mcp-ci-review-result.json
+          for file in architecture-diff.svg report.json summary.md; do
+            cmp "examples/architecture/review/reference/$file" "reports/ci-review/$file"
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          report=json.loads(Path("reports/ci-review/report.json").read_text())
+          assert report["counts"]["added"]==1
+          assert report["counts"]["modified"]==1
+          assert report["counts"]["unchanged"]==1
+          assert report["highRiskCount"]==1
+          assert report["cloudFormationChangeSet"] is False
+          root=ET.parse("reports/ci-review/architecture-diff.svg").getroot()
+          assert len([n for n in root.iter() if "data-node-id" in n.attrib])==5
+          print("ARCHITECTURE_REVIEW_NPM_PASS",report["highRiskCount"],"risk flag, no cloud access")
           PY
 
       - name: Verify installed architecture generator and CloudFormation schema
@@ -203,7 +238,7 @@ jobs:
       - name: Install the packed npm package in isolation
         run: |
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.11.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.12.tgz
       - name: Verify the reference patch applies to the actual buggy application
         run: |
           temp_dir="$(mktemp -d)"
@@ -251,8 +286,8 @@ jobs:
           PY_END
       - name: Verify no production credentials are available to the image
         run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.11 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.11 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
+          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.12 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
+          docker image inspect aws-emulator-mcp:0.4.0-beta.12 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E

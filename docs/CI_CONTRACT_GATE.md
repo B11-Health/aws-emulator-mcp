@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 28
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.11
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.12
         with:
           directory: .aws-emulator/contracts
 ```
@@ -54,7 +54,7 @@ repository. The MCP itself does not read or execute your application source.
 Requires Node.js 20+, running local Docker and the GitHub-source package:
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
 
 aws-emulator-mcp gate .aws-emulator/contracts
 ```
@@ -118,3 +118,14 @@ evidence, not a proof of an AWS production defect.
 - [Bounded runner and evidence formatter](../scripts/contract_pr_gate.mjs)
 - [Independent GitHub Actions self-test](../.github/workflows/contract-gate-selftest.yml)
 - [Underlying contract format and fault modes](CONTRACT_TESTING.md)
+
+
+## Visual infrastructure changes, not only API contract assertions
+
+Pair this Docker-backed contract gate with the
+[Architecture Review GitHub Action](ARCHITECTURE_REVIEW.md). Architecture
+Review compares JSON blueprints, renders before/after SVG and editable
+draw.io files, flags potentially destructive changes and uploads a separate
+seven-day evidence artifact. It uses Node only and does not access AWS or
+run the emulator. The two checks answer different questions: **what is
+proposed?** versus **does this supported local SDK sequence pass?**

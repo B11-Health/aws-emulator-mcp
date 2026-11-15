@@ -1,0 +1,10 @@
+<mxfile host="app.diagrams.net" agent="AWS Emulator MCP Architecture Studio" type="device">
+<diagram id="architecture" name="Architecture">
+<mxGraphModel dx="1200" dy="560" grid="1" gridSize="10" guides="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="560">
+<root><mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="actor-OrderApp" value="Order API (conceptual) (conceptual, not deployed)" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#153e58;strokeColor=#153e58;fontColor=#ffffff;fontSize=15;" vertex="1" parent="1"><mxGeometry x="75" y="220" width="275" height="90" as="geometry"/></mxCell>
+<mxCell id="resource-ReceiptsBucket" value="Receipt storage / AWS::S3::Bucket / ReceiptsBucket" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#e8f1ff;strokeColor=#3766ac;fontColor=#17334c;fontSize=15;" vertex="1" parent="1"><mxGeometry x="735" y="145" width="370" height="95" as="geometry"/></mxCell>
+<mxCell id="resource-OrdersTable" value="Order records / AWS::DynamoDB::Table / OrdersTable" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f4eaff;strokeColor=#7548ae;fontColor=#17334c;fontSize=15;" vertex="1" parent="1"><mxGeometry x="735" y="305" width="370" height="95" as="geometry"/></mxCell>
+<mxCell id="flow-OrderApp-ReceiptsBucket" value="Save receipt (conceptual)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#506a81;" edge="1" parent="1" source="actor-OrderApp" target="resource-ReceiptsBucket"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="flow-OrderApp-OrdersTable" value="Store order (conceptual)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=0;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#506a81;" edge="1" parent="1" source="actor-OrderApp" target="resource-OrdersTable"><mxGeometry relative="1" as="geometry"/></mxCell>
+</root></mxGraphModel></diagram></mxfile>

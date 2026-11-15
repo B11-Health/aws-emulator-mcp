@@ -30,7 +30,7 @@ A reviewer can also assess the architecture and documentation **without installi
 Requirements: Node.js 20+, running local Docker, and an internet connection for the first signed-emulator image build.
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
 aws-emulator-mcp doctor
 aws-emulator-mcp contract fault-demo --json
 ```

@@ -1,0 +1,65 @@
+name: Architecture Review / standalone PR consumer test
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independent-review:
+    name: Proposed architecture diff / no AWS credentials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Use the identical composite action consumed by downstream repositories
+        uses: ./.github/actions/architecture-review
+        with:
+          before: examples/architecture/review/before.json
+          manifest: examples/architecture/review/after.json
+          fail-on-risk: never
+      - name: Independently verify CloudFormation and diagram change evidence
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          root=Path('reports/architecture-review')
+          report=json.loads((root/'report.json').read_text())
+          assert report['reviewKind']=='local-blueprint-comparison'
+          assert report['cloudFormationChangeSet'] is False
+          assert report['awsDeployment'] is False
+          assert report['awsAccountAccess'] is False
+          assert report['emulatorTestExecuted'] is False
+          assert report['counts']['added']==1
+          assert report['counts']['modified']==1
+          assert report['counts']['unchanged']==1
+          assert report['counts']['removed']==0
+          assert report['highRiskCount']==1
+          rows={x['id']:x for x in report['changes']}
+          assert rows['FulfillmentQueue']['status']=='added'
+          assert rows['OrdersTable']['status']=='modified'
+          assert rows['OrdersTable']['risk']=='high'
+          assert rows['ReceiptsBucket']['status']=='unchanged'
+          svg=ET.parse(root/'architecture-diff.svg').getroot()
+          nodes=[x for x in svg.iter() if 'data-node-id' in x.attrib]
+          assert sum(1 for x in nodes if x.attrib['data-node-id']=='OrdersTable')==2
+          assert sum(1 for x in nodes if x.attrib['data-node-id']=='FulfillmentQueue')==1
+          assert (root/'after-template.yaml').exists()
+          assert (root/'after-diagram.drawio').exists()
+          assert (root/'summary.md').exists()
+          assert len(report['artifacts'])==10
+          all_text=(root/'report.json').read_text()
+          assert 'AKIA' not in all_text and 'AWS_SECRET_ACCESS_KEY' not in all_text
+          print('BLUEPRINT_REVIEW_E2E_PASS',len(nodes),'diagram nodes, one high-risk flag')
+          PY
