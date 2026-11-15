@@ -331,6 +331,31 @@ def _client_error_code(exc):
     return code if isinstance(code, str) and ERROR_CODE.fullmatch(code) else "EmulatorError"
 
 
+def _wait_created_table_active(client, table):
+    """Bounded emulator readiness check for asynchronous DynamoDB CreateTable.
+
+    SDK CreateTable success does not guarantee subsequent PutItem can see the
+    table. This guard reads only the just-created table in the isolated
+    emulator, never sleeps arbitrarily for an agent-defined duration, and
+    never returns API response bodies.
+    """
+    from botocore.exceptions import ClientError
+    if not isinstance(table, str) or not 1 <= len(table) <= 255:
+        _error("DynamoDB CreateTable returned an invalid table identifier")
+    for attempt in range(40):
+        try:
+            result = client.describe_table(TableName=table)
+            if result.get("Table", {}).get("TableStatus") == "ACTIVE":
+                return attempt + 1
+        except ClientError as exc:
+            if (exc.response.get("Error", {}).get("Code") !=
+                    "ResourceNotFoundException"):
+                raise
+        if attempt < 39:
+            time.sleep(0.2)
+    _error("Emulated DynamoDB table did not become ACTIVE in bounded readiness window")
+
+
 def execute(plan):
     """Execute only against the verified local emulator; produce redacted evidence."""
     validate(plan)
@@ -371,6 +396,11 @@ def execute(plan):
             if fault and fault["mode"] == "before-call":
                 raise InjectedSdkTimeout("before-call")
             output = getattr(client, mapping[step["operation"]])(**params)
+            if (step["service"] == "dynamodb" and step["operation"] == "CreateTable"):
+                record["readinessCheck"] = {
+                    "tableActive": True,
+                    "describeAttempts": _wait_created_table_active(client, params["TableName"])
+                }
             if fault and fault["mode"] == "after-success":
                 raise InjectedSdkTimeout("after-success")
             safe = aws_sdk._safe(output)

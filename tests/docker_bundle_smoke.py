@@ -167,6 +167,24 @@ def verify():
         assert verified["passed"] and verified["passedSteps"] == verified["totalSteps"] == 5
         assert all(row["passed"] for row in verified["steps"])
         print("CONTRACT_LIVE_PASS", case_id, verified["passedSteps"], flush=True)
+    architecture_file = ROOT / "examples/architecture/reference/contract.json"
+    architecture_run = run(
+        "contract", extra=[str(architecture_file)], json_mode=True, timeout=185)
+    assert architecture_run.returncode == 0, architecture_run.stderr[-1300:]
+    architecture_proof = json.loads(architecture_run.stdout)
+    assert architecture_proof["passed"] and architecture_proof["accountVerified"]
+    assert architecture_proof["totalSteps"] == architecture_proof["passedSteps"] == 14
+    assert {item["service"] for item in architecture_proof["steps"]} == {
+        "s3", "dynamodb", "sqs"}
+    readiness = next(item for item in architecture_proof["steps"]
+                     if item["id"] == "ddbcreate")
+    assert readiness["passed"] and readiness["readinessCheck"]["tableActive"]
+    assert 1 <= readiness["readinessCheck"]["describeAttempts"] <= 40
+    assert architecture_proof["steps"][-1]["id"] == "sqsremove"
+    print("ARCHITECTURE_STUDIO_CONTRACT_PASS",
+          architecture_proof["passedSteps"], "API steps",
+          "DynamoDB readiness", readiness["readinessCheck"]["describeAttempts"], flush=True)
+
     from tempfile import NamedTemporaryFile
     with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as sample:
         bad_plan = json.loads(contract_file.read_text())

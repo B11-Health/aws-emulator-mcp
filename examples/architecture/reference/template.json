@@ -1,0 +1,81 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Architecture Studio / order-intake. Resources only; conceptual actor and flows are NOT deployed.",
+  "Resources": {
+    "ReceiptsBucket": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "OrdersTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "orderId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "orderId",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      }
+    },
+    "FulfillmentQueue": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "SqsManagedSseEnabled": true,
+        "VisibilityTimeout": 60
+      }
+    }
+  },
+  "Outputs": {
+    "ReceiptsBucketName": {
+      "Description": "CloudFormation-created Receipt storage",
+      "Value": {
+        "Ref": "ReceiptsBucket"
+      }
+    },
+    "OrdersTableName": {
+      "Description": "CloudFormation-created Order records",
+      "Value": {
+        "Ref": "OrdersTable"
+      }
+    },
+    "FulfillmentQueueUrl": {
+      "Description": "CloudFormation-created Fulfillment events",
+      "Value": {
+        "Ref": "FulfillmentQueue"
+      }
+    }
+  }
+}

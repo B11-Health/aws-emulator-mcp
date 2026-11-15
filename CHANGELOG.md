@@ -1,3 +1,21 @@
+## v0.4.0-beta.11 — Architecture Studio, offline blueprint compiler (candidate)
+
+- Added a strict typed manifest for a conceptual application actor and up to
+  three supported AWS resources: S3 bucket, DynamoDB table and SQS queue.
+- `aws-emulator-mcp architecture demo` and
+  `architecture build <manifest.json>` generate deterministic CloudFormation
+  YAML/JSON, SVG, editable diagrams.net/draw.io, synthetic SDK contract and
+  a SHA-256 provenance report, without Docker, AWS credentials or cloud calls.
+- Default S3 public-access blocks, encryption and versioning; DynamoDB/SQS
+  SSE; retention policies for data-bearing resources. Only physical resources
+  are expressed in CloudFormation, not conceptual actor/flow relationships.
+- The generated 14-step contract is exercised against isolated signed AWS
+  Emulator; DynamoDB CreateTable has a bounded ACTIVE readiness check to
+  avoid immediate dependent-write races.
+- Independent diagram/template/source consistency tests and cfn-lint checks,
+  plus malformed input/secret/path refusal tests. Actual AWS deployment
+  and account inventory are intentionally out of scope.
+
 ## v0.4.0-beta.10 - pull-request contract checks (source candidate)
 
 - Added a reusable GitHub composite action for automatically replaying 1-6

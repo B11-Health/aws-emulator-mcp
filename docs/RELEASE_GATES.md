@@ -146,3 +146,24 @@ The action uses only `pull_request` with `contents: read`, SHA-pinned
 setup-node and upload-artifact dependencies, and no production AWS account.
 It doesn't mutate branch protection or leave PR comments. The CLI and action
 share the same runner, so local and hosted behavior are reviewable.
+
+
+## v0.4.0-beta.11 — Architecture Studio (no AWS access)
+
+The npm package gate must generate the reference architecture offline from
+the versioned manifest and verify all seven files against checked-in hashes.
+Independent Python stdlib tests cross-check resource IDs, output references,
+SVG/XML graph nodes/edges and synthetic contract validation. The job also
+installs pinned `cfn-lint==1.46.0`, lints the generated `template.yaml`,
+and checks the YAML and JSON templates for semantic equality.
+
+Unit tests reject unsupported AWS resource types, duplicate IDs, undeclared
+flows, credential-like values, arbitrary CloudFormation/IAM fragments,
+workspace traversal, symlinked inputs/outputs, oversized input and file
+overwrites. Deterministic output must contain no timestamps or credentials.
+
+The signed-emulator Docker job executes the freshly installed npm package's
+generated 14-step S3/DynamoDB/SQS contract with bounded DynamoDB readiness.
+Every step and account verification must pass; no real AWS or CloudFormation
+deployment is attempted. PR needs all independent hosted jobs green before
+merge or tag publication.

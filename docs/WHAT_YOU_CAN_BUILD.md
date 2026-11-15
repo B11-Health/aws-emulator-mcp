@@ -235,3 +235,13 @@ branch ruleset. No AWS account or cloud credentials are required.
 
 These are scoped API-sequence tests, not arbitrary source execution or
 production AWS compatibility tests.
+
+
+## Turn an architecture sketch into inspectable CloudFormation and diagrams
+
+The local-only `aws-emulator-mcp architecture demo` command produces seven
+files from one manifest: a canonical architecture, CloudFormation YAML/JSON,
+SVG, editable draw.io diagram, synthetic API contract, and deterministic
+evidence report. No AWS identity is required for generation. Only resources,
+not the conceptual application actor or arrows, appear in the CloudFormation
+template. [Try the narrow, secure v1 scope](ARCHITECTURE_STUDIO.md).
