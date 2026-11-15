@@ -28,6 +28,20 @@ All clips are **caption-led and silent**, with a visible guided mouse pointer. T
 
 **[Watch: Launch video (4:5)](assets/demos/linkedin-launch.mp4)** — An easy-to-share overview of the duplicate-event example and the development workflow.
 
+## Try the failure-and-recovery lab
+
+No video has been published for this new workflow yet. The experiment itself
+is runnable and independently verified through the installed CLI:
+
+```bash
+aws-emulator-mcp failure-lab compare
+```
+
+It reproduces a lost order event after a synthetic SDK timeout, shows the
+recoverable pending-state strategy, and verifies one consumer-effect marker
+after two SQS messages caused by a lost acknowledgement.
+[See the scenario and source](FAILURE_LAB.md).
+
 ## Explore the interactive onboarding
 
 The [tour source](onboarding/index.html) includes step navigation and a pointer-follow highlight. To run the interactive version after cloning the repository, from its root:

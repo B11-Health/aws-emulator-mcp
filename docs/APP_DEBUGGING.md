@@ -1,6 +1,6 @@
 # Debug a real AWS-backed Python application in the local MCP lab
 
-**AWS Emulator MCP v0.4.0-beta.7 GitHub-source beta.** This is an executable
+**AWS Emulator MCP v0.4.0-beta.8 GitHub-source beta.** This is an executable
 Python application debugging case, **not a transcript of an AI claiming it
 fixed something**. Two application modules make real DynamoDB, S3 and SQS
 calls through the official AWS Emulator in isolated Docker.
@@ -65,7 +65,7 @@ then give it this task:
 The two additional Docker-only MCP tools are `app_debug_catalog`
 (read-only source and task description) and `app_debug_run`
 (execute packaged `buggy`, `fixed` or `compare`).
-The native 29-tool adapter remains unchanged; isolated Docker has **36 total**, including two contract-testing tools.
+The native 29-tool adapter remains unchanged; isolated Docker has **38 total**, including two contract-testing tools.
 
 ## Inspect and apply the actual patch
 

@@ -6,7 +6,8 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 PAGES=("README.md","docs/WHAT_YOU_CAN_BUILD.md","docs/LAUNCH_DEMO.md",
        "docs/linkedin-draft.md","docs/APP_DEBUGGING.md",
-       "docs/ONBOARDING.md","docs/DEMO_GALLERY.md")
+       "docs/ONBOARDING.md","docs/DEMO_GALLERY.md",
+       "docs/FAILURE_LAB.md", "examples/reliability-lab/README.md")
 
 class ProductStoryTests(unittest.TestCase):
     def test_internal_markdown_links_resolve(self):
@@ -79,7 +80,7 @@ class ProductStoryTests(unittest.TestCase):
         from aws_emulator_mcp import aws_sdk
         body=(ROOT/"README.md").read_text(encoding="utf-8")
         self.assertIn("29 curated MCP tools",body)
-        self.assertIn("7 Docker-only tools",body)
+        self.assertIn("9 Docker-only tools",body)
         self.assertIn("436 service models",body)
         self.assertIn("20/20 read-only",body)
         self.assertIn("not yet published on npm",body)

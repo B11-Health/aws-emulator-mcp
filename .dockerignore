@@ -16,5 +16,7 @@ docs
 examples/*
 !examples/order-intake/
 !examples/order-intake/**
+!examples/reliability-lab/
+!examples/reliability-lab/**
 *.log
 *.mp4

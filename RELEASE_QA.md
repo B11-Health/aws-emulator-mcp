@@ -1,3 +1,15 @@
+# v0.4.0-beta.8 candidate — failure and recovery laboratory
+
+A signed AWS Emulator v1.0.385 Docker QA run verified the three reliability
+outcomes: 0 messages for the fragile pre-send timeout; 1 message and 1
+consumer-effect marker after pending-state recovery; and 2 messages with
+only 1 consumer-effect marker after a synthetic lost acknowledgement.
+All 21 scenario-scoped cleanup checks passed. Faults were injected at the
+SDK boundary and did not represent AWS service outages. Full hosted CI
+must pass on the final beta.8 source commit before merging.
+
+---
+
 # v0.4.0-beta.7 candidate — replayable AWS SDK contracts
 
 In the November 14, 2026 development environment, the signed AWS Emulator

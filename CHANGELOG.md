@@ -1,3 +1,17 @@
+## v0.4.0-beta.8 — AWS Failure Lab (source candidate)
+
+- Added a bounded failure/recovery comparison: one synthetic SDK pre-send
+  timeout reproduces a missing SQS event; pending-state recovery publishes
+  one event; an injected lost acknowledgement produces two genuine SQS
+  deliveries but one conditional DynamoDB consumer-effect marker.
+- Added two Docker-only MCP tools `failure_lab_catalog` and
+  `failure_lab_run`, and `aws-emulator-mcp failure-lab compare`.
+- Evidence reports genuine emulator-observed queue counts, durable state,
+  synthetic fault details, assertions, and scoped resource cleanup.
+- Includes a reviewed recovery application, dedicated documentation, and
+  host/unit/MCP/Docker regression tests. Does not claim full AWS fidelity,
+  real network outages, production guarantees, or arbitrary app execution.
+
 ## v0.4.0-beta.7 — replayable AWS SDK contracts (source candidate)
 
 - Introduced `contract demo|<plan.json>` and Docker MCP tools `contract_guide`

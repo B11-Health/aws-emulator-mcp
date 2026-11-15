@@ -26,3 +26,7 @@ remote_connector/relay.env
 remote_connector/*.secret
 remote_connector/private/
 remote_connector/*_private.conf
+
+# Local npm packaging QA prefixes and generated tarballs
+.qa-*/
+aws-emulator-mcp-*.tgz

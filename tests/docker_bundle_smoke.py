@@ -124,6 +124,31 @@ def verify():
     print("APPLICATION_DEBUG_PASS", "duplicate events 2 -> 1",
           "cleaned before and after", flush=True)
 
+    failure = run("failure-lab", extra=["compare"], json_mode=True, timeout=180)
+    assert failure.returncode == 0, failure.stderr[-1000:]
+    proof = json.loads(failure.stdout)
+    assert proof["passed"] and proof["missingEventReproduced"]
+    assert proof["presendRecoveryVerified"] and proof["lostAckDedupeVerified"]
+    for stage, count, effect_count in (
+        ("baseline", 0, 0), ("presendRecovery", 1, 1),
+        ("lostAckRecovery", 2, 1),
+    ):
+        data = proof[stage]
+        assert data["passed"] and data["verifiedAccount"] == "000000000000"
+        assert data["observed"]["firstCallErrorCode"] == "RequestTimeout"
+        assert data["observed"]["queueEvents"] == count
+        assert data["observed"]["consumerEffectMarkers"] == effect_count
+        assert data["observed"]["receiptMatches"] is True
+        assert all(item["passed"] for item in data["assertions"])
+        assert len(data["cleanup"]) == 7 and all(x["passed"] for x in data["cleanup"])
+    assert proof["baseline"]["observed"]["statusAfterFault"] == "queued"
+    assert proof["presendRecovery"]["observed"]["statusAfterFault"] == "pending"
+    assert proof["lostAckRecovery"]["observed"]["statusAfterFault"] == "pending"
+    assert proof["lostAckRecovery"]["observed"]["duplicatesIgnored"] == 1
+    assert "injected" in proof["limitations"]
+    print("FAILURE_LAB_CLI_PASS", "0 -> 1; lost ack 2 deliveries, one consumer marker",
+          "21/21 cleanup", flush=True)
+
     contract_file = ROOT / "examples/contracts/s3-write-read.json"
     contract = run("contract", extra=["demo"], json_mode=True, timeout=150)
     assert contract.returncode == 0, contract.stderr[-1200:]
@@ -189,6 +214,9 @@ def verify():
         msg(20, "contract_run", {"plan": json.loads(contract_file.read_text())}),
         msg(21, "contract_run", {"plan": {"schemaVersion":1, "name":"bad", "steps":[{"id":"x","service":"s3","operation":"CreateBucket", "parameters":{"Bucket":{"$shell":"cat /etc/passwd"}}}]}}),
         msg(22, "aws_sdk_invoke", {"service": "s3", "operation": "ListBuckets"}),
+        msg(23, "failure_lab_catalog"),
+        msg(24, "failure_lab_run", {"scenario": "recover-before-send"}),
+        msg(25, "failure_lab_run", {"scenario": "file:///untrusted.py"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=180)
@@ -198,11 +226,12 @@ def verify():
     assert len(rows) == len(calls), (rows.keys(), r.stderr[:200])
     tools = rows[1]["result"]["tools"]
     names = {x["name"] for x in tools}
-    assert len(tools) == 36
+    assert len(tools) == 38
     assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage",
             "emulator_order_demo", "lab_catalog", "lab_run",
             "app_debug_catalog", "app_debug_run",
-            "contract_guide", "contract_run"} <= names
+            "contract_guide", "contract_run",
+            "failure_lab_catalog", "failure_lab_run"} <= names
     assert content(rows[2])["modeledOperationCount"] >= 100
     assert content(rows[3])["passed"] and content(rows[4])["passed"]
     for i in range(5, 11):
@@ -250,6 +279,17 @@ def verify():
         "Nested contract leaked state into main MCP emulator")
     print("CONTRACT_MCP_PASS", mcp_contract["passedSteps"],
           "fresh nested emulator", flush=True)
+
+    lab_catalog = content(rows[23])
+    assert len(lab_catalog["scenarios"]) == 4
+    assert "local Python SDK wrapper" in lab_catalog["limitations"]
+    lab_evidence = content(rows[24])
+    assert lab_evidence["passed"] and lab_evidence["scenario"] == "recover-before-send"
+    assert lab_evidence["result"]["observed"]["queueEvents"] == 1
+    assert all(item["passed"] for item in lab_evidence["result"]["cleanup"])
+    assert rows[25]["error"]["code"] == -32602
+    print("FAILURE_LAB_MCP_PASS", "reviewed recovery, untrusted scenario rejected",
+          flush=True)
 
     print("DOCKER_APP_DEBUG_MCP_PASS", "agent-inspectable source, 2 -> 1 events",
           "and strict variant rejection", flush=True)

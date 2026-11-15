@@ -8,7 +8,8 @@ The resources are **synthetic and temporary**, and the emulator's fidelity is li
 
 ## Start here: the 3-minute experience
 
-After installing and connecting the **local MCP (29 curated tools; three additional SDK bridge tools inside Docker)**, ask:
+After installing and connecting the **local MCP (29 curated tools plus nine Docker-only tools for broader SDK
+operations, app debugging, replayable contracts and failure testing)**, ask:
 
 > **Check the AWS Emulator, then run the synthetic order-processing demo. Show every AWS service operation, the deliberate missing-receipt error, how it was recovered, and the cleanup checks.**
 
@@ -188,3 +189,15 @@ fresh local emulator resources. **Two SQS events before, one after**,
 with seven cleanup checks each. Arbitrary agent-generated code is not
 executed by this developer beta.
 [Read the complete debugging walkthrough](APP_DEBUGGING.md).
+
+
+## Find the AWS retry bug before your users do
+
+Connect the local MCP and ask it to run `failure_lab_catalog`, inspect the
+reviewed Python order workflows, then call `failure_lab_run` with
+`scenario="compare"`. It will test a missing event on pre-send timeout,
+the pending-state recovery and consumer-side deduplication after an
+acknowledgement was lost. [Inspect evidence and scope](FAILURE_LAB.md).
+
+This is a reproducible example, not automatic fault injection into arbitrary
+user applications or a live AWS service.

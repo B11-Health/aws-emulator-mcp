@@ -73,7 +73,7 @@ repository support follows from this bounded demo.
 
 ## Replayable contract runner validation — feature branch
 
-The Docker MCP adds `contract_guide` and `contract_run` for 36 total tools,
+The Docker MCP adds `contract_guide` and `contract_run` for 36 total tools in beta.7,
 and the CLI adds `contract demo|<file>`. Up to 16 declarative AWS SDK calls
 can be sequenced with response references, expected API errors and explicit
 assertions. MCP contracts get a new emulator process, temporary HOME, random
@@ -86,3 +86,22 @@ isolation, model-operation errors, and protocol-level invalid-argument
 rejection before this feature can be considered merged. See
 [contract testing](CONTRACT_TESTING.md). This does not authorize npm
 publication or imply full emulator compatibility.
+
+
+## v0.4.0-beta.8 — failure/recovery acceptance
+
+The signed-emulator Docker release gate executes the packed npm CLI's
+`failure-lab compare --json`, then the Docker MCP `failure_lab_catalog`
+and `failure_lab_run`. Verify:
+
+- A one-shot synthetic timeout *before* sending leaves the existing application
+  with 0 SQS events after retry and a prematurely queued DynamoDB state.
+- The recoverable version persists pending work, retries and produces exactly
+  1 SQS event and 1 conditional DynamoDB consumer-effect marker.
+- A simulated lost response *after* real SQS acceptance yields 2 messages but
+  1 consumer-effect marker; this is at-least-once delivery, not exactly-once.
+- 7/7 uniquely named resource cleanup checks succeed for each run.
+- Invalid scenario names/paths/scripts are rejected before source execution.
+- Tool descriptions and reports explicitly identify the SDK-boundary fault
+  simulation and do not claim actual AWS network faults, arbitrary source
+  execution or production reliability guarantees.
