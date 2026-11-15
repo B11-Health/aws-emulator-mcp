@@ -16,7 +16,6 @@ import secrets
 import sys
 import time
 
-from aws_emulator_mcp import server as aws
 
 ROOT = Path(__file__).resolve().parents[2] / "examples"
 FRAGILE = ROOT / "order-intake" / "fixed" / "order_service.py"
@@ -79,6 +78,7 @@ def catalog():
 
 
 def _load_app(scenario):
+    from aws_emulator_mcp import server as aws
     if scenario not in SCENARIOS[:-1]:
         raise aws.LocalError("Invalid reviewed reliability scenario")
     name = "fragile" if scenario == "fragile-before-send" else "recoverable"
@@ -130,17 +130,20 @@ def _clean(report, name, fn):
 
 
 def _assert(condition):
+    from aws_emulator_mcp import server as aws
     if not condition:
         raise aws.LocalError("Expected resource cleanup was not observed")
 
 
 def _status(table, order_id):
+    from aws_emulator_mcp import server as aws
     row = aws.dynamodb_get_item(table, order_id).get("Item", {})
     return row.get("status", {}).get("S")
 
 
 def _consume(queue, dynamodb, table, expected_order, *, dedupe):
     """Write consumer marker BEFORE acknowledging delivery; inspect every event."""
+    from aws_emulator_mcp import server as aws
     from botocore.exceptions import ClientError
 
     received = []
@@ -195,6 +198,7 @@ def _consume(queue, dynamodb, table, expected_order, *, dedupe):
 
 
 def _run_one(scenario):
+    from aws_emulator_mcp import server as aws
     from aws_emulator_mcp import aws_sdk
     if scenario not in SCENARIOS[:-1]:
         raise aws.LocalError("Unknown failure-lab scenario")
@@ -340,6 +344,7 @@ def _run_one(scenario):
 
 
 def run(scenario="compare"):
+    from aws_emulator_mcp import server as aws
     if not isinstance(scenario, str) or scenario not in SCENARIOS:
         raise aws.LocalError("Unknown failure-lab scenario: choose compare, fragile-before-send, recover-before-send, or recover-lost-ack")
     if scenario != "compare":

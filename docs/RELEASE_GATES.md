@@ -105,3 +105,26 @@ and `failure_lab_run`. Verify:
 - Tool descriptions and reports explicitly identify the SDK-boundary fault
   simulation and do not claim actual AWS network faults, arbitrary source
   execution or production reliability guarantees.
+
+
+## v0.4.0-beta.9 - agent-authored fault contract gates
+
+For every supported fault mode, the signed-emulator Docker job runs a **packed
+and freshly installed npm CLI** with an agent-authored JSON contract:
+
+- `before-call` proves a synthetic RequestTimeout was returned without
+  forwarding the write, the queue is empty, then the retry yields one event
+- `after-success` proves the original emulated SQS SendMessage succeeded
+  before its SDK acknowledgement was suppressed; retry yields two separately
+  receivable messages, and both are acknowledged and the queue deleted
+- The MCP path runs the after-success contract in an independent emulator and
+  rejects an untrusted `fault.command` field at the protocol boundary
+- Reports differentiate `synthetic_sdk_timeout` from genuine `api_error`
+  and record `sentToEmulator` without disclosing request/response content
+- The validator allows at most one fault, only on SQS SendMessage, S3 PutObject,
+  or DynamoDB PutItem, and requires an explicit expected RequestTimeout
+- A direct import of Failure Lab must not cause a circular import
+
+These gates do not execute arbitrary developer code, certify AWS fidelity,
+or simulate actual network failures. Passing local QA is insufficient for
+merge until the hosted seven-job workflow succeeds on the published PR head.

@@ -201,3 +201,24 @@ acknowledgement was lost. [Inspect evidence and scope](FAILURE_LAB.md).
 
 This is a reproducible example, not automatic fault injection into arbitrary
 user applications or a live AWS service.
+
+
+## Make your AI assistant challenge an AWS retry assumption
+
+Use the SDK clients and operations in **your own app repository** to propose
+a bounded contract. Your coding assistant can inspect your code with its normal
+file tools, consult `contract_guide`, then write a JSON test plan containing
+a single `before-call` or `after-success` fault. The MCP runs only the
+declarative API plan in a fresh isolated emulator; it does **not** execute
+your application. Read the exact samples in [contract testing](CONTRACT_TESTING.md).
+
+A useful instruction to your coding agent:
+
+> Inspect the AWS SDK write and retry paths in my repository. Create a
+> synthetic, local-only contract that first reproduces a one-shot timeout
+> after the write succeeds, then retries and verifies the resulting AWS state.
+> Follow contract_guide, do not use real credentials or arbitrary code, and
+> show the exact assertions and limitations.
+
+The built-in example can be run directly with
+`aws-emulator-mcp contract fault-demo --json`, with no repository access.

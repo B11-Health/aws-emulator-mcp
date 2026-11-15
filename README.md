@@ -70,13 +70,19 @@ executing against an isolated, fresh emulator — not your AWS account.
 ```bash
 aws-emulator-mcp contract demo                # built-in S3 example
 aws-emulator-mcp contract my-workflow.json --json
+aws-emulator-mcp contract fault-demo --json  # simulate a lost SQS acknowledgement
 ```
 
 The Docker MCP client exposes `contract_guide` and `contract_run`. The run
 supports modeled operations across AWS SDK services, **subject to what the
 emulator actually implements**, with a 16-step limit and no arbitrary script
 execution. Each MCP contract receives its own ephemeral emulator state.
-[See the contract format and security boundaries](docs/CONTRACT_TESTING.md).
+The contract runner also accepts one **synthetic SDK-boundary timeout**
+per plan: fail before a supported write, or suppress its acknowledgement
+after a successful emulated write. This lets your agent propose and replay
+failure/retry experiments for AWS API workflows expressed as JSON, without
+executing application source code.
+[See the contract format, failure examples, and security boundaries](docs/CONTRACT_TESTING.md).
 
 ## Get started
 

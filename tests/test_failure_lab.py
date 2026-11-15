@@ -251,6 +251,20 @@ class FailureLabTests(unittest.TestCase):
                 self.assertTrue(all(x["passed"] for x in row["cleanup"]))
         self.assertNotIn("AWS_SECRET_ACCESS_KEY", evidence_path.read_text())
 
+    def test_direct_module_import_does_not_deadlock_server_registration(self):
+        import os
+        import subprocess
+        isolated_env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
+        check = subprocess.run(
+            [sys.executable, "-c",
+             "from aws_emulator_mcp import failure_lab; "
+             "assert 'fragileSource' in failure_lab.catalog(); "
+             "from aws_emulator_mcp import server; "
+             "assert hasattr(server, 'LocalError') and len(server.TOOLS) >= 29"],
+            capture_output=True, text=True, env=isolated_env, timeout=10,
+            check=False)
+        self.assertEqual(check.returncode, 0, check.stderr)
+
     def test_only_docker_server_exposes_failure_lab_tools(self):
         names = {tool["name"] for tool in aws.TOOLS}
         self.assertNotIn("failure_lab_run", names)

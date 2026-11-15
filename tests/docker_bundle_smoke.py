@@ -183,6 +183,26 @@ def verify():
     finally:
         Path(invalid_path).unlink(missing_ok=True)
 
+    for mode, template, expected_forwarding in (
+        ("before-call", "sqs-before-call", False),
+        ("after-success", "sqs-after-success", True),
+    ):
+        name = "fault-demo" if mode == "after-success" else str(
+            ROOT / "examples/contracts" / (template + ".json"))
+        res = run("contract", extra=[name], json_mode=True, timeout=150)
+        assert res.returncode == 0, res.stderr[-900:]
+        proof = json.loads(res.stdout)
+        assert proof["passed"] and proof["passedSteps"] == proof["totalSteps"]
+        assert proof["accountVerified"] and proof["emulatorVersion"]
+        injected = [row for row in proof["steps"] if row["observed"] == "synthetic_sdk_timeout"]
+        assert len(injected) == 1
+        assert injected[0]["errorCode"] == "RequestTimeout"
+        assert injected[0]["fault"]["source"] == "local SDK wrapper"
+        assert injected[0]["fault"]["sentToEmulator"] == expected_forwarding
+        assert all(row["passed"] for row in proof["steps"])
+        print("FAULT_CONTRACT_CLI_PASS", mode, len(proof["steps"]),
+              "steps; forwarded", expected_forwarding, flush=True)
+
     bucket = "cg-sdk-qa-" + uuid.uuid4().hex[:14]
     key = "proof.txt"
     text = "isolated-sdk-model-bridge-verified"
@@ -217,6 +237,15 @@ def verify():
         msg(23, "failure_lab_catalog"),
         msg(24, "failure_lab_run", {"scenario": "recover-before-send"}),
         msg(25, "failure_lab_run", {"scenario": "file:///untrusted.py"}),
+        msg(26, "contract_run", {"plan": json.loads(
+            (ROOT / "examples/contracts/sqs-after-success.json").read_text())}),
+        msg(27, "contract_run", {"plan": {
+            "schemaVersion": 1, "name": "unsafe", "steps": [{
+                "id": "unsafe", "service": "sqs", "operation": "SendMessage",
+                "fault": {"mode": "after-success", "command": "curl cloud"},
+                "expect": {"errorCode": "RequestTimeout"}
+            }]
+        }}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=180)
@@ -268,6 +297,11 @@ def verify():
     assert "Unknown packaged app-debug variant" in rows[18]["result"]["content"][0]["text"]
 
     assert content(rows[19])["maxSteps"] == 16
+    fault_guide = content(rows[19])["faultInjection"]
+    assert fault_guide["maxFaultsPerPlan"] == 1
+    assert "sqs.SendMessage" in fault_guide["allowedWrites"]
+    assert "after-success" in fault_guide["modes"]
+    assert "not an emulator/network outage" in fault_guide["meaning"]
     mcp_contract = content(rows[20])
     assert mcp_contract["passed"] and mcp_contract["passedSteps"] == 3
     assert "Dedicated ephemeral" in mcp_contract["isolation"]
@@ -279,6 +313,14 @@ def verify():
         "Nested contract leaked state into main MCP emulator")
     print("CONTRACT_MCP_PASS", mcp_contract["passedSteps"],
           "fresh nested emulator", flush=True)
+
+    fault_mcp = content(rows[26])
+    assert fault_mcp["passed"] and fault_mcp["totalSteps"] == 8
+    assert any(step.get("fault", {}).get("sentToEmulator") is True
+               for step in fault_mcp["steps"])
+    assert rows[27]["error"]["code"] == -32602
+    print("FAULT_CONTRACT_MCP_PASS", "agent-authored after-success replay",
+          "untrusted fault rejected", flush=True)
 
     lab_catalog = content(rows[23])
     assert len(lab_catalog["scenarios"]) == 4

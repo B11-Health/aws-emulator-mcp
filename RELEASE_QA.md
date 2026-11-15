@@ -1,3 +1,17 @@
+# v0.4.0-beta.9 candidate - replayable SDK fault contracts
+
+A local package smoke test against signed AWS Emulator 1.0.385 verified
+7/7 before-call and 8/8 after-success SQS contract steps. The packed CLI
+and MCP both exercised the lost-acknowledgement case with a real emulated
+SQS SendMessage followed by an injected SDK response failure. An untrusted
+fault command was rejected by MCP schema validation. The full prior bundle
+regression suite also passed on EC2 using an isolated beta.8-signed test
+image with the exact beta.9 Python modules overlaid; hosted CI must now
+perform the independent clean Docker build from the reviewed commit.
+The injected timeout is **not** an actual emulator outage.
+
+---
+
 # v0.4.0-beta.8 candidate — failure and recovery laboratory
 
 A signed AWS Emulator v1.0.385 Docker QA run verified the three reliability
