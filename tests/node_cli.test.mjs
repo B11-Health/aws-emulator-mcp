@@ -182,3 +182,12 @@ test('contract CLI refuses remote paths, bad files and bad shapes before Docker'
   } finally { rmSync(directory, { recursive: true, force: true }); }
   assert.match(cli('help').stdout, /contract demo/);
 });
+
+
+test('Docker image builder never references the contract stdin variable', () => {
+  const source = readFileSync(BIN, 'utf8');
+  const build = source.slice(source.indexOf('async function buildImage()'),
+    source.indexOf('function renderReport('));
+  assert.match(build, /stdio: \[\x27ignore\x27, \x27pipe\x27, \x27inherit\x27\]/);
+  assert.doesNotMatch(build, /\binput\b/);
+});

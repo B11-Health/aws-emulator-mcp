@@ -106,7 +106,7 @@ async function buildImage() {
   }
   stderr.write('AWS Emulator MCP: building a local image with the signed official AWS Emulator.\n');
   const child = spawn('docker', ['build', '--pull', '-t', IMAGE, '-f', 'docker/Dockerfile', ROOT], {
-    stdio: [input === null ? 'ignore' : 'pipe', 'pipe', 'inherit'], windowsHide: true, shell: false
+    stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false
   });
   child.stdout.pipe(stderr); // Docker build output must never corrupt MCP stdout.
   const code = await new Promise((resolve, reject) => {
