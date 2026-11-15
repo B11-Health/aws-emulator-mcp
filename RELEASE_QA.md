@@ -1,3 +1,24 @@
+# v0.4.0-beta.13 candidate — Root Action and separate-consumer acceptance
+
+The new root `action.yml` exposes the same existing Architecture Review
+compiler through a shorter Action path. Its hosted self-test must verify the
+root Action independently of the original nested Action and publish a
+separately named artifact. The external, project-maintained consumer example
+has already demonstrated two checks against beta.12: adding SQS passes;
+changing a DynamoDB key fails intentionally (exit code 2), but an artifact
+is still uploaded. These are not independent third-party reports.
+
+The root metadata should be **eligible for Marketplace review**; it is not a
+Marketplace listing until GitHub confirms publication. A Marketplace
+Developer Agreement or 2FA gate must be completed by the account owner,
+not silently accepted by automation. Versioned source and package claims
+remain distinct from AWS production compatibility.
+
+All existing hosted checks plus the new root job must pass before merge,
+tag or public prerelease.
+
+---
+
 # v0.4.0-beta.12 candidate — GitHub Architecture Review
 
 An offline reviewer compares versioned strict Architecture Studio manifests.

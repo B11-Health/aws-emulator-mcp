@@ -60,11 +60,24 @@ jobs:
         with:
           fetch-depth: 0 # Required to read the base commit; don't execute PR code
           persist-credentials: false
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/architecture-review@v0.4.0-beta.12
+      - uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.13
         with:
           manifest: .aws-emulator/architecture.json
           fail-on-risk: high
 ```
+
+The repository-root Action above is the shortest installation path. For a
+production integration, pin the **exact 40-character source commit SHA**
+instead of a movable version tag. The original nested Action path remains
+available for existing consumers.
+
+**Verify in a separate repository:** the project-maintained
+[add-only consumer PR](https://github.com/B11-Health/aws-emulator-mcp-action-demo/pull/1)
+passed with 11 independently verified evidence files; the
+[intentionally blocked DynamoDB-key PR](https://github.com/B11-Health/aws-emulator-mcp-action-demo/pull/2)
+exited code 2 by policy while still uploading the review evidence. These
+are **project-maintained regression demonstrations, not independent third-party
+endorsements**.
 
 3. Open a PR that changes your JSON blueprint. The Action compares the
    proposed file with the **actual base commit version**, produces the
@@ -72,6 +85,12 @@ jobs:
    `fail-on-risk: high` finds a resource removal, a resource-type change,
    or a DynamoDB partition-key change. To display warnings without
    blocking a PR, choose `fail-on-risk: never`.
+
+The Action has a repository-root `action.yml` metadata file so GitHub can
+evaluate it for Marketplace publication, but Marketplace listing status
+depends on a separate publication workflow and required publisher agreement.
+The Action being available by `uses:` does not prove it is listed in the
+Marketplace.
 
 The action uses a **pinned version of the trusted compiler** from this
 repository. It consumes your PR's JSON as *data*, never imports code from
@@ -101,7 +120,7 @@ time is marked as *no baseline* rather than silently fabricating one.
 Requires Node.js 20+ and Git, but **no Docker or AWS account**:
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.13"
 
 aws-emulator-mcp architecture review \
   examples/architecture/review/before.json \

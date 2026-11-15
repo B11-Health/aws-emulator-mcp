@@ -186,3 +186,25 @@ idempotency, non-overwrite, XML escaping and strict opt-in fail-on-risk.
 This is a source-level proposed blueprint comparison, NOT a real AWS
 CloudFormation change set. No live account, IAM credentials, Docker, remote
 comments, PR write permissions or cloud deployment are used.
+
+
+## v0.4.0-beta.13 — Marketplace-ready root Action and separate-consumer tests
+
+The repository-root `action.yml` metadata must remain schema-valid,
+include a unique name, descriptive purpose and supported branding, and
+use a pinned Node runtime and pinned evidence uploader. It must call the
+trusted reviewed `scripts/architecture_review.mjs` from the action
+checkout, never import arbitrary code from a PR, never require AWS
+credentials, and never imply a real CloudFormation change set.
+
+Independent hosted acceptance must invoke both entrypoints: the legacy
+nested Action and the root Action, each in its own job with a distinct
+artifact name. Validate generated SVG/JSON, upload artifact even when a
+policy check fails, and keep no publication secret in the consumer workflow.
+
+A separate project-maintained repository exercises the published Action:
+a safe SQS-addition PR passed with 11 verified generated files; a
+DynamoDB-key mutation produced an expected code-2 failure while still
+uploading all 11 verified artifacts. Neither run claims independent
+community adoption or production AWS parity. Root Action Marketplace
+listing is a separate publisher-approved step.

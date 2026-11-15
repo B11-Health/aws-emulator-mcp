@@ -1,3 +1,21 @@
+## v0.4.0-beta.13 — Repository-root GitHub Action and consumer proof (candidate)
+
+- Added a repository-root `action.yml` entrypoint for
+  `uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.13`. The nested Action
+  remains for existing integrations; both use the same trusted compiler.
+- Added a second hosted Action self-test that invokes the root metadata in
+  a clean job, validates the generated SVG/JSON and uploads separately named
+  evidence using the optional `artifact-name` input.
+- Published a transparent project-maintained **separate-repository**
+  consumer demo. Its safe SQS-only PR passed; its DynamoDB key-change PR
+  failed intentionally with exit code 2 and uploaded its review artifact.
+  This does not count as independent developer feedback or AWS parity.
+- Improved onboarding with real consumer PR links, short copyable workflow
+  syntax, and guidance for pinning the exact source SHA. Marketplace
+  eligibility/metadata is distinct from actual Marketplace listing.
+- This release does not use real AWS accounts or expose an AWS deployment
+  mechanism.
+
 ## v0.4.0-beta.12 — Architecture Review: visual PR infrastructure changes (candidate)
 
 - New read-only GitHub composite Action compares strictly validated

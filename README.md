@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.12">Latest GitHub release</a> ·
+  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.13">Latest GitHub release</a> ·
   <a href="#get-started">Get started</a> ·
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
@@ -30,23 +30,23 @@
 ## Explore the actual outputs first
 
 **No AWS account, website or Docker required to inspect the artifacts.**
-The [v0.4.0-beta.12 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.12)
+The [v0.4.0-beta.13 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.13)
 includes six downloadable, SHA-256-verified assets: the actual architecture
 diagram, editable draw.io source, CloudFormation YAML, an example archive,
 an npm package, and checksums.
 
 | Preview | What it proves | |
 |:--|:--|:--|
-| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.12/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
-| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.12/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
-| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.12/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
-| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.12/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
+| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
+| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
+| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
+| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
 
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.13"
 aws-emulator-mcp architecture demo
 ```
 
@@ -93,6 +93,22 @@ aws-emulator-mcp architecture review \
   examples/architecture/review/before.json \
   examples/architecture/review/after.json --json
 ```
+
+**Use it in a GitHub pull request** (read-only repository permissions and
+a full-history checkout required):
+
+```yaml
+- uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.13
+  with:
+    manifest: .aws-emulator/architecture.json
+    fail-on-risk: high
+```
+
+The `action.yml` at repository root supports this short entrypoint;
+for production workflows, pin the exact 40-character reviewed commit.
+See the separate project-maintained [green add-only PR](https://github.com/B11-Health/aws-emulator-mcp-action-demo/pull/1)
+and [red intentionally blocked key-change PR](https://github.com/B11-Health/aws-emulator-mcp-action-demo/pull/2).
+These are actual cross-repository executions, **not independent endorsements**.
 
 [**Add the read-only PR review action to your own repo.**](docs/ARCHITECTURE_REVIEW.md)
 See the [actual warning report](examples/architecture/review/reference/report.json)
@@ -181,7 +197,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.12
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.13
         with:
           directory: .aws-emulator/contracts
 ```
@@ -210,7 +226,7 @@ only needed when running the local AWS Emulator** and SDK tests. The first
 Docker image build requires an internet connection and sufficient free disk space.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.13"
 
 # Run the before-and-after application test
 aws-emulator-mcp app-debug compare

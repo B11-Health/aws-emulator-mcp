@@ -1,0 +1,48 @@
+name: AWS Emulator MCP Blueprint PR Review
+description: Compare local AWS architecture blueprints, show an editable before/after diagram, and flag risky changes without AWS credentials
+author: B11-Health
+branding:
+  icon: git-pull-request
+  color: blue
+inputs:
+  manifest:
+    description: Workspace-relative architecture blueprint JSON in the pull request
+    required: false
+    default: .aws-emulator/architecture.json
+  before:
+    description: Optional checked-in baseline JSON; omit to read the actual pull-request base commit
+    required: false
+    default: ''
+  fail-on-risk:
+    description: 'never = informational, high = fail on removals and resource type or DynamoDB key changes'
+    required: false
+    default: never
+  artifact-name:
+    description: Unique artifact name if running the Action more than once in a workflow
+    required: false
+    default: aws-emulator-architecture-review
+runs:
+  using: composite
+  steps:
+    - name: Prepare pinned Node runtime
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: '22'
+    - name: Review declared architecture from trusted Action source
+      shell: bash
+      env:
+        ACTION_SOURCE_ROOT: ${{ github.action_path }}
+        AWS_MCP_REVIEW_MANIFEST: ${{ inputs.manifest }}
+        AWS_MCP_REVIEW_BEFORE: ${{ inputs.before }}
+        AWS_MCP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        AWS_MCP_REVIEW_POLICY: ${{ inputs.fail-on-risk }}
+        AWS_MCP_REVIEW_OUTPUT: reports/architecture-review
+      run: node "$ACTION_SOURCE_ROOT/scripts/architecture_review.mjs" --github
+    - name: Upload sanitized architecture review evidence
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ github.workspace }}/reports/architecture-review/
+        if-no-files-found: error
+        retention-days: 7

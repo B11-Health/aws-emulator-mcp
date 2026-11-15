@@ -268,3 +268,23 @@ test('source Action is pinned, read-only and keeps PR code execution outside the
   assert.match(wf,/pull_request:/);
   assert.match(wf,/uses: \.\/\.github\/actions\/architecture-review/);
 });
+
+
+test('repository-root GitHub Action is a safe Marketplace-ready entrypoint',()=>{
+  const rootAction=readFileSync(path.join(ROOT,'action.yml'),'utf8');
+  const nestedAction=readFileSync(path.join(ROOT,'.github/actions/architecture-review/action.yml'),'utf8');
+  assert.match(rootAction,/name: AWS Emulator MCP Blueprint PR Review/);
+  assert.match(rootAction,/runs:\r?\n  using: composite/);
+  assert.match(rootAction,/scripts\/architecture_review\.mjs/);
+  assert.match(rootAction,/actions\/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
+  assert.match(rootAction,/actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
+  assert.match(rootAction,/inputs\.artifact-name/);
+  assert.match(rootAction,/github\.event\.pull_request\.base\.sha/);
+  assert.doesNotMatch(rootAction,/pull_request_target|secrets\.|aws-actions\/configure-aws-credentials/);
+  assert.match(nestedAction,/scripts\/architecture_review\.mjs/);
+  const selftest=readFileSync(path.join(ROOT,'.github/workflows/architecture-review-selftest.yml'),'utf8');
+  assert.match(selftest,/marketplace-root-entrypoint/);
+  assert.match(selftest,/uses: \.\//);
+  assert.match(selftest,/aws-emulator-architecture-root-evidence/);
+  assert.match(selftest,/contents: read/);
+});
