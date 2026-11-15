@@ -111,6 +111,25 @@ class ArchitectureReviewTests(unittest.TestCase):
                           "peter-evans/create-pull-request", "actions/github-script"):
             self.assertNotIn(forbidden, yamltext + testtext)
 
+    def test_marketplace_root_metadata_and_separate_hosted_gate(self):
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML optional; hosted CI validates root action YAML")
+        action = yaml.safe_load((ROOT / "action.yml").read_text())
+        self.assertEqual(action["runs"]["using"], "composite")
+        self.assertEqual(action["branding"]["color"], "blue")
+        self.assertEqual(len(action["runs"]["steps"]), 3)
+        run = action["runs"]["steps"][1]
+        self.assertIn('scripts/architecture_review.mjs', run["run"])
+        self.assertIn('github.action_path', run["env"]["ACTION_SOURCE_ROOT"])
+        self.assertNotIn('secrets.', str(action))
+        self.assertNotIn('pull_request_target', str(action))
+        wf = yaml.safe_load((ROOT / ".github/workflows/architecture-review-selftest.yml").read_text())
+        self.assertEqual(len(wf["jobs"]), 2)
+        self.assertIn('marketplace-root-entrypoint', wf['jobs'])
+        self.assertEqual(wf['permissions']['contents'], 'read')
+
     def test_package_includes_review_and_preview_sources(self):
         manifest = json.loads((ROOT / "package.json").read_text())
         required = {

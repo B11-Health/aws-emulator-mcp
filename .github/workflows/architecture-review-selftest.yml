@@ -63,3 +63,38 @@ jobs:
           assert 'AKIA' not in all_text and 'AWS_SECRET_ACCESS_KEY' not in all_text
           print('BLUEPRINT_REVIEW_E2E_PASS',len(nodes),'diagram nodes, one high-risk flag')
           PY
+
+  marketplace-root-entrypoint:
+    name: Root composite Action / direct consumer invocation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Run repository-root Action exactly as a consumer would
+        uses: ./
+        with:
+          before: examples/architecture/review/before.json
+          manifest: examples/architecture/review/after.json
+          fail-on-risk: never
+          artifact-name: aws-emulator-architecture-root-evidence
+      - name: Validate root Action's independent report
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          root = Path('reports/architecture-review')
+          data = json.loads((root/'report.json').read_text())
+          assert data['reviewKind'] == 'local-blueprint-comparison'
+          assert data['counts']['added'] == 1
+          assert data['counts']['modified'] == 1
+          assert data['highRiskCount'] == 1
+          assert data['awsAccountAccess'] is False
+          assert data['cloudFormationChangeSet'] is False
+          nodes = [node for node in ET.parse(root/'architecture-diff.svg').getroot().iter()
+                   if 'data-node-id' in node.attrib]
+          assert len(nodes) == 5
+          assert len(data['artifacts']) == 10
+          print('MARKETPLACE_ROOT_ENTRYPOINT_PASS', len(nodes), 'visual nodes')
+          PY

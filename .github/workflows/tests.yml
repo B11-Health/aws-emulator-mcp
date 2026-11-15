@@ -173,7 +173,7 @@ jobs:
           print('npm_package_file_count',len(paths),'strict allowlist PASS')
           PY
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.12.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.13.tgz
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/aws-emulator-mcp-mcp-config.json
           python3 - <<'PY'
           import json
@@ -238,7 +238,7 @@ jobs:
       - name: Install the packed npm package in isolation
         run: |
           npm pack --silent
-          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.12.tgz
+          npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.13.tgz
       - name: Verify the reference patch applies to the actual buggy application
         run: |
           temp_dir="$(mktemp -d)"
@@ -286,8 +286,8 @@ jobs:
           PY_END
       - name: Verify no production credentials are available to the image
         run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.12 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.12 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
+          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.13 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
+          docker image inspect aws-emulator-mcp:0.4.0-beta.13 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E

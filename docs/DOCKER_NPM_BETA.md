@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.12 GitHub-source candidate**; use a published and
+This is the **v0.4.0-beta.13 GitHub-source candidate**; use a published and
 tested Git tag or exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
@@ -98,7 +98,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.12`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b12`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.13`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b13`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 
@@ -139,7 +139,7 @@ This does not execute developer application source or simulate a real outage.
 
 
 The current version of this source release is
-`v0.4.0-beta.12`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
+`v0.4.0-beta.13`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
 are welcome from AWS builders and coding-agent developers.
 
 ## Beta.10: run the contracts in a pull request
@@ -174,3 +174,16 @@ It requires Node.js only, not Docker or AWS credentials. The review is
 not an AWS change-set prediction. It flags certain risky design changes
 for a human but cannot determine an actual resource replacement without
 a separately approved AWS change set.
+
+
+## Beta.13: short GitHub Action entrypoint
+
+Repository-root `action.yml` lets developers install the read-only
+Architecture Review directly as
+`uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.13`.
+The nested Action path remains supported. An independent root-action
+CI job validates that the Action runs against a fresh checkout and
+produces the same bounded, credential-free blueprint evidence.
+To see actual separate-repository runs, follow
+[the pass and expected-block demos](ARCHITECTURE_REVIEW.md).
+This does not mean the Action is already listed on GitHub Marketplace.
