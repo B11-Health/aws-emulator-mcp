@@ -79,7 +79,7 @@ class ProductStoryTests(unittest.TestCase):
         from aws_emulator_mcp import aws_sdk
         body=(ROOT/"README.md").read_text(encoding="utf-8")
         self.assertIn("29 curated MCP tools",body)
-        self.assertIn("5 Docker-only tools",body)
+        self.assertIn("7 Docker-only tools",body)
         self.assertIn("436 service models",body)
         self.assertIn("20/20 read-only",body)
         self.assertIn("not yet published on npm",body)

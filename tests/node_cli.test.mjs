@@ -15,7 +15,7 @@ function cli(...args) {
 test('help states a limited tool surface, not full AWS parity', () => {
   const result = cli('help');
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /29 curated \+ 3 SDK bridge tools/);
+  assert.match(result.stdout, /29 curated \+ 7 Docker-only tools/);
   assert.match(result.stdout, /No AWS account/);
   assert.doesNotMatch(result.stdout, /1000|full AWS API parity/i);
 });
@@ -46,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.6');
+  assert.equal(pkg.version, '0.4.0-beta.7');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -163,4 +163,31 @@ test('app-debug restricts execution to packaged variants before Docker is called
   const result = cli('help');
   assert.match(result.stdout, /app-debug/);
   assert.match(result.stdout, /compare \(default\), buggy, fixed/);
+});
+
+test('contract CLI refuses remote paths, bad files and bad shapes before Docker', () => {
+  assert.equal(cli('contract').status, 2);
+  assert.equal(cli('contract', 'https://example.org/plan.json').status, 2);
+  assert.equal(cli('contract', '--shell').status, 2);
+  assert.equal(cli('contract', 'demo', '--json', '--json').status, 2);
+  const directory = mkdtempSync(path.join(tmpdir(), 'aws-mcp-contract-'));
+  try {
+    const invalid = path.join(directory, 'invalid.json');
+    writeFileSync(invalid, JSON.stringify({ schemaVersion: 1, name: 'empty', steps: [] }));
+    assert.equal(cli('contract', invalid).status, 2);
+    writeFileSync(invalid, '{invalid json');
+    assert.equal(cli('contract', invalid).status, 2);
+    writeFileSync(invalid, 'z'.repeat(50000));
+    assert.equal(cli('contract', invalid).status, 2);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+  assert.match(cli('help').stdout, /contract demo/);
+});
+
+
+test('Docker image builder never references the contract stdin variable', () => {
+  const source = readFileSync(BIN, 'utf8');
+  const build = source.slice(source.indexOf('async function buildImage()'),
+    source.indexOf('function renderReport('));
+  assert.match(build, /stdio: \[\x27ignore\x27, \x27pipe\x27, \x27inherit\x27\]/);
+  assert.doesNotMatch(build, /\binput\b/);
 });

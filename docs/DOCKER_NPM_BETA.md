@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.6 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.7 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
@@ -39,11 +39,11 @@ Every runtime container is `--network none`, `--cap-drop ALL`, `--security-opt n
 
 The official Linux emulator binary is approximately **994 MB unpacked** for the tested v1.0.338 AMD64 package, so the image is currently larger than 1 GB. The npm package is small and does not contain the binary. The initial build downloads the upstream signed package; subsequent CLI runs reuse the cached image.
 
-## 29 curated MCP tools plus SDK model bridge
+## 29 curated MCP tools plus Docker-only SDK and test workflows
 
 The 29 curated tools give simple, explicit operations for S3 text objects, DynamoDB id/message records, standard SQS messages, diagnostics, and verified order/self-test workflows. They remain available from the dependency-free native Python adapter.
 
-The **isolated Docker bundle adds three SDK tools and two packaged app-debug tools (34 total)**:
+The **isolated Docker bundle adds three SDK tools, two packaged app-debug tools and two replayable contract tools (36 total)**:
 
 - `aws_sdk_discover`: introspect locally installed botocore service and operation models, including required operation inputs.
 - `aws_sdk_invoke`: call a specific modeled AWS SDK operation against the **local emulator endpoint only**, with explicit emulator-issued credentials and the generated TLS CA.
@@ -76,7 +76,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.6`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b6`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.7`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b7`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 

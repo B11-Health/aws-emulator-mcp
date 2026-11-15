@@ -124,6 +124,40 @@ def verify():
     print("APPLICATION_DEBUG_PASS", "duplicate events 2 -> 1",
           "cleaned before and after", flush=True)
 
+    contract_file = ROOT / "examples/contracts/s3-write-read.json"
+    contract = run("contract", extra=["demo"], json_mode=True, timeout=150)
+    assert contract.returncode == 0, contract.stderr[-1200:]
+    checked = json.loads(contract.stdout)
+    assert checked["passed"] and checked["passedSteps"] == checked["totalSteps"] == 3
+    assert all(step["passed"] and "responseSha256" in step for step in checked["steps"])
+    assert checked["accountVerified"] is True
+    assert not any("hello emulator" in str(row) for row in checked["steps"])
+    print("CONTRACT_CLI_PASS", checked["passedSteps"], "isolated steps", flush=True)
+
+    for case_id in ("sqs-consume", "ec2-vpc"):
+        planfile = ROOT / "examples/contracts" / (case_id + ".json")
+        checked_run = run("contract", extra=[str(planfile)], json_mode=True, timeout=150)
+        assert checked_run.returncode == 0, checked_run.stderr[-1000:]
+        verified = json.loads(checked_run.stdout)
+        assert verified["passed"] and verified["passedSteps"] == verified["totalSteps"] == 5
+        assert all(row["passed"] for row in verified["steps"])
+        print("CONTRACT_LIVE_PASS", case_id, verified["passedSteps"], flush=True)
+    from tempfile import NamedTemporaryFile
+    with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as sample:
+        bad_plan = json.loads(contract_file.read_text())
+        bad_plan["steps"][-1]["expect"]["assertions"][0]["equals"] = 999
+        sample.write(json.dumps(bad_plan))
+        invalid_path = sample.name
+    try:
+        failed_run = run("contract", extra=[invalid_path], json_mode=True, timeout=150)
+        assert failed_run.returncode == 1, failed_run.stderr[-800:]
+        mismatch = json.loads(failed_run.stdout)
+        assert not mismatch["passed"] and mismatch["passedSteps"] == 2
+        assert mismatch["steps"][-1]["assertions"][0]["passed"] is False
+        print("CONTRACT_EXPECTED_MISMATCH_PASS", flush=True)
+    finally:
+        Path(invalid_path).unlink(missing_ok=True)
+
     bucket = "cg-sdk-qa-" + uuid.uuid4().hex[:14]
     key = "proof.txt"
     text = "isolated-sdk-model-bridge-verified"
@@ -151,6 +185,10 @@ def verify():
         msg(16, "app_debug_catalog"),
         msg(17, "app_debug_run", {"variant":"compare"}),
         msg(18, "app_debug_run", {"variant":"../untrusted"}),
+        msg(19, "contract_guide"),
+        msg(20, "contract_run", {"plan": json.loads(contract_file.read_text())}),
+        msg(21, "contract_run", {"plan": {"schemaVersion":1, "name":"bad", "steps":[{"id":"x","service":"s3","operation":"CreateBucket", "parameters":{"Bucket":{"$shell":"cat /etc/passwd"}}}]}}),
+        msg(22, "aws_sdk_invoke", {"service": "s3", "operation": "ListBuckets"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=180)
@@ -160,10 +198,11 @@ def verify():
     assert len(rows) == len(calls), (rows.keys(), r.stderr[:200])
     tools = rows[1]["result"]["tools"]
     names = {x["name"] for x in tools}
-    assert len(tools) == 34
+    assert len(tools) == 36
     assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage",
             "emulator_order_demo", "lab_catalog", "lab_run",
-            "app_debug_catalog", "app_debug_run"} <= names
+            "app_debug_catalog", "app_debug_run",
+            "contract_guide", "contract_run"} <= names
     assert content(rows[2])["modeledOperationCount"] >= 100
     assert content(rows[3])["passed"] and content(rows[4])["passed"]
     for i in range(5, 11):
@@ -198,6 +237,19 @@ def verify():
     assert proof["after"]["observed"]["queueEvents"] == 1
     assert rows[18]["result"]["isError"]
     assert "Unknown packaged app-debug variant" in rows[18]["result"]["content"][0]["text"]
+
+    assert content(rows[19])["maxSteps"] == 16
+    mcp_contract = content(rows[20])
+    assert mcp_contract["passed"] and mcp_contract["passedSteps"] == 3
+    assert "Dedicated ephemeral" in mcp_contract["isolation"]
+    assert all(x["passed"] for x in mcp_contract["steps"])
+    assert rows[21]["error"]["code"] == -32602, "untrusted expression must be rejected before execution"
+
+    parent_buckets = content(rows[22])["result"]["Buckets"]
+    assert not any(b["Name"].startswith("mcp-contract-") for b in parent_buckets), (
+        "Nested contract leaked state into main MCP emulator")
+    print("CONTRACT_MCP_PASS", mcp_contract["passedSteps"],
+          "fresh nested emulator", flush=True)
 
     print("DOCKER_APP_DEBUG_MCP_PASS", "agent-inspectable source, 2 -> 1 events",
           "and strict variant rejection", flush=True)

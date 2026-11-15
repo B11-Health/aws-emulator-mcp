@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "name": "sqs-delivery-and-ack",
+  "steps": [
+    {
+      "id": "create",
+      "service": "sqs",
+      "operation": "CreateQueue",
+      "parameters": {"QueueName": {"$fixture": "queue"}},
+      "expect": {"assertions": [{"path": "QueueUrl", "exists": true}]}
+    },
+    {
+      "id": "send",
+      "service": "sqs",
+      "operation": "SendMessage",
+      "parameters": {
+        "QueueUrl": {"$ref": "create.QueueUrl"},
+        "MessageBody": "synthetic-event"
+      },
+      "expect": {"assertions": [{"path": "MessageId", "exists": true}]}
+    },
+    {
+      "id": "receive",
+      "service": "sqs",
+      "operation": "ReceiveMessage",
+      "parameters": {"QueueUrl": {"$ref": "create.QueueUrl"}, "MaxNumberOfMessages": 1},
+      "expect": {"assertions": [
+        {"path": "Messages.0.Body", "equals": "synthetic-event"},
+        {"path": "Messages.0.ReceiptHandle", "exists": true}
+      ]}
+    },
+    {
+      "id": "ack",
+      "service": "sqs",
+      "operation": "DeleteMessage",
+      "parameters": {
+        "QueueUrl": {"$ref": "create.QueueUrl"},
+        "ReceiptHandle": {"$ref": "receive.Messages.0.ReceiptHandle"}
+      }
+    },
+    {
+      "id": "delete",
+      "service": "sqs",
+      "operation": "DeleteQueue",
+      "parameters": {"QueueUrl": {"$ref": "create.QueueUrl"}}
+    }
+  ]
+}

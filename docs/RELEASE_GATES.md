@@ -70,3 +70,19 @@ DynamoDB/S3 invariants and 7/7 resource-cleanup checks in each run, check
 an actual unified patch, and reject untrusted variant/URL/script arguments.
 No claim of production AWS security, crash-atomic messaging or arbitrary
 repository support follows from this bounded demo.
+
+## Replayable contract runner validation — feature branch
+
+The Docker MCP adds `contract_guide` and `contract_run` for 36 total tools,
+and the CLI adds `contract demo|<file>`. Up to 16 declarative AWS SDK calls
+can be sequenced with response references, expected API errors and explicit
+assertions. MCP contracts get a new emulator process, temporary HOME, random
+loopback port, and emulator credentials. No arbitrary scripts, host mounts,
+forwarded credentials, or public ports.
+
+The independent source unit tests and signed-emulator acceptance job must
+exercise the packed CLI, positive and negative plan assertions, subprocess
+isolation, model-operation errors, and protocol-level invalid-argument
+rejection before this feature can be considered merged. See
+[contract testing](CONTRACT_TESTING.md). This does not authorize npm
+publication or imply full emulator compatibility.

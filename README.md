@@ -42,6 +42,24 @@
 
 The [application walkthrough](docs/APP_DEBUGGING.md) includes the Python source, exact patch, run-by-run assertions, and a [saved test result](docs/evidence/app-debug-aws-emulator-1.0.365.json). This demo runs the bundled reference fix; it does not execute code supplied by an agent.
 
+## Test an AWS workflow of your own
+
+Go beyond the bundled demonstration. Give your agent a declarative JSON
+contract that specifies AWS SDK calls, references results from previous calls,
+and asserts what must be true. The runner returns per-step evidence while
+executing against an isolated, fresh emulator — not your AWS account.
+
+```bash
+aws-emulator-mcp contract demo                # built-in S3 example
+aws-emulator-mcp contract my-workflow.json --json
+```
+
+The Docker MCP client exposes `contract_guide` and `contract_run`. The run
+supports modeled operations across AWS SDK services, **subject to what the
+emulator actually implements**, with a 16-step limit and no arbitrary script
+execution. Each MCP contract receives its own ephemeral emulator state.
+[See the contract format and security boundaries](docs/CONTRACT_TESTING.md).
+
 ## Get started
 
 **Requires:** Node.js 20+, running Docker Desktop or Docker Engine, and an internet connection for the first image build.
@@ -92,7 +110,7 @@ Eight built-in experiments exercise S3, DynamoDB, SQS, SNS, EC2, EventBridge, SS
   <img src="docs/assets/architecture.svg" width="100%" alt="MCP client connects through a Node launcher to the isolated Docker AWS Emulator and local SDK tools">
 </p>
 
-- **29 curated MCP tools**, plus **5 Docker-only tools** for SDK discovery, invocation, coverage, and the packaged app debugger.
+- **29 curated MCP tools**, plus **7 Docker-only tools** for SDK discovery, API invocation, coverage, application debugging and replayable contracts.
 - **436 service models** available through the installed AWS SDK. Model discovery does **not** mean every operation is supported by the emulator.
 - **20/20 read-only API probes** responded in the recorded v1.0.343 coverage run. The selected probes also responded in a subsequent v1.0.365 run.
 - A [coverage comparison command](docs/COVERAGE.md) helps spot response regressions between emulator versions.

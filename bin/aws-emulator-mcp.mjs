@@ -9,7 +9,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.6';
+const VERSION = '0.4.0-beta.7';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -34,12 +34,13 @@ Usage: aws-emulator-mcp <command>
 Commands:
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run 29 curated + 3 SDK bridge tools via local MCP
+  mcp              Run 29 curated + 7 Docker-only tools via local MCP
   catalog          List implemented MCP tools
   coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
+  contract demo|<file>  Execute an isolated, declarative AWS SDK test plan
   app-debug [mode] Run the packaged order-intake bug/fix against real AWS APIs
                    Modes: compare (default), buggy, fixed
   self-test        Exercise supported services and scoped cleanup
@@ -180,6 +181,15 @@ function renderReport(command, result) {
         '  Cleanup: ' + evidence.cleanup.filter(x => x.passed).length +
           '/' + evidence.cleanup.length);
     }
+  } else if (command === 'contract') {
+    lines.push('  ' + mark(result.passed) + '  Replayable AWS SDK contract: ' + result.name,
+      '  Steps passed: ' + result.passedSteps + '/' + result.totalSteps,
+      '  Plan SHA-256: ' + result.planSha256);
+    for (const step of result.steps || []) {
+      lines.push('  ' + mark(step.passed) + '  ' + step.id + '  ' +
+        step.service + '.' + step.operation + '  (' + step.observed + ')');
+    }
+    lines.push('  Isolated emulator state discarded when this run exits.');
   } else if (command === 'coverage') {
     lines.push('  Read-only SDK coverage audit', '',
       '  Emulator: ' + (result.emulatorVersion || 'unknown'),
@@ -202,10 +212,10 @@ function renderReport(command, result) {
   lines.push('', '  Local Docker lab only. No production AWS resources.', '');
   stdout.write(lines.join('\n') + '\n');
 }
-function runCaptured(args) {
+function runCaptured(args, input = null) {
   return new Promise((resolve, reject) => {
     const child = spawn('docker', args, {
-      stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false
+      stdio: [input === null ? 'ignore' : 'pipe', 'pipe', 'inherit'], windowsHide: true, shell: false
     });
     const output = [];
     let length = 0;
@@ -218,6 +228,10 @@ function runCaptured(args) {
         output.push(chunk);
       }
     });
+    if (input !== null) {
+      child.stdin.on('error', () => {}); // Docker may close early on rejected input.
+      child.stdin.end(input);
+    }
     child.on('error', reject);
     child.on('close', code => resolve({ code: code ?? 1, raw: Buffer.concat(output).toString('utf8') }));
   });
@@ -326,6 +340,42 @@ function config(format = 'copilot') {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'contract') {
+    const wantsJson = args.includes('--json');
+    const rest = args.filter(x => x !== '--json');
+    if (rest.length !== 1 || args.length > 2 ||
+        args.filter(x => x === '--json').length > 1 || rest[0].startsWith('-') ||
+        /^(https?:|file:)/i.test(rest[0])) {
+      fail('Usage: aws-emulator-mcp contract demo|<local-plan.json> [--json]', 2);
+    }
+    let plan;
+    try {
+      const filename = rest[0] === 'demo'
+        ? path.join(ROOT, 'examples', 'contracts', 's3-write-read.json') : rest[0];
+      const stat = lstatSync(filename);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size === 0 ||
+          stat.size > 48 * 1024) throw Error('not a bounded regular file');
+      plan = JSON.parse(readFileSync(filename, 'utf8'));
+    } catch {
+      fail('Contract must be a small local JSON file (max 48 KiB, no symlinks)', 2);
+    }
+    if (!plan || plan.schemaVersion !== 1 || typeof plan.name !== 'string' ||
+        !Array.isArray(plan.steps) || plan.steps.length < 1 ||
+        plan.steps.length > 16) {
+      fail('Contract plan requires schemaVersion=1, name and 1-16 steps', 2);
+    }
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const result = await runCaptured(dockerArgs('contract'), JSON.stringify(plan));
+    let proof;
+    try { proof = JSON.parse(result.raw); }
+    catch { fail('Contract worker returned invalid evidence', result.code || 1); }
+    if (wantsJson) stdout.write(JSON.stringify(proof, null, 2) + '\n');
+    else renderReport('contract', proof);
+    if (result.code !== 0 || !proof.passed)
+      fail('One or more contract assertions failed', result.code || 1);
+    return;
+  }
   if (command === 'app-debug') {
     const wantsJson = args.includes('--json');
     const rest = args.filter(x => x !== '--json');
