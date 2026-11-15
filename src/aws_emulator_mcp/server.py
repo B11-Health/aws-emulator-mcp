@@ -723,11 +723,26 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
                                   "idempotentHint": False, "openWorldHint": False}
     FUNCTIONS.update(contract_guide=contract_case.guide, contract_run=contract_case.run)
 
+    from aws_emulator_mcp import failure_lab
+    TOOLS.extend([
+        spec("failure_lab_catalog",
+             "Inspect reviewed AWS retry-failure scenarios, app source SHA-256 and expected invariants without execution."),
+        spec("failure_lab_run",
+             "Reproduce a lost fulfillment event and test recovery from one injected SDK timeout or lost SQS acknowledgement using real isolated AWS Emulator API calls. Reviewed scenarios only.",
+             {"scenario": STR}),
+    ])
+    TOOLS[-2]["annotations"] = {"readOnlyHint": True, "destructiveHint": False,
+                                  "idempotentHint": True, "openWorldHint": False}
+    TOOLS[-1]["annotations"] = {"readOnlyHint": False, "destructiveHint": True,
+                                  "idempotentHint": False, "openWorldHint": False}
+    FUNCTIONS.update(failure_lab_catalog=failure_lab.catalog,
+                     failure_lab_run=failure_lab.run)
+
 
 
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
-VERSION="0.4.0b7"
+VERSION="0.4.0b8"
 PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
 SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
 SERVER_CAPS={"tools":{"listChanged":False}}
@@ -754,7 +769,11 @@ def _tool_arguments_ok(name,args):
     if set(args)-set(properties) or any(k not in args for k in schema["required"]):
         return False
     limits={"bucket":63,"key":1024,"text":65536,"table":255,
-            "item_id":1024,"message":65536,"queue":80,"receipt_handle":4096,"experiment":48}
+            "item_id":1024,"message":65536,"queue":80,"receipt_handle":4096,"experiment":48,"scenario":48}
+    if name == "failure_lab_run":
+        from aws_emulator_mcp import failure_lab
+        if args.get("scenario", "compare") not in failure_lab.SCENARIOS:
+            return False
     if name == "contract_run":
         from aws_emulator_mcp import contract_case
         try:
@@ -847,7 +866,7 @@ def handle(msg):
             return _rpc_error(rid,-32602,"Invalid tool arguments")
         try:
             value=FUNCTIONS[name](**args)
-            failed_selftest=(name in ("emulator_self_test","emulator_order_demo","lab_run","app_debug_run","contract_run") and
+            failed_selftest=(name in ("emulator_self_test","emulator_order_demo","lab_run","app_debug_run","contract_run","failure_lab_run") and
                              isinstance(value,dict) and not value.get("passed",False))
             result={"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],
                     "isError":failed_selftest}

@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.7 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.8 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
@@ -25,7 +25,14 @@ npm exec --yes --package="github:B11-Health/aws-emulator-mcp#master" -- aws-emul
 
 Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
 
-**Verified on a separate EC2 Docker host, 2026-11-13:** the npm-packed tarball installed into a fresh prefix and passed six emulator diagnostics; installing this exact GitHub commit into a second fresh prefix also passed the 12-step order demo with four scoped cleanups. The isolated Docker smoke test passed the 34-tool MCP handshake, read-only probes across 20 services, SDK-model discovery, local S3 CRUD, and cleanup. This is **Linux test evidence**, not a Windows/macOS first-use endorsement.
+**Verified on a separate EC2 Docker host, November 14, 2026:** a freshly
+packed beta.8 tarball installed into a separate npm prefix and passed the full
+Docker acceptance suite against signed AWS Emulator v1.0.385. Checks included
+the 38-tool MCP handshake, 20/20 selected read-only SDK operations, three
+replayable contracts, application bug/fix, all eight bundled experiments,
+and Failure Lab's controlled missing-event and lost-acknowledgement scenarios
+with 21/21 cleanup checks. These are **Linux test results**, not an independent
+Windows/macOS first-use endorsement or full AWS parity.
 
 ## What the CLI actually does
 
@@ -39,11 +46,11 @@ Every runtime container is `--network none`, `--cap-drop ALL`, `--security-opt n
 
 The official Linux emulator binary is approximately **994 MB unpacked** for the tested v1.0.338 AMD64 package, so the image is currently larger than 1 GB. The npm package is small and does not contain the binary. The initial build downloads the upstream signed package; subsequent CLI runs reuse the cached image.
 
-## 29 curated MCP tools plus Docker-only SDK and test workflows
+## 29 curated MCP tools plus Docker-only SDK, debugging and reliability workflows
 
 The 29 curated tools give simple, explicit operations for S3 text objects, DynamoDB id/message records, standard SQS messages, diagnostics, and verified order/self-test workflows. They remain available from the dependency-free native Python adapter.
 
-The **isolated Docker bundle adds three SDK tools, two packaged app-debug tools and two replayable contract tools (36 total)**:
+The **isolated Docker bundle adds three SDK tools, two packaged app-debug tools, two contract tools and two Failure Lab tools (38 total)**:
 
 - `aws_sdk_discover`: introspect locally installed botocore service and operation models, including required operation inputs.
 - `aws_sdk_invoke`: call a specific modeled AWS SDK operation against the **local emulator endpoint only**, with explicit emulator-issued credentials and the generated TLS CA.
@@ -64,6 +71,20 @@ aws-emulator-mcp experiment order-recovery
 
 `experiments` reads the bundled catalog without running Docker. Each `experiment` starts a fresh network-isolated Docker lab, calls actual local emulator APIs, verifies expected responses, and validates scoped cleanup. The MCP tools are `lab_catalog` and `lab_run`. These are fixed, audited synthetic scenarios, not arbitrary user-provided code. See [the lab guide](EXPERIMENT_LABS.md).
 
+## Repeatable reliability experiments (beta.8)
+
+```bash
+aws-emulator-mcp failure-lab compare
+aws-emulator-mcp failure-lab compare --json > failure-evidence.json
+```
+
+The Docker MCP adds `failure_lab_catalog` and `failure_lab_run`. The reviewed
+test demonstrates a retry-induced missing event, a pending-state recovery,
+and why an idempotent consumer matters after an acknowledgement is lost.
+One synthetic RequestTimeout is injected at the SDK boundary; other API
+operations run against the actual local emulator. [Understand the evidence
+and limitations](FAILURE_LAB.md).
+
 ## Hands-on acceptance test
 
 Run `aws-emulator-mcp demo`. Passing proof includes a DynamoDB order record, an SQS queued/received work item, an S3 receipt intentionally missing and then created/read back, and cleanup of the unique demo resources. The command prints JSON results; **12 steps, 2 expected failure/recovery assertions, 4 cleanup actions** should pass. Runtime and IDs vary.
@@ -76,7 +97,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.7`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b7`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.8`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b8`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 

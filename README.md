@@ -42,6 +42,24 @@
 
 The [application walkthrough](docs/APP_DEBUGGING.md) includes the Python source, exact patch, run-by-run assertions, and a [saved test result](docs/evidence/app-debug-aws-emulator-1.0.365.json). This demo runs the bundled reference fix; it does not execute code supplied by an agent.
 
+## Test what happens when a cloud response is lost
+
+Can your application recover when an AWS operation times out—or when a message
+reaches SQS but its acknowledgement never reaches the caller?
+
+```bash
+aws-emulator-mcp failure-lab compare
+```
+
+The [Failure Lab](docs/FAILURE_LAB.md) reproduces a missing fulfillment event
+from a fragile order workflow, verifies a recoverable pending-state approach,
+and shows why an idempotent consumer matters when SQS deliveries duplicate.
+The fault is injected at the local SDK boundary; the state changes are
+verified through actual AWS Emulator APIs. [Recorded run evidence](docs/evidence/failure-lab-aws-emulator-1.0.385.json). Your agent can use
+`failure_lab_catalog` to inspect both reviewed application sources and their
+diff, then `failure_lab_run` to verify the measured behavior without executing
+arbitrary code.
+
 ## Test an AWS workflow of your own
 
 Go beyond the bundled demonstration. Give your agent a declarative JSON
@@ -96,6 +114,7 @@ The local MCP tools **app_debug_catalog** and **app_debug_run** expose the packa
 | Workflow | Try it |
 |:--|:--|
 | Duplicate-order debugging | `aws-emulator-mcp app-debug compare` |
+| Retry and lost-acknowledgement failures | `aws-emulator-mcp failure-lab compare` |
 | SNS → SQS message delivery | `aws-emulator-mcp experiment sns-sqs-delivery` |
 | EC2 network lifecycle | `aws-emulator-mcp experiment ec2-vpc-lifecycle` |
 | Recover a missing S3 object | `aws-emulator-mcp experiment s3-recovery` |
@@ -110,7 +129,7 @@ Eight built-in experiments exercise S3, DynamoDB, SQS, SNS, EC2, EventBridge, SS
   <img src="docs/assets/architecture.svg" width="100%" alt="MCP client connects through a Node launcher to the isolated Docker AWS Emulator and local SDK tools">
 </p>
 
-- **29 curated MCP tools**, plus **7 Docker-only tools** for SDK discovery, API invocation, coverage, application debugging and replayable contracts.
+- **29 curated MCP tools**, plus **9 Docker-only tools** for SDK discovery, API invocation, coverage, application debugging, replayable contracts and failure/recovery testing.
 - **436 service models** available through the installed AWS SDK. Model discovery does **not** mean every operation is supported by the emulator.
 - **20/20 read-only API probes** responded in the recorded v1.0.343 coverage run. The selected probes also responded in a subsequent v1.0.365 run.
 - A [coverage comparison command](docs/COVERAGE.md) helps spot response regressions between emulator versions.
@@ -119,7 +138,7 @@ The Docker integration uses local-only, network-isolated runtime containers and 
 
 ## Documentation and contributing
 
-[Guided onboarding](docs/ONBOARDING.md) · [Demo gallery](docs/DEMO_GALLERY.md) · [Application debugging](docs/APP_DEBUGGING.md) · [Service coverage](docs/COVERAGE.md) · [Architecture and setup](docs/DOCKER_NPM_BETA.md) · [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/B11-Health/aws-emulator-mcp/issues)
+[Guided onboarding](docs/ONBOARDING.md) · [Demo gallery](docs/DEMO_GALLERY.md) · [Application debugging](docs/APP_DEBUGGING.md) · [Failure Lab](docs/FAILURE_LAB.md) · [Service coverage](docs/COVERAGE.md) · [Architecture and setup](docs/DOCKER_NPM_BETA.md) · [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/B11-Health/aws-emulator-mcp/issues)
 
 ---
 

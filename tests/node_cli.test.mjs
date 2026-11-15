@@ -15,7 +15,7 @@ function cli(...args) {
 test('help states a limited tool surface, not full AWS parity', () => {
   const result = cli('help');
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /29 curated \+ 7 Docker-only tools/);
+  assert.match(result.stdout, /29 curated \+ 9 Docker-only tools/);
   assert.match(result.stdout, /No AWS account/);
   assert.doesNotMatch(result.stdout, /1000|full AWS API parity/i);
 });
@@ -46,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.7');
+  assert.equal(pkg.version, '0.4.0-beta.8');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -190,4 +190,16 @@ test('Docker image builder never references the contract stdin variable', () => 
     source.indexOf('function renderReport('));
   assert.match(build, /stdio: \[\x27ignore\x27, \x27pipe\x27, \x27inherit\x27\]/);
   assert.doesNotMatch(build, /\binput\b/);
+});
+
+test('Failure Lab CLI rejects arbitrary code, paths and invalid modes before Docker', () => {
+  assert.equal(cli('failure-lab', '../../etc/passwd').status, 2);
+  assert.equal(cli('failure-lab', 'https://example.org/script.py').status, 2);
+  assert.equal(cli('failure-lab', '--shell').status, 2);
+  assert.equal(cli('failure-lab', 'compare', '--json', '--json').status, 2);
+  assert.equal(cli('failure-lab', 'recover-before-send', '--unsafe').status, 2);
+  const shown = cli('help');
+  assert.equal(shown.status, 0);
+  assert.match(shown.stdout, /failure-lab/);
+  assert.match(shown.stdout, /lost-ack/);
 });

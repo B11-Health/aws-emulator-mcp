@@ -1,6 +1,6 @@
 {
   "name": "aws-emulator-mcp",
-  "version": "0.4.0-beta.7",
+  "version": "0.4.0-beta.8",
   "description": "Local-first MCP adapter for the official AWS Emulator with an isolated Docker lab",
   "type": "module",
   "bin": {
@@ -56,7 +56,12 @@
     "examples/contracts/s3-write-read.json",
     "docs/CONTRACT_TESTING.md",
     "examples/contracts/ec2-vpc.json",
-    "examples/contracts/sqs-consume.json"
+    "examples/contracts/sqs-consume.json",
+    "src/aws_emulator_mcp/failure_lab.py",
+    "examples/reliability-lab/README.md",
+    "examples/reliability-lab/recovery/order_service.py",
+    "docs/FAILURE_LAB.md",
+    "docs/evidence/failure-lab-aws-emulator-1.0.385.json"
   ],
   "license": "MIT",
   "repository": {

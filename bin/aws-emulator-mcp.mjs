@@ -9,7 +9,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.7';
+const VERSION = '0.4.0-beta.8';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -34,13 +34,16 @@ Usage: aws-emulator-mcp <command>
 Commands:
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run 29 curated + 7 Docker-only tools via local MCP
+  mcp              Run 29 curated + 9 Docker-only tools via local MCP
   catalog          List implemented MCP tools
   coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|<file>  Execute an isolated, declarative AWS SDK test plan
+  failure-lab      Reproduce missing events, timeout recovery and deduplication
+                   Modes: compare (default), fragile-before-send,
+                   recover-before-send, recover-lost-ack
   app-debug [mode] Run the packaged order-intake bug/fix against real AWS APIs
                    Modes: compare (default), buggy, fixed
   self-test        Exercise supported services and scoped cleanup
@@ -190,6 +193,29 @@ function renderReport(command, result) {
         step.service + '.' + step.operation + '  (' + step.observed + ')');
     }
     lines.push('  Isolated emulator state discarded when this run exits.');
+  } else if (command === 'failure-lab') {
+    if (result.scenario === 'compare') {
+      const old = result.baseline.observed;
+      const retry = result.presendRecovery.observed;
+      const ack = result.lostAckRecovery.observed;
+      lines.push('  ' + mark(result.passed) + '  Retry & delivery failure laboratory',
+        '  Failure injected: local SDK wrapper (NOT an emulator outage)',
+        '  FRAGILE:  first send failed, retry produced ' + old.queueEvents + ' events',
+        '  RECOVER:  pre-send timeout, retry produced ' + retry.queueEvents + ' event',
+        '  LOST ACK: duplicate SQS deliveries: ' + ack.queueEvents,
+        '  CONSUMER: single idempotency effect marker: ' + ack.consumerEffectMarkers,
+        '  Cleanup: ' + [result.baseline, result.presendRecovery, result.lostAckRecovery]
+          .map(x => x.cleanup.filter(c => c.passed).length + '/' + x.cleanup.length).join(' | '));
+    } else {
+      const row = result.result;
+      lines.push('  ' + mark(result.passed) + '  Failure Lab: ' + result.scenario,
+        '  Expected scenario assertions: ' + row.assertions.filter(x => x.passed).length +
+          '/' + row.assertions.length,
+        '  Observed queue events: ' + row.observed.queueEvents,
+        '  Consumer effect markers: ' + row.observed.consumerEffectMarkers,
+        '  Cleanup: ' + row.cleanup.filter(x => x.passed).length + '/' + row.cleanup.length,
+        '  Fault injected by a local SDK wrapper; not an emulator outage.');
+    }
   } else if (command === 'coverage') {
     lines.push('  Read-only SDK coverage audit', '',
       '  Emulator: ' + (result.emulatorVersion || 'unknown'),
@@ -374,6 +400,28 @@ async function main() {
     else renderReport('contract', proof);
     if (result.code !== 0 || !proof.passed)
       fail('One or more contract assertions failed', result.code || 1);
+    return;
+  }
+  if (command === 'failure-lab') {
+    const jsonFlag = args.includes('--json');
+    const rest = args.filter(x => x !== '--json');
+    const modes = ['compare', 'fragile-before-send', 'recover-before-send', 'recover-lost-ack'];
+    if (args.length > 2 || rest.length > 1 ||
+        args.filter(x => x === '--json').length > 1 ||
+        (rest.length && !modes.includes(rest[0]))) {
+      fail('Usage: aws-emulator-mcp failure-lab [compare|fragile-before-send|recover-before-send|recover-lost-ack] [--json]', 2);
+    }
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const result = await runCaptured(dockerArgs('failure-lab', [rest[0] || 'compare']));
+    let parsed;
+    try { parsed = JSON.parse(result.raw); }
+    catch { fail('Could not parse Failure Lab evidence (exit ' + result.code + ')',
+                 result.code || 1); }
+    if (jsonFlag) stdout.write(JSON.stringify(parsed, null, 2) + '\n');
+    else renderReport('failure-lab', parsed);
+    if (result.code !== 0 || !parsed.passed)
+      fail('Failure Lab scenario assertions or cleanup failed', result.code || 1);
     return;
   }
   if (command === 'app-debug') {
