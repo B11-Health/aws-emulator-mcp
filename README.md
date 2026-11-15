@@ -84,12 +84,39 @@ failure/retry experiments for AWS API workflows expressed as JSON, without
 executing application source code.
 [See the contract format, failure examples, and security boundaries](docs/CONTRACT_TESTING.md).
 
+## Make failed AWS contracts block a pull request
+
+Your agent writes a small JSON contract, and a GitHub Action runs it in a
+fresh local emulator whenever a PR opens. A failed assertion turns the check
+red; a passed check includes a job summary and downloadable, **sanitized
+evidence**. No AWS account or credentials are used.
+
+```yaml
+# .github/workflows/aws-emulator-contracts.yml
+name: AWS Emulator contracts
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.10
+        with:
+          directory: .aws-emulator/contracts
+```
+
+Add 1-6 JSON files to `.aws-emulator/contracts`. You can also run
+`aws-emulator-mcp gate .aws-emulator/contracts` locally before pushing.
+[**Copy the workflow, choose example contracts, and inspect the security limits.**](docs/CI_CONTRACT_GATE.md)
+
 ## Get started
 
 **Requires:** Node.js 20+, running Docker Desktop or Docker Engine, and an internet connection for the first image build.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#master"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.10"
 
 # Run the before-and-after application test
 aws-emulator-mcp app-debug compare
@@ -98,7 +125,7 @@ aws-emulator-mcp app-debug compare
 aws-emulator-mcp experiments
 ~~~
 
-The launcher is currently installed from GitHub (it is **not yet published on npm**). The first runtime command builds a Docker image using the signed AWS Emulator package; later runs reuse that image. For a reproducible setup, [pin a tested commit](docs/DOCKER_NPM_BETA.md) instead of the moving master branch.
+The launcher is currently installed from GitHub (it is **not yet published on npm**). The first runtime command builds a Docker image using the signed AWS Emulator package; later runs reuse that image. For reproducible work, keep the tag or [pin an exact tested commit](docs/DOCKER_NPM_BETA.md).
 
 ## Connect your AI assistant
 

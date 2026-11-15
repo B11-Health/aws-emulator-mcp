@@ -1,0 +1,32 @@
+name: AWS Emulator PR contracts
+description: Run bounded declarative AWS SDK contracts in isolated local emulators and upload sanitized evidence
+branding:
+  icon: check-circle
+  color: blue
+inputs:
+  directory:
+    description: Relative directory containing 1-6 checked-in .json contracts (flat, no symlinks)
+    required: false
+    default: .aws-emulator/contracts
+runs:
+  using: composite
+  steps:
+    - name: Prepare pinned Node runtime
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: '22'
+    - name: Run bounded AWS Emulator contracts
+      shell: bash
+      env:
+        AWS_MCP_GATE_DIRECTORY: ${{ inputs.directory }}
+        AWS_MCP_GATE_EVIDENCE: ${{ runner.temp }}/aws-emulator-contract-evidence
+        ACTION_SOURCE_ROOT: ${{ github.action_path }}
+      run: node "$ACTION_SOURCE_ROOT/../../../scripts/contract_pr_gate.mjs"
+    - name: Upload redacted contract evidence
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: aws-emulator-contract-evidence
+        path: ${{ runner.temp }}/aws-emulator-contract-evidence/
+        if-no-files-found: error
+        retention-days: 7

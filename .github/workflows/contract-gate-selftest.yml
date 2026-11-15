@@ -1,0 +1,50 @@
+name: PR contract gate / independent installation test
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-contract-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-pr-contract-gate:
+    name: Pull request contract gate / signed emulator and evidence artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Run the same composite action a downstream repo uses
+        uses: ./.github/actions/contract-gate
+        with:
+          directory: examples/ci-contracts
+      - name: Verify the report exists, covers both workflows, and exposes no payloads
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          folder = Path(os.environ["RUNNER_TEMP"]) / "aws-emulator-contract-evidence"
+          report = json.loads((folder/"report.json").read_text())
+          assert report["schemaVersion"] == 1 and report["passed"]
+          cases = {row["file"]: row for row in report["results"]}
+          assert set(cases) == {"01-s3-roundtrip.json", "02-sqs-lost-ack.json"}
+          assert cases["01-s3-roundtrip.json"]["passed"]
+          sqs = cases["02-sqs-lost-ack.json"]
+          assert sqs["passed"] and sqs["totalSteps"] == 8
+          assert any(row.get("fault", {}).get("sentToEmulator") is True
+                     for row in sqs["steps"])
+          serialized = (folder/"report.json").read_text()
+          assert "sample-retry-event" not in serialized
+          assert "aws_secret_access_key" not in serialized.lower()
+          assert (folder/"summary.md").exists()
+          print("PR_CONTRACT_GATE_EVIDENCE_PASS", len(cases), "isolated workflows")
+          PY

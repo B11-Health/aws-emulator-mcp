@@ -9,7 +9,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.9';
+const VERSION = '0.4.0-beta.10';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -41,6 +41,7 @@ Commands:
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
+  gate [directory] Run 1-6 checked-in JSON contracts and write sanitized CI evidence
   failure-lab      Reproduce missing events, timeout recovery and deduplication
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack
@@ -368,6 +369,20 @@ function config(format = 'copilot') {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'gate') {
+    if (args.length > 1 || (args[0] && args[0].startsWith('-'))) {
+      fail('Usage: aws-emulator-mcp gate [relative-contract-directory]', 2);
+    }
+    const script = path.join(ROOT, 'scripts', 'contract_pr_gate.mjs');
+    if (!existsSync(script)) fail('Contract gate runner unavailable in installed package', 2);
+    const result = spawnSync(process.execPath, [script], {
+      cwd: process.cwd(), stdio: 'inherit', timeout: 15 * 60 * 1000,
+      windowsHide: true, shell: false,
+      env: { ...process.env, AWS_MCP_GATE_DIRECTORY: args[0] || '.aws-emulator/contracts' }
+    });
+    if (result.error || result.status !== 0) fail('One or more PR contracts failed', result.status || 1);
+    return;
+  }
   if (command === 'contract') {
     const wantsJson = args.includes('--json');
     const rest = args.filter(x => x !== '--json');

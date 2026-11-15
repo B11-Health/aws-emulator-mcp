@@ -4,7 +4,8 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.9 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.10 GitHub-source candidate**; use a published and
+tested Git tag or exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
@@ -97,7 +98,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.9`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b9`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.10`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b10`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 
@@ -135,3 +136,14 @@ Only `sqs.SendMessage`, `s3.PutObject` and `dynamodb.PutItem` are currently
 eligible. Evidence distinguishes injected timeouts from genuine API failures.
 This does not execute developer application source or simulate a real outage.
 [Details](CONTRACT_TESTING.md).
+
+
+## Beta.10: run the contracts in a pull request
+
+The [PR contract gate](CI_CONTRACT_GATE.md) is a GitHub composite action
+plus a local `aws-emulator-mcp gate` command. Both scan a bounded flat
+folder of JSON contracts, run them in separate isolated Docker emulators,
+and record sanitized step-level evidence. GitHub automatically displays a
+summary and a downloadable seven-day artifact, and marks the job failed
+if any assertion fails. It uses `pull_request` and read-only repository
+permissions, without AWS credentials or branch-protection changes.

@@ -1,3 +1,17 @@
+## v0.4.0-beta.10 - pull-request contract checks (source candidate)
+
+- Added a reusable GitHub composite action for automatically replaying 1-6
+  bounded AWS SDK JSON contracts on a developer's pull request.
+- Job summaries, fail-on-assertion checks, and a seven-day sanitized evidence
+  artifact include plan hashes, emulator version, step outcomes and fault
+  forwarding status without raw payloads or credentials.
+- Added `aws-emulator-mcp gate [directory]` for local parity with the CI
+  runner, two reviewed example plans and a copy-paste GitHub Actions workflow.
+- The workflow requests read-only contents permissions and uses the pinned
+  source action; it does not execute PR source code or add PR comments.
+- New independently hosted self-test checks the action and its artifact.
+  No npm-registry publication, AWS account usage, or full AWS fidelity claim.
+
 ## v0.4.0-beta.9 - agent-authored SDK fault contracts (candidate)
 
 - Extend the existing isolated, declarative contract runner with one bounded

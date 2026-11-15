@@ -222,3 +222,16 @@ A useful instruction to your coding agent:
 
 The built-in example can be run directly with
 `aws-emulator-mcp contract fault-demo --json`, with no repository access.
+
+
+## Turn an agent's AWS assumptions into PR checks
+
+Add one or more declarative contracts to your repository and install the
+[PR contract gate](CI_CONTRACT_GATE.md). Every pull request reruns the
+contracts in fresh isolated emulators, adds pass/fail results to the
+GitHub Actions job summary, and stores a sanitized JSON artifact for
+review. A failed check can block merging when you mark it required in your
+branch ruleset. No AWS account or cloud credentials are required.
+
+These are scoped API-sequence tests, not arbitrary source execution or
+production AWS compatibility tests.
