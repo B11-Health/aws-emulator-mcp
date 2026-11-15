@@ -5,3 +5,6 @@ examples/architecture/order-intake.json text eol=lf
 examples/order-intake/reference.patch text eol=lf
 examples/order-intake/buggy/order_service.py text eol=lf
 examples/order-intake/fixed/order_service.py text eol=lf
+# Architecture Review reference diagrams and hashes must match across OSes.
+examples/architecture/review/reference/** text eol=lf
+examples/architecture/review/*.json text eol=lf

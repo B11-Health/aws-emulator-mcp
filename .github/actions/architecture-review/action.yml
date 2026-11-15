@@ -1,0 +1,43 @@
+name: AWS blueprint PR review
+description: Compare bounded AWS architecture manifests, preview diagram risks and upload evidence without AWS credentials
+branding:
+  icon: git-pull-request
+  color: blue
+inputs:
+  manifest:
+    description: Workspace-relative checked-in blueprint JSON in this PR
+    required: false
+    default: .aws-emulator/architecture.json
+  before:
+    description: Optional workspace-relative baseline JSON file; normally leave empty to read from base commit
+    required: false
+    default: ''
+  fail-on-risk:
+    description: 'never (informational) or high (fails on removals, type/key changes)'
+    required: false
+    default: never
+runs:
+  using: composite
+  steps:
+    - name: Prepare pinned Node runtime
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: '22'
+    - name: Compare trusted blueprint compiler inputs, not PR application code
+      shell: bash
+      env:
+        ACTION_SOURCE_ROOT: ${{ github.action_path }}
+        AWS_MCP_REVIEW_MANIFEST: ${{ inputs.manifest }}
+        AWS_MCP_REVIEW_BEFORE: ${{ inputs.before }}
+        AWS_MCP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        AWS_MCP_REVIEW_POLICY: ${{ inputs.fail-on-risk }}
+        AWS_MCP_REVIEW_OUTPUT: reports/architecture-review
+      run: node "$ACTION_SOURCE_ROOT/../../../scripts/architecture_review.mjs" --github
+    - name: Upload proposed architecture review evidence
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: aws-emulator-architecture-review
+        path: ${{ github.workspace }}/reports/architecture-review/
+        if-no-files-found: error
+        retention-days: 7

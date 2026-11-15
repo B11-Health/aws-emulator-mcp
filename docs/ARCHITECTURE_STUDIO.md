@@ -19,7 +19,7 @@ connection is required to generate them.**
 ## Try the built-in blueprint
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
 
 aws-emulator-mcp architecture demo
 ```
@@ -116,6 +116,14 @@ This command **does** require a local Docker daemon and the signed emulator
 image. The test is not CloudFormation execution and does not interact with
 resources in a real AWS account. Actual CloudFormation deployment is not
 supported in this milestone.
+
+## Review architecture changes in GitHub
+
+[Architecture Review](ARCHITECTURE_REVIEW.md) compares two manifests, renders
+before/after SVG and draw.io diagrams, and marks additions, edits and removals
+with conservative human-review flags. It can run as a read-only pull-request
+check that requires no AWS account and never executes PR code. It is not a
+CloudFormation change set.
 
 ## How to reason about provenance
 

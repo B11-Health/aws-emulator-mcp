@@ -1,3 +1,21 @@
+## v0.4.0-beta.12 — Architecture Review: visual PR infrastructure changes (candidate)
+
+- New read-only GitHub composite Action compares strictly validated
+  architecture manifests to their actual base commit; no AWS account, keys,
+  Docker, cloud mutations or arbitrary PR code execution.
+- Produces a polished before/after AWS blueprint SVG, editable draw.io
+  diagrams, CloudFormation YAML drafts, source hashes, a structured
+  report and an actionable GitHub Actions job summary.
+- Conservative high-priority review flags for resource removals, type
+  changes and DynamoDB partition key changes. `fail-on-risk: high` is
+  opt-in for blocking a PR; `never` leaves findings informational.
+- An independent hosted self-test checks the actual composite action and
+  its uploaded evidence; Node regression tests cover git base-SHA reads,
+  no-baseline PRs, untrusted input rejection and report provenance.
+- Blueprints are **not** actual CloudFormation change sets or deployment
+  plans. No new support is claimed for live AWS account discovery, cost,
+  IAM policy evaluation or production AWS fidelity.
+
 ## v0.4.0-beta.11 — Architecture Studio, offline blueprint compiler (candidate)
 
 - Added a strict typed manifest for a conceptual application actor and up to

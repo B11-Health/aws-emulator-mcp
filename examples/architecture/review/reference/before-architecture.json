@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "name": "order-intake",
+  "description": "Synthetic orders before adding fulfillment messaging.",
+  "actor": {
+    "id": "OrderApp",
+    "label": "Order API (conceptual)"
+  },
+  "resources": [
+    {
+      "id": "ReceiptsBucket",
+      "type": "s3-bucket",
+      "label": "Receipt storage"
+    },
+    {
+      "id": "OrdersTable",
+      "type": "dynamodb-table",
+      "label": "Order records",
+      "partitionKey": "orderId"
+    }
+  ],
+  "flows": [
+    {
+      "from": "OrderApp",
+      "to": "ReceiptsBucket",
+      "label": "Save receipt"
+    },
+    {
+      "from": "OrderApp",
+      "to": "OrdersTable",
+      "label": "Store order"
+    }
+  ]
+}

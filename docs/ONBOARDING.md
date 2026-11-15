@@ -4,14 +4,14 @@ AWS Emulator MCP connects a compatible local AI assistant to a disposable AWS de
 
 ## 1. See the real output on GitHub (no install)
 
-The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.11)
+The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.12)
 includes a viewable SVG, an editable draw.io diagram, actual CloudFormation
 YAML, a synthetic SDK contract, a bundled example archive and checksums.
 This is the GitHub repository itself: there is no separate product website.
 
 [Open the diagram](../examples/architecture/reference/diagram.svg) ·
 [Inspect CloudFormation](../examples/architecture/reference/template.yaml) ·
-[Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.11)
+[Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.12)
 
 ## 2. Install and generate the architecture (no Docker)
 
@@ -20,7 +20,7 @@ requires internet access, but generating the blueprint does not require
 Docker, an AWS account, or production credentials.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.11"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.12"
 aws-emulator-mcp architecture demo
 ~~~
 

@@ -1,3 +1,21 @@
+# v0.4.0-beta.12 candidate — GitHub Architecture Review
+
+An offline reviewer compares versioned strict Architecture Studio manifests.
+It produces an actual static before/after SVG, matching editable diagrams,
+draft CloudFormation templates, SHA-256 evidence and a GitHub job summary.
+The project Action reads the base file from a trusted GitHub PR base SHA
+using Git blob reads, and runs only the pinned compiler, not PR application
+code. No AWS credentials, Docker or live cloud calls are used.
+
+The independent Action self-test must verify adding an SQS queue, changing
+DynamoDB's partition key, unchanged S3, and one high-priority review
+flag in the generated evidence. It must also publish a seven-day artifact.
+Windows/Linux Node and Python tests, source scan, npm allowlist and all
+existing eight hosted checks remain required; this introduces a ninth job.
+**Do not merge/tag until hosted CI has independently passed.**
+
+---
+
 # v0.4.0-beta.11 candidate — Architecture Studio
 
 The offline generator emits seven deterministic artifacts from a reviewed

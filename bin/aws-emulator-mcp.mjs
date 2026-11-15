@@ -9,7 +9,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.11';
+const VERSION = '0.4.0-beta.12';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -42,7 +42,7 @@ Commands:
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
   gate [directory] Run 1-6 checked-in JSON contracts and write sanitized CI evidence
-  architecture demo|build  Generate CloudFormation, SVG, draw.io and synthetic contract offline
+  architecture demo|build|review  Generate diagrams, CloudFormation and PR change reviews offline
   failure-lab      Reproduce missing events, timeout recovery and deduplication
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack
@@ -371,9 +371,11 @@ async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
   if (command === 'architecture') {
-    const script = path.join(ROOT, 'scripts', 'architecture_studio.mjs');
+    const script = path.join(ROOT, 'scripts', args[0] === 'review'
+      ? 'architecture_review.mjs' : 'architecture_studio.mjs');
+    const scriptArgs = args[0] === 'review' ? args.slice(1) : args;
     if (!existsSync(script)) fail('Architecture Studio generator unavailable', 2);
-    const result = spawnSync(process.execPath, [script, ...args], {
+    const result = spawnSync(process.execPath, [script, ...scriptArgs], {
       cwd: process.cwd(), stdio: 'inherit', timeout: 12000,
       windowsHide: true, shell: false
     });

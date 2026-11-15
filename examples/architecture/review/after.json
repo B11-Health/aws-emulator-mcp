@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "order-intake",
+  "description": "Synthetic orders with a new queue and a changed DynamoDB partition key.",
+  "actor": { "id": "OrderApp", "label": "Order API (conceptual)" },
+  "resources": [
+    { "id": "ReceiptsBucket", "type": "s3-bucket", "label": "Receipt storage" },
+    { "id": "OrdersTable", "type": "dynamodb-table", "label": "Order records", "partitionKey": "orderRef" },
+    { "id": "FulfillmentQueue", "type": "sqs-queue", "label": "Fulfillment events" }
+  ],
+  "flows": [
+    { "from": "OrderApp", "to": "ReceiptsBucket", "label": "Save receipt" },
+    { "from": "OrderApp", "to": "OrdersTable", "label": "Store order" },
+    { "from": "OrderApp", "to": "FulfillmentQueue", "label": "Publish event" }
+  ]
+}

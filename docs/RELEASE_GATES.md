@@ -167,3 +167,22 @@ generated 14-step S3/DynamoDB/SQS contract with bounded DynamoDB readiness.
 Every step and account verification must pass; no real AWS or CloudFormation
 deployment is attempted. PR needs all independent hosted jobs green before
 merge or tag publication.
+
+
+## v0.4.0-beta.12 — GitHub PR architecture review
+
+A new GitHub workflow uses the reusable composite Action the same way a
+downstream repository does. It compares two checked-in test manifests,
+renders a before/after diagram and individual SVG/draw.io exports,
+computes a risk summary and uploads a seven-day evidence artifact.
+Independent Python verification checks JSON policy flags, exact node
+counts, CloudFormation output and non-execution of any real AWS action.
+
+Unit tests verify added, unchanged, removed, type/key-change and
+conceptual-only cases, deterministic results, no-baseline handling,
+trusted base commit SHA reads, path and credential-like input refusal,
+idempotency, non-overwrite, XML escaping and strict opt-in fail-on-risk.
+
+This is a source-level proposed blueprint comparison, NOT a real AWS
+CloudFormation change set. No live account, IAM credentials, Docker, remote
+comments, PR write permissions or cloud deployment are used.
