@@ -1,6 +1,6 @@
 {
   "name": "aws-emulator-mcp",
-  "version": "0.4.0-beta.9",
+  "version": "0.4.0-beta.10",
   "description": "Local-first MCP adapter for the official AWS Emulator with an isolated Docker lab",
   "type": "module",
   "bin": {
@@ -65,7 +65,11 @@
     "docs/assets/demos/failure-lab.mp4",
     "docs/assets/demos/failure-lab-poster.jpg",
     "examples/contracts/sqs-before-call.json",
-    "examples/contracts/sqs-after-success.json"
+    "examples/contracts/sqs-after-success.json",
+    "scripts/contract_pr_gate.mjs",
+    "docs/CI_CONTRACT_GATE.md",
+    "examples/ci-contracts/01-s3-roundtrip.json",
+    "examples/ci-contracts/02-sqs-lost-ack.json"
   ],
   "license": "MIT",
   "repository": {
@@ -86,10 +90,12 @@
     "cloud-testing",
     "infrastructure-testing",
     "fault-injection",
-    "reliability-testing"
+    "reliability-testing",
+    "github-actions",
+    "ci-contract-tests"
   ],
   "scripts": {
-    "test": "node --test tests/node_cli.test.mjs",
+    "test": "node --test tests/node_cli.test.mjs tests/contract_gate.test.mjs",
     "pack:check": "npm pack --dry-run --json",
     "qa": "npm test && npm run pack:check"
   }

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "name": "s3-write-read",
+  "steps": [
+    {
+      "id": "create",
+      "service": "s3",
+      "operation": "CreateBucket",
+      "parameters": {"Bucket": {"$fixture": "bucket"}}
+    },
+    {
+      "id": "put",
+      "service": "s3",
+      "operation": "PutObject",
+      "parameters": {
+        "Bucket": {"$fixture": "bucket"},
+        "Key": "hello.txt",
+        "Body": "hello emulator"
+      }
+    },
+    {
+      "id": "read",
+      "service": "s3",
+      "operation": "GetObject",
+      "parameters": {"Bucket": {"$fixture": "bucket"}, "Key": "hello.txt"},
+      "expect": {
+        "assertions": [
+          {"path": "ContentLength", "equals": 14},
+          {"path": "Body.encoding", "equals": "base64"}
+        ]
+      }
+    }
+  ]
+}

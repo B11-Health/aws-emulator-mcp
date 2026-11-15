@@ -101,6 +101,21 @@ production IAM exercises. Each independently reruns against a fresh emulator.
   evidence contains operation IDs, assertion booleans, response SHA-256 hashes,
   emulator version and a plan hash. Raw request/response content is withheld.
 
+## Run these contracts on every pull request
+
+The [PR contract gate](CI_CONTRACT_GATE.md) gives a coding agent's declarative
+tests a GitHub Actions status check and a downloadable redacted evidence report.
+Add one or more `.json` files, use the pinned composite action in a repository
+workflow, and make the resulting job a required check if you want it to block
+merges. The gate accepts a flat folder with at most six contracts, and each
+plan runs in its own isolated local emulator.
+
+You can test the same folder without GitHub Actions:
+
+```bash
+aws-emulator-mcp gate .aws-emulator/contracts
+```
+
 ## Scope and constraints
 
 The runner checks the emulator's isolated STS account before any operation.

@@ -46,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.9');
+  assert.equal(pkg.version, '0.4.0-beta.10');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -223,4 +223,13 @@ test('fault contract examples are bundled, bounded and reject script input befor
   assert.equal(cli('contract', 'file:///etc/passwd').status, 2);
   const content = readFileSync(BIN, 'utf8');
   assert.match(content, /sqs-after-success\.json/);
+});
+
+
+test('PR gate command has local usage and the bundled runner is present', () => {
+  assert.match(cli('help').stdout, /gate \[directory\]/);
+  assert.equal(cli('gate', 'two', 'directories').status, 2);
+  const pkg = JSON.parse(requirePackage());
+  assert.ok(pkg.files.includes('scripts/contract_pr_gate.mjs'));
+  assert.ok(pkg.files.includes('docs/CI_CONTRACT_GATE.md'));
 });

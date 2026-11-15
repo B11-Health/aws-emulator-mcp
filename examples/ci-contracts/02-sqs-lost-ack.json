@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "name": "sqs-lost-ack-retry",
+  "steps": [
+    {
+      "id": "queue",
+      "service": "sqs",
+      "operation": "CreateQueue",
+      "parameters": {
+        "QueueName": {
+          "$fixture": "queue"
+        }
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "exists": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "lostack",
+      "service": "sqs",
+      "operation": "SendMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MessageBody": "sample-retry-event"
+      },
+      "fault": {
+        "mode": "after-success"
+      },
+      "expect": {
+        "errorCode": "RequestTimeout"
+      }
+    },
+    {
+      "id": "retry",
+      "service": "sqs",
+      "operation": "SendMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MessageBody": "sample-retry-event"
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "MessageId",
+            "exists": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "first",
+      "service": "sqs",
+      "operation": "ReceiveMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MaxNumberOfMessages": 1
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "equals": "sample-retry-event"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ackfirst",
+      "service": "sqs",
+      "operation": "DeleteMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "ReceiptHandle": {
+          "$ref": "first.Messages.0.ReceiptHandle"
+        }
+      }
+    },
+    {
+      "id": "second",
+      "service": "sqs",
+      "operation": "ReceiveMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MaxNumberOfMessages": 1
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "equals": "sample-retry-event"
+          }
+        ]
+      }
+    },
+    {
+      "id": "acksecond",
+      "service": "sqs",
+      "operation": "DeleteMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "ReceiptHandle": {
+          "$ref": "second.Messages.0.ReceiptHandle"
+        }
+      }
+    },
+    {
+      "id": "remove",
+      "service": "sqs",
+      "operation": "DeleteQueue",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        }
+      }
+    }
+  ]
+}

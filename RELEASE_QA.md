@@ -1,3 +1,14 @@
+# v0.4.0-beta.10 candidate - PR contract checks
+
+The local contract gate runner has regression tests for plan selection,
+bounded inputs, path/symlink rejection, fake success refusal and sanitized
+evidence. A new hosted CI job must exercise the **actual composite GitHub
+Action**, not just the standalone Node runner, then verify the uploaded
+artifact report with two emulated AWS contracts on the reviewed PR head.
+Do not claim independent hosted evidence until all release checks pass.
+
+---
+
 # v0.4.0-beta.9 candidate - replayable SDK fault contracts
 
 A local package smoke test against signed AWS Emulator 1.0.385 verified

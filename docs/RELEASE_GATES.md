@@ -128,3 +128,21 @@ and freshly installed npm CLI** with an agent-authored JSON contract:
 These gates do not execute arbitrary developer code, certify AWS fidelity,
 or simulate actual network failures. Passing local QA is insufficient for
 merge until the hosted seven-job workflow succeeds on the published PR head.
+
+
+## v0.4.0-beta.10 - pull-request contract gate
+
+The eighth hosted job runs the actual local composite action as a consumer
+repository would: checkout, execute two checked-in plans, upload a seven-day
+redacted evidence artifact, and verify its assertions with a separate Python
+step. This must pass on the exact reviewed PR head before the candidate merges.
+
+Node unit tests cover 1-6 plan bounds, deterministic selection, symlink and
+path-traversal rejection, malformed JSON, oversized payloads, simulated
+contract failures, spoofed green exit codes, and redaction of unsafe raw child
+output. Windows and Linux unit suites must pass independently.
+
+The action uses only `pull_request` with `contents: read`, SHA-pinned
+setup-node and upload-artifact dependencies, and no production AWS account.
+It doesn't mutate branch protection or leave PR comments. The CLI and action
+share the same runner, so local and hosted behavior are reviewable.
