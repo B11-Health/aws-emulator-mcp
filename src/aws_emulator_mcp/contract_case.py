@@ -28,6 +28,14 @@ OPERATION = re.compile(r"[A-Z][A-Za-z0-9]{0,79}\Z")
 PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.(?:[A-Za-z_][A-Za-z0-9_]*|[0-9]{1,3})){0,9}\Z")
 ERROR_CODE = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,79}\Z")
 FIXTURES = ("bucket", "table", "queue", "id")
+FAULT_MODES = ("before-call", "after-success")
+FAULTABLE_OPERATIONS = frozenset({
+    ("sqs", "SendMessage"), ("s3", "PutObject"),
+    ("dynamodb", "PutItem"),
+})
+FAULT_ERROR_CODE = "RequestTimeout"
+# One bounded, synthetic SDK-boundary timeout per contract. Not a real outage.
+
 
 # This is a metadata-only example. No emulator/SDK call in guide().
 EXAMPLE = {
@@ -46,6 +54,84 @@ EXAMPLE = {
              {"path": "Body.encoding", "equals": "base64"}]}}
     ]
 }
+
+
+# A contract may describe SDK retry behavior without executing developer code.
+FAULT_EXAMPLES = {
+    "sqs-before-call": {
+        "schemaVersion": 1, "name": "sqs-before-send-retry",
+        "steps": [
+            {"id": "queue", "service": "sqs", "operation": "CreateQueue",
+             "parameters": {"QueueName": {"$fixture": "queue"}},
+             "expect": {"assertions": [{"path": "QueueUrl", "exists": True}]}},
+            {"id": "timeout", "service": "sqs", "operation": "SendMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MessageBody": "sample-retry-event"},
+             "fault": {"mode": "before-call"},
+             "expect": {"errorCode": FAULT_ERROR_CODE}},
+            {"id": "empty", "service": "sqs", "operation": "ReceiveMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MaxNumberOfMessages": 1},
+             "expect": {"assertions": [{"path": "Messages", "exists": False}]}},
+            {"id": "retry", "service": "sqs", "operation": "SendMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MessageBody": "sample-retry-event"},
+             "expect": {"assertions": [{"path": "MessageId", "exists": True}]}},
+            {"id": "received", "service": "sqs", "operation": "ReceiveMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MaxNumberOfMessages": 1},
+             "expect": {"assertions": [
+                 {"path": "Messages.0.Body", "equals": "sample-retry-event"}]}},
+            {"id": "ack", "service": "sqs", "operation": "DeleteMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "ReceiptHandle": {"$ref": "received.Messages.0.ReceiptHandle"}}},
+            {"id": "remove", "service": "sqs", "operation": "DeleteQueue",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"}}},
+        ],
+    },
+    "sqs-after-success": {
+        "schemaVersion": 1, "name": "sqs-lost-ack-retry",
+        "steps": [
+            {"id": "queue", "service": "sqs", "operation": "CreateQueue",
+             "parameters": {"QueueName": {"$fixture": "queue"}},
+             "expect": {"assertions": [{"path": "QueueUrl", "exists": True}]}},
+            {"id": "lostack", "service": "sqs", "operation": "SendMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MessageBody": "sample-retry-event"},
+             "fault": {"mode": "after-success"},
+             "expect": {"errorCode": FAULT_ERROR_CODE}},
+            {"id": "retry", "service": "sqs", "operation": "SendMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MessageBody": "sample-retry-event"},
+             "expect": {"assertions": [{"path": "MessageId", "exists": True}]}},
+            {"id": "first", "service": "sqs", "operation": "ReceiveMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MaxNumberOfMessages": 1},
+             "expect": {"assertions": [
+                 {"path": "Messages.0.Body", "equals": "sample-retry-event"}]}},
+            {"id": "ackfirst", "service": "sqs", "operation": "DeleteMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "ReceiptHandle": {"$ref": "first.Messages.0.ReceiptHandle"}}},
+            {"id": "second", "service": "sqs", "operation": "ReceiveMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "MaxNumberOfMessages": 1},
+             "expect": {"assertions": [
+                 {"path": "Messages.0.Body", "equals": "sample-retry-event"}]}},
+            {"id": "acksecond", "service": "sqs", "operation": "DeleteMessage",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                            "ReceiptHandle": {"$ref": "second.Messages.0.ReceiptHandle"}}},
+            {"id": "remove", "service": "sqs", "operation": "DeleteQueue",
+             "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"}}},
+        ],
+    },
+}
+
+
+class InjectedSdkTimeout(Exception):
+    """Local control-plane fault; never report as an error from AWS Emulator."""
+    def __init__(self, mode):
+        super().__init__("synthetic SDK-boundary timeout")
+        self.mode = mode
 
 
 def _error(message):
@@ -113,18 +199,32 @@ def validate(plan):
     if len(_json_bytes(plan)) > MAX_PLAN_BYTES:
         _error("Contract exceeds 48 KiB")
     earlier = set()
+    seen = set()
+    injected = 0
     for step in steps:
-        if not isinstance(step, dict) or set(step) - {"id", "service", "operation", "parameters", "expect"}:
+        if not isinstance(step, dict) or set(step) - {"id", "service", "operation", "parameters", "expect", "fault"}:
             _error("Contract step contains unknown fields")
         if any(k not in step for k in ("id", "service", "operation")):
             _error("Contract step requires id, service and operation")
         ident, service, operation = (step[k] for k in ("id", "service", "operation"))
-        if not isinstance(ident, str) or not IDENTIFIER.fullmatch(ident) or ident in earlier:
+        if not isinstance(ident, str) or not IDENTIFIER.fullmatch(ident) or ident in seen:
             _error("Contract step id is invalid or repeated")
         if not isinstance(service, str) or not SERVICE.fullmatch(service):
             _error("Invalid modeled service identifier")
         if not isinstance(operation, str) or not OPERATION.fullmatch(operation):
             _error("Invalid modeled API operation")
+        fault = step.get("fault")
+        if "fault" in step:
+            injected += 1
+            if injected > 1:
+                _error("Only one SDK-boundary fault is permitted per contract")
+            if (not isinstance(fault, dict) or set(fault) != {"mode"}
+                    or fault.get("mode") not in FAULT_MODES):
+                _error("Fault must select before-call or after-success only")
+            if (service, operation) not in FAULTABLE_OPERATIONS:
+                _error("Fault injection is restricted to allowlisted SDK writes")
+            if step.get("expect") != {"errorCode": FAULT_ERROR_CODE}:
+                _error("A fault step must explicitly expect RequestTimeout")
         params = step.get("parameters", {})
         if not isinstance(params, dict):
             _error("Contract step parameters must be an object")
@@ -151,7 +251,9 @@ def validate(plan):
                     _error("exists must be a boolean")
             else:
                 _value_ok(assertion["equals"], earlier)
-        earlier.add(ident)
+        seen.add(ident)
+        if "errorCode" not in expect:
+            earlier.add(ident)  # Error steps have no successful result to reference.
     return plan
 
 
@@ -159,6 +261,20 @@ def guide():
     return {
         "schemaVersion": 1, "tool": "contract_run", "maxSteps": MAX_STEPS,
         "fixtures": list(FIXTURES), "example": EXAMPLE,
+        "faultInjection": {
+            "maxFaultsPerPlan": 1, "modes": list(FAULT_MODES),
+            "allowedWrites": [service + "." + operation
+                              for service, operation in sorted(FAULTABLE_OPERATIONS)],
+            "example": {"fault": {"mode": "after-success"},
+                        "expect": {"errorCode": FAULT_ERROR_CODE}},
+            "meaning": "before-call never invokes the chosen operation. "
+                       "after-success invokes it on the local emulator and suppresses "
+                       "the successful SDK acknowledgement. This is a synthetic "
+                       "SDK-boundary timeout, not an emulator/network outage.",
+            "safety": "No scripts, user source execution, hosts, endpoints, "
+                      "fault scheduling, loops or arbitrary error codes.",
+            "templates": FAULT_EXAMPLES,
+        },
         "syntax": {
             "parameters": "Standard modeled botocore API JSON parameters",
             "fixture": {"$fixture": "bucket"},
@@ -251,7 +367,12 @@ def execute(plan):
             mapping = {api: method for method, api in client.meta.method_to_api_mapping.items()}
             if step["operation"] not in mapping:
                 _error("SDK operation is not modeled")
+            fault = step.get("fault")
+            if fault and fault["mode"] == "before-call":
+                raise InjectedSdkTimeout("before-call")
             output = getattr(client, mapping[step["operation"]])(**params)
+            if fault and fault["mode"] == "after-success":
+                raise InjectedSdkTimeout("after-success")
             safe = aws_sdk._safe(output)
             if len(_json_bytes(safe)) > 262144:
                 _error("Contract SDK response exceeds 256 KiB")
@@ -268,6 +389,15 @@ def execute(plan):
                                actual == _resolve(item["equals"], responses, fixtures))
                 record["assertions"].append({"path": item["path"], "passed": bool(matched)})
                 record["passed"] = record["passed"] and bool(matched)
+        except InjectedSdkTimeout as exc:
+            record["observed"] = "synthetic_sdk_timeout"
+            record["errorCode"] = FAULT_ERROR_CODE
+            record["fault"] = {
+                "mode": exc.mode,
+                "sentToEmulator": exc.mode == "after-success",
+                "source": "local SDK wrapper",
+            }
+            record["passed"] = expected.get("errorCode") == FAULT_ERROR_CODE
         except Exception as exc:
             code = _client_error_code(exc)
             record["observed"] = "api_error" if code else "local_error"
@@ -276,7 +406,8 @@ def execute(plan):
             else:
                 # No exception messages, URLs, secrets, request bodies or tracebacks.
                 record["errorType"] = type(exc).__name__[:80]
-            record["passed"] = bool(code and code == expected.get("errorCode"))
+            record["passed"] = bool(not step.get("fault")
+                                    and code and code == expected.get("errorCode"))
         record["durationMs"] = round((time.perf_counter() - tick) * 1000, 1)
         if record["passed"]:
             report["passedSteps"] += 1

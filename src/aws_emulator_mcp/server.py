@@ -712,9 +712,9 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
     from aws_emulator_mcp import contract_case
     TOOLS.extend([
         spec("contract_guide",
-             "Get the schema and a sample replayable AWS SDK contract. No cloud calls."),
+             "Get bounded agent-authored AWS contract schema and synthetic SDK timeout templates. No cloud calls."),
         spec("contract_run",
-             "Execute 1-16 agent-authored declarative AWS SDK steps and assertions in a fresh, independent local emulator; return redacted pass/fail evidence. No user code or production AWS.",
+             "Execute 1-16 agent-authored AWS SDK steps and assertions, optionally injecting one SDK-boundary RequestTimeout on approved writes, in a fresh isolated emulator. No user code, cloud credentials or real outages.",
              {"plan": {"type": "object", "additionalProperties": True}}, ("plan",)),
     ])
     TOOLS[-2]["annotations"] = {"readOnlyHint": True, "destructiveHint": False,
@@ -742,7 +742,7 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
 
 # Protocol dispatch supports both 2025 handshake clients and 2026-07-28
 # stateless per-request metadata (MCP modern era). No third-party packages.
-VERSION="0.4.0b8"
+VERSION="0.4.0b9"
 PROTOCOL_VERSIONS=("2026-07-28","2025-11-25","2025-06-18","2025-03-26")
 SERVER_INFO={"name":"aws-emulator-mcp","version":VERSION}
 SERVER_CAPS={"tools":{"listChanged":False}}

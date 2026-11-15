@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.8 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
+This is the **v0.4.0-beta.9 public GitHub source beta** on the moving master branch until a tested release is tagged; pin an exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
 
@@ -97,7 +97,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.8`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b8`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.9`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b9`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 
@@ -122,3 +122,16 @@ or cleanup fails. Local MCP tools `app_debug_catalog` and
 `app_debug_run` expose the challenge and evidence; no arbitrary
 host-source mounts or remote code execution are enabled.
 See the [application debugging guide](APP_DEBUGGING.md).
+
+
+## Beta.9: agent-authored fault contracts
+
+`contract_guide` now supplies two runnable SQS fault examples. A developer's
+coding agent can create a bounded JSON contract for a supported SDK workflow,
+then call `contract_run` or run `aws-emulator-mcp contract fault-demo`.
+The runner injects at most one synthetic `RequestTimeout`, before a supported
+write or after that write successfully returned from the local emulator.
+Only `sqs.SendMessage`, `s3.PutObject` and `dynamodb.PutItem` are currently
+eligible. Evidence distinguishes injected timeouts from genuine API failures.
+This does not execute developer application source or simulate a real outage.
+[Details](CONTRACT_TESTING.md).

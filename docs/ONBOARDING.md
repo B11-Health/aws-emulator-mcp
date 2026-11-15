@@ -71,6 +71,13 @@ aws-emulator-mcp experiment ec2-vpc-lifecycle
 aws-emulator-mcp coverage
 ~~~
 
+For an agent-authored retry experiment, run
+`aws-emulator-mcp contract fault-demo --json` or ask your coding assistant
+to call `contract_guide` and propose a declarative failure contract for an
+AWS SDK workflow in your repository. It tests emulated API operations, not
+your application source or a real service outage.
+[See the fault contract format](CONTRACT_TESTING.md).
+
 The catalog includes eight experiments. The SDK discovery bridge reaches the service models installed in the local SDK, but operation availability varies. The [measured coverage guide](COVERAGE.md) explains the difference between modeled APIs and successfully executed operations.
 
 ## Interactive tour

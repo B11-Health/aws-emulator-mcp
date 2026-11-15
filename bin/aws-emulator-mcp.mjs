@@ -9,7 +9,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.8';
+const VERSION = '0.4.0-beta.9';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -40,7 +40,7 @@ Commands:
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
-  contract demo|<file>  Execute an isolated, declarative AWS SDK test plan
+  contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
   failure-lab      Reproduce missing events, timeout recovery and deduplication
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack
@@ -191,6 +191,8 @@ function renderReport(command, result) {
     for (const step of result.steps || []) {
       lines.push('  ' + mark(step.passed) + '  ' + step.id + '  ' +
         step.service + '.' + step.operation + '  (' + step.observed + ')');
+      if (step.fault) lines.push('    SDK fault ' + step.fault.mode +
+        '; forwarded to emulator: ' + String(step.fault.sentToEmulator));
     }
     lines.push('  Isolated emulator state discarded when this run exits.');
   } else if (command === 'failure-lab') {
@@ -372,12 +374,15 @@ async function main() {
     if (rest.length !== 1 || args.length > 2 ||
         args.filter(x => x === '--json').length > 1 || rest[0].startsWith('-') ||
         /^(https?:|file:)/i.test(rest[0])) {
-      fail('Usage: aws-emulator-mcp contract demo|<local-plan.json> [--json]', 2);
+      fail('Usage: aws-emulator-mcp contract demo|fault-demo|<local-plan.json> [--json]', 2);
     }
     let plan;
     try {
       const filename = rest[0] === 'demo'
-        ? path.join(ROOT, 'examples', 'contracts', 's3-write-read.json') : rest[0];
+        ? path.join(ROOT, 'examples', 'contracts', 's3-write-read.json')
+        : rest[0] === 'fault-demo'
+          ? path.join(ROOT, 'examples', 'contracts', 'sqs-after-success.json')
+          : rest[0];
       const stat = lstatSync(filename);
       if (!stat.isFile() || stat.isSymbolicLink() || stat.size === 0 ||
           stat.size > 48 * 1024) throw Error('not a bounded regular file');

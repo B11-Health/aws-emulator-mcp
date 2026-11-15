@@ -46,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.8');
+  assert.equal(pkg.version, '0.4.0-beta.9');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -181,7 +181,9 @@ test('contract CLI refuses remote paths, bad files and bad shapes before Docker'
     assert.equal(cli('contract', invalid).status, 2);
   } finally { rmSync(directory, { recursive: true, force: true }); }
   assert.match(cli('help').stdout, /contract demo/);
+  assert.match(cli('help').stdout, /fault-demo/);
 });
+
 
 
 test('Docker image builder never references the contract stdin variable', () => {
@@ -202,4 +204,23 @@ test('Failure Lab CLI rejects arbitrary code, paths and invalid modes before Doc
   assert.equal(shown.status, 0);
   assert.match(shown.stdout, /failure-lab/);
   assert.match(shown.stdout, /lost-ack/);
+});
+
+
+test('fault contract examples are bundled, bounded and reject script input before Docker', () => {
+  const pkg = JSON.parse(requirePackage());
+  for (const name of ['sqs-before-call', 'sqs-after-success']) {
+    const relative = 'examples/contracts/' + name + '.json';
+    assert.ok(pkg.files.includes(relative));
+    const plan = JSON.parse(readFileSync(path.join(ROOT, relative), 'utf8'));
+    assert.equal(plan.schemaVersion, 1);
+    assert.ok(plan.steps.length >= 5 && plan.steps.length <= 16);
+    const faults = plan.steps.filter(step => step.fault);
+    assert.equal(faults.length, 1);
+    assert.deepEqual(faults[0].expect, { errorCode: 'RequestTimeout' });
+  }
+  assert.equal(cli('contract', 'fault-demo', '--json', '--json').status, 2);
+  assert.equal(cli('contract', 'file:///etc/passwd').status, 2);
+  const content = readFileSync(BIN, 'utf8');
+  assert.match(content, /sqs-after-success\.json/);
 });

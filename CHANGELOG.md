@@ -1,3 +1,17 @@
+## v0.4.0-beta.9 - agent-authored SDK fault contracts (candidate)
+
+- Extend the existing isolated, declarative contract runner with one bounded
+  synthetic SDK-boundary RequestTimeout per plan. Allowed operations are
+  SQS SendMessage, S3 PutObject and DynamoDB PutItem; an after-success fault
+  only triggers after the actual emulator API returned successfully.
+- Two reviewed reusable SQS recovery and lost-acknowledgement templates plus
+  `aws-emulator-mcp contract fault-demo`.
+- Redacted evidence differentiates injected timeouts from real API errors and
+  records whether the write reached the emulator.
+- This does not execute user source code, run arbitrary chaos scripts,
+  reproduce an actual network outage, or certify AWS compatibility.
+- Fixed a Failure Lab import-order issue found during clean-module QA.
+
 ## v0.4.0-beta.8 — AWS Failure Lab (source candidate)
 
 - Added a bounded failure/recovery comparison: one synthetic SDK pre-send

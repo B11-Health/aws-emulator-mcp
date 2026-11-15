@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "name": "sqs-before-send-retry",
+  "steps": [
+    {
+      "id": "queue",
+      "service": "sqs",
+      "operation": "CreateQueue",
+      "parameters": {
+        "QueueName": {
+          "$fixture": "queue"
+        }
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "exists": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "timeout",
+      "service": "sqs",
+      "operation": "SendMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MessageBody": "sample-retry-event"
+      },
+      "fault": {
+        "mode": "before-call"
+      },
+      "expect": {
+        "errorCode": "RequestTimeout"
+      }
+    },
+    {
+      "id": "empty",
+      "service": "sqs",
+      "operation": "ReceiveMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MaxNumberOfMessages": 1
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "Messages",
+            "exists": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "retry",
+      "service": "sqs",
+      "operation": "SendMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MessageBody": "sample-retry-event"
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "MessageId",
+            "exists": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "received",
+      "service": "sqs",
+      "operation": "ReceiveMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "MaxNumberOfMessages": 1
+      },
+      "expect": {
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "equals": "sample-retry-event"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ack",
+      "service": "sqs",
+      "operation": "DeleteMessage",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        },
+        "ReceiptHandle": {
+          "$ref": "received.Messages.0.ReceiptHandle"
+        }
+      }
+    },
+    {
+      "id": "remove",
+      "service": "sqs",
+      "operation": "DeleteQueue",
+      "parameters": {
+        "QueueUrl": {
+          "$ref": "queue.QueueUrl"
+        }
+      }
+    }
+  ]
+}
