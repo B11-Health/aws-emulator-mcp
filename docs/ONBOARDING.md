@@ -17,13 +17,13 @@ Automated Linux acceptance tests pass. Independent first-use Docker acceptance t
 ## 2. Install the launcher
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#master"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.10"
 aws-emulator-mcp doctor
 ~~~
 
 The package is distributed from the GitHub repository until its first npm registry release. The `doctor` command checks Docker and the local emulator.
 
-For reproducibility, pin the GitHub commit SHA you tested rather than following a moving branch. The full [installation notes](DOCKER_NPM_BETA.md) cover technical details.
+For reproducibility, use the tagged version above or an exact tested commit SHA rather than a moving branch. The full [installation notes](DOCKER_NPM_BETA.md) cover technical details.
 
 ## 3. Try the order-intake demo
 
@@ -90,4 +90,6 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 Then open **http://127.0.0.1:8765/docs/onboarding/**. The five-stage tour shows recorded results, navigates between stages, and highlights the pointer during mouse interaction. It requires no external service or account.
 
-Need help? [Open an issue](https://github.com/B11-Health/aws-emulator-mcp/issues) with your operating system, Node and Docker versions, the exact command, and a sanitized error.
+Need help or want to critique the product? [Submit a field report](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml)
+with your operating system, client, exact command, and a sanitized result.
+[See the expert review questions](COMMUNITY_REVIEW.md).

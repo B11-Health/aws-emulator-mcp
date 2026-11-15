@@ -7,7 +7,8 @@ ROOT=Path(__file__).resolve().parents[1]
 PAGES=("README.md","docs/WHAT_YOU_CAN_BUILD.md","docs/LAUNCH_DEMO.md",
        "docs/linkedin-draft.md","docs/APP_DEBUGGING.md",
        "docs/ONBOARDING.md","docs/DEMO_GALLERY.md",
-       "docs/FAILURE_LAB.md", "examples/reliability-lab/README.md")
+       "docs/FAILURE_LAB.md", "examples/reliability-lab/README.md",
+       "docs/COMMUNITY_REVIEW.md", "CONTRIBUTING.md")
 
 class ProductStoryTests(unittest.TestCase):
     def test_internal_markdown_links_resolve(self):
@@ -39,6 +40,26 @@ class ProductStoryTests(unittest.TestCase):
             self.assertNotIn("Code Gym",content)
         pkg=(ROOT/"package.json").read_text(encoding="utf-8")
         self.assertIn('"name": "aws-emulator-mcp"',pkg)
+
+    def test_public_feedback_path_and_pinned_first_use(self):
+        import json
+        pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+        tag = "v" + pkg["version"]
+        onboarding = (ROOT / "docs/ONBOARDING.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        community = (ROOT / "docs/COMMUNITY_REVIEW.md").read_text(encoding="utf-8")
+        form = (ROOT / ".github/ISSUE_TEMPLATE/field_report.yml").read_text(
+            encoding="utf-8")
+        assert "github:B11-Health/aws-emulator-mcp#" + tag in onboarding
+        self.assertNotIn("github:B11-Health/aws-emulator-mcp#master", onboarding)
+        self.assertIn("docs/COMMUNITY_REVIEW.md", readme)
+        self.assertIn("template=field_report.yml", readme + community)
+        self.assertIn("This independent project", community)
+        self.assertIn("does not", community.lower())
+        self.assertIn('title: "[Field report] "', form)
+        for field in ("goal", "observation", "priority", "safety"):
+            self.assertIn("id: " + field, form)
+        self.assertIn("No AWS", readme)
 
     def test_no_remote_write_claim(self):
         for file in ("README.md","docs/WHAT_YOU_CAN_BUILD.md"):

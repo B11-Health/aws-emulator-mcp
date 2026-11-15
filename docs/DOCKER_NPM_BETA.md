@@ -138,6 +138,10 @@ This does not execute developer application source or simulate a real outage.
 [Details](CONTRACT_TESTING.md).
 
 
+The current tagged source release is
+`v0.4.0-beta.10`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
+are welcome from AWS builders and coding-agent developers.
+
 ## Beta.10: run the contracts in a pull request
 
 The [PR contract gate](CI_CONTRACT_GATE.md) is a GitHub composite action

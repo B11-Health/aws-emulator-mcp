@@ -3,3 +3,6 @@ contact_links:
   - name: AWS Emulator engine issues (upstream)
     url: https://github.com/aws/aws-emulator/issues
     about: Use this for core emulator bugs, fidelity gaps or API implementations, not the independent MCP adapter.
+  - name: Product review from AWS builders
+    url: https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml
+    about: Critique the independent MCP adapter, first-run experience, SDK failure testing and PR gate.
