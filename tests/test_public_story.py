@@ -126,6 +126,11 @@ class ProductStoryTests(unittest.TestCase):
         self.assertIn("Coverage is measured per operation",body)
         self.assertIn("docs/BYO_HANDLER.md",body)
         self.assertIn("app-verify examples/byo-order-handler/fixed.py",body)
+        self.assertIn("git clone --depth 1 --branch v" +
+                      __import__("json").loads((ROOT/"package.json").read_text())["version"],
+                      body)
+        self.assertIn("The example source files are in the Git repository",
+                      (ROOT/"docs/BYO_HANDLER.md").read_text(encoding="utf-8"))
         self.assertIn("not yet published on npm",body)
         self.assertNotIn("img.shields.io/npm/v/",body)
         self.assertIn("actions/workflows/tests.yml/badge.svg?branch=master",body)

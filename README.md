@@ -81,8 +81,14 @@ after an explicit terminal command, in a one-shot network-disabled Docker
 container, against verified local DynamoDB, S3 and SQS APIs.
 
 ```bash
+# To run the shipped examples, first open the versioned Git checkout:
+git clone --depth 1 --branch v0.4.0-beta.14 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
 aws-emulator-mcp app-verify examples/byo-order-handler/fixed.py --json
 aws-emulator-mcp app-verify examples/byo-order-handler/buggy.py --json  # expected failure
+
+# Or supply the actual path to a Python order handler you own:
+aws-emulator-mcp app-verify /path/to/my-order-handler.py --json
 ```
 
 [**Source ABI, security limits, and actual 1.0.385 test evidence.**](docs/BYO_HANDLER.md)

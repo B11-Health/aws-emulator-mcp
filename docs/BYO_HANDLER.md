@@ -13,6 +13,9 @@ production credentials or cloud deployment is required.
 
 ```sh
 npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+# The example source files are in the Git repository, not your working directory:
+git clone --depth 1 --branch v0.4.0-beta.14 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
 
 # Should PASS: 1 accepted order, 1 SQS event, 8 assertions, 7 cleanup checks
 aws-emulator-mcp app-verify examples/byo-order-handler/fixed.py --json
@@ -20,6 +23,10 @@ aws-emulator-mcp app-verify examples/byo-order-handler/fixed.py --json
 # Deliberately broken; expected exit 1: 2 accepted orders, 2 SQS events
 aws-emulator-mcp app-verify examples/byo-order-handler/buggy.py --json
 ```
+
+You can instead pass an absolute or relative path to **your own** local
+`.py` handler from any working directory. The launcher does not download
+application source or locate project files on your behalf.
 
 [**Actual AWS Emulator 1.0.385 evidence**](evidence/byo-handler-aws-emulator-1.0.385.json)
 records both runs, source SHA-256 values and sanitized assertion/cleanup

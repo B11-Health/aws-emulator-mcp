@@ -49,7 +49,9 @@ and needs sufficient free space (the cached image is over 1 GB).
 ~~~bash
 aws-emulator-mcp doctor
 aws-emulator-mcp app-debug compare
-# Optional: manually test a Python handler YOU own and trust.
+# Optional: manually test a handler YOU own and trust.
+# The example path works from a checkout of this repository; otherwise
+# supply the path to your own local Python source file.
 aws-emulator-mcp app-verify examples/byo-order-handler/fixed.py --json
 ~~~
 
