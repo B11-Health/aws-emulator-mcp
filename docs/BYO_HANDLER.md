@@ -33,6 +33,45 @@ records both runs, source SHA-256 values and sanitized assertion/cleanup
 results. The runner does not expose the source, order, SDK responses, or
 handler logs in the report. Each run creates fresh synthetic resources.
 
+## Compare a developer-selected bug and fix, with PR-ready evidence
+
+The unreleased source branch adds `app-compare`; **it is not part of the
+v0.4.0-beta.14 tagged npm installation above**. In a checkout containing
+this feature, supply two different, trusted local Python handler files:
+
+```bash
+node bin/aws-emulator-mcp.mjs app-compare \
+  examples/byo-order-handler/buggy.py \
+  examples/byo-order-handler/fixed.py
+# Save a sanitized record for review, with source hashes and cleanup results:
+node bin/aws-emulator-mcp.mjs app-compare \
+  examples/byo-order-handler/buggy.py \
+  examples/byo-order-handler/fixed.py --json > byo-comparison.json
+# Or create a Markdown summary for the PR description:
+node bin/aws-emulator-mcp.mjs app-compare \
+  examples/byo-order-handler/buggy.py \
+  examples/byo-order-handler/fixed.py --markdown > byo-comparison.md
+```
+
+The before file must demonstrate the specific duplicate-submission failure:
+**two accepted submissions, two queue events, matching DynamoDB/S3 data,
+verified emulator identity, and complete cleanup**. The after file must
+suppress the duplicate while passing all eight assertions and all seven
+cleanup checks. The command exits nonzero when either side is unverifiable.
+It cannot claim success merely because an arbitrary before test failed.
+
+Both runs are separate one-shot, network-disabled Docker containers, with
+fresh synthetic resources. No production credentials, source files, or
+application logs are copied into the report. The report retains only source
+SHA-256 hashes, boolean results and bounded counters; it can be attached to a
+pull request **after** the developer inspects it. A third-party PR workflow
+must **not** auto-execute untrusted source: use this command locally against
+code you own or have reviewed. There is deliberately no MCP or PR Action
+entrypoint for the executable-source feature.
+
+Comparing two handlers still tests one completed-request retry per run; it
+does **not** prove crash recovery, arbitrary application support or AWS parity.
+
 ## Handler interface and data
 
 Supply one UTF-8 **regular** `.py` file (max 20 KiB; no symlinks) defining:

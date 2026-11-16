@@ -151,6 +151,24 @@ def verify():
         print("BYO_PYTHON_HANDLER_SIGNED_EMULATOR_PASS", variant,
               accepted, "accepted", messages, "events", flush=True)
 
+    # Developer-selected two-file comparison: distinct isolated Docker labs
+    # must prove the duplicate-order failure and the corrected SDK behavior.
+    baseline = ROOT / "examples/byo-order-handler/buggy.py"
+    corrected = ROOT / "examples/byo-order-handler/fixed.py"
+    comparison_run = run("app-compare", extra=[str(baseline), str(corrected)],
+                         json_mode=True, timeout=360)
+    assert comparison_run.returncode == 0, comparison_run.stderr[-800:]
+    comparison = json.loads(comparison_run.stdout)
+    assert comparison["passed"] and comparison["bugReproduced"]
+    assert comparison["fixVerified"] and comparison["accountVerified"]
+    assert comparison["before"]["observed"]["queueEvents"] == 2
+    assert comparison["after"]["observed"]["queueEvents"] == 1
+    assert all(item["passed"] for item in comparison["before"]["cleanup"])
+    assert all(item["passed"] for item in comparison["after"]["cleanup"])
+    assert comparison["before"]["sourceSha256"] == sha256(baseline.read_bytes()).hexdigest()
+    assert comparison["after"]["sourceSha256"] == sha256(corrected.read_bytes()).hexdigest()
+    print("BYO_HANDLER_COMPARE_PASS", "duplicate 2 -> 1", "cleanups green", flush=True)
+
     failure = run("failure-lab", extra=["compare"], json_mode=True, timeout=180)
     assert failure.returncode == 0, failure.stderr[-1000:]
     proof = json.loads(failure.stdout)

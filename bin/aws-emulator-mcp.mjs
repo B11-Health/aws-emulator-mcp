@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
+import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compare.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.14';
@@ -48,6 +49,8 @@ Commands:
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack
   app-verify <file> Verify YOUR trusted Python order handler in local Docker
+  app-compare <before.py> <after.py>  Reproduce a bug and verify your own fix
+                   JSON or PR-ready Markdown evidence; trusted local files only
                    No host mounts, outbound network, AWS account, or remote MCP execution
   app-debug [mode] Run the packaged order-intake bug/fix against real AWS APIs
                    Modes: compare (default), buggy, fixed
@@ -177,6 +180,21 @@ function renderReport(command, result) {
         '/' + (result.cleanup || []).length,
       '  Scope: One selected Python handler, NOT whole-app or AWS fidelity',
       '');
+  } else if (command === 'app-compare') {
+    lines.push('  ' + mark(result.passed) + '  Your own Python handler / before-and-after',
+      '  Duplicate event bug reproduced: ' + mark(result.bugReproduced),
+      '  Developer-selected fix verified: ' + mark(result.fixVerified),
+      '  Emulator: ' + result.emulatorVersion,
+      '  Before: ' + result.before.observed.acceptedSubmissions + ' accepted / ' +
+        result.before.observed.queueEvents + ' messages',
+      '  After:  ' + result.after.observed.acceptedSubmissions + ' accepted / ' +
+        result.after.observed.queueEvents + ' messages',
+      '  Source hashes (before / after):',
+      '    ' + result.before.sourceSha256,
+      '    ' + result.after.sourceSha256,
+      '  Cleanup: ' + mark(result.before.cleanupPassed && result.after.cleanupPassed),
+      '  PR evidence: rerun with --markdown or --json',
+      '  Trusted local source only; not generic codebase testing or AWS parity.');
   } else if (command === 'app-debug') {
     const evidence = result.variant === 'compare' ? result : result.result;
     if (result.variant === 'compare') {
@@ -384,6 +402,39 @@ function config(format = 'copilot') {
     : { servers: { 'aws-emulator-local': launch } };
   stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
+function readSelectedHandler(file) {
+  if (typeof file !== 'string' || file.startsWith('-') || file.length > 260 ||
+      /^(https?:|file:)/i.test(file)) {
+    fail('Choose a bounded local Python .py file, not a URL or option', 2);
+  }
+  let source, raw;
+  try {
+    const info = lstatSync(file);
+    if (!info.isFile() || info.isSymbolicLink() ||
+        info.size < 1 || info.size > 20 * 1024 ||
+        !file.endsWith('.py')) throw Error('invalid source file');
+    raw = readFileSync(file);
+    source = new TextDecoder('utf-8', { fatal: true }).decode(raw);
+    if (!source.trim() || source.includes('\0')) throw Error('invalid source data');
+  } catch {
+    fail('Choose a bounded, regular local Python .py file (max 20 KiB, no symlinks)', 2);
+  }
+  return { envelope: {
+    schemaVersion: 1, source,
+    sourceSha256: createHash('sha256').update(raw).digest('hex')
+  } };
+}
+
+async function runSelectedHandler(envelope) {
+  // Only explicit local CLI commands can execute trusted source. Never MCP or
+  // PR Actions. Source and its hash reach the container via stdin only.
+  const result = await runCaptured(dockerArgs('app-verify'), JSON.stringify(envelope));
+  let proof;
+  try { proof = JSON.parse(result.raw); }
+  catch { fail('Local handler returned no valid sanitized evidence', result.code || 2); }
+  return { code: result.code, proof };
+}
+
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
@@ -475,45 +526,51 @@ async function main() {
       fail('Failure Lab scenario assertions or cleanup failed', result.code || 1);
     return;
   }
+  if (command === 'app-compare') {
+    const format = args[2] || '';
+    if (args.length < 2 || args.length > 3 ||
+        (format && !['--json', '--markdown'].includes(format))) {
+      fail('Usage: aws-emulator-mcp app-compare <before.py> <after.py> [--json|--markdown]', 2);
+    }
+    // Validate *both* trusted local inputs before starting any container.
+    const beforeInput = readSelectedHandler(args[0]);
+    const afterInput = readSelectedHandler(args[1]);
+    if (beforeInput.envelope.sourceSha256 === afterInput.envelope.sourceSha256) {
+      fail('Before and after source hashes are identical; comparison refused', 2);
+    }
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const before = await runSelectedHandler(beforeInput.envelope);
+    const after = await runSelectedHandler(afterInput.envelope);
+    let report;
+    try {
+      report = compareHandlerEvidence(
+        before.proof, beforeInput.envelope.sourceSha256, before.code,
+        after.proof, afterInput.envelope.sourceSha256, after.code);
+    } catch {
+      fail('Comparison could not verify both isolated handler results', 2);
+    }
+    if (format === '--json') stdout.write(JSON.stringify(report, null, 2) + '\n');
+    else if (format === '--markdown') stdout.write(comparisonMarkdown(report));
+    else renderReport('app-compare', report);
+    if (!report.passed) fail('Could not reproduce expected duplicate and verify fix', 1);
+    return;
+  }
   if (command === 'app-verify') {
     const wantsJson = args.includes('--json');
     const rest = args.filter(x => x !== '--json');
     if (rest.length !== 1 || args.length > 2 ||
-        args.filter(x => x === '--json').length > 1 ||
-        rest[0].startsWith('-') || rest[0].length > 260 ||
-        /^(https?:|file:)/i.test(rest[0])) {
+        args.filter(x => x === '--json').length > 1) {
       fail('Usage: aws-emulator-mcp app-verify <trusted-local-handler.py> [--json]', 2);
     }
-    let source, raw;
-    try {
-      const file = rest[0];
-      const info = lstatSync(file);
-      if (!info.isFile() || info.isSymbolicLink() ||
-          info.size < 1 || info.size > 20 * 1024 ||
-          !file.endsWith('.py')) throw Error('invalid source file');
-      raw = readFileSync(file);
-      source = new TextDecoder('utf-8', { fatal: true }).decode(raw);
-      if (!source.trim() || source.includes('\0')) throw Error('invalid source data');
-    } catch {
-      fail('Choose a bounded, regular local Python .py file (max 20 KiB, no symlinks)', 2);
-    }
-    const envelope = {
-      schemaVersion: 1, source,
-      sourceSha256: createHash('sha256').update(raw).digest('hex')
-    };
-    // Source bytes are sent via stdin into this one-shot no-network Docker
-    // container. Nothing is bind-mounted, and no host credentials are passed.
+    const { envelope } = readSelectedHandler(rest[0]);
     requireDocker();
     if (!imageExists()) await buildImage();
-    const result = await runCaptured(
-      dockerArgs('app-verify'), JSON.stringify(envelope));
-    let proof;
-    try { proof = JSON.parse(result.raw); }
-    catch { fail('Local handler returned no valid sanitized evidence', result.code || 1); }
+    const { code, proof } = await runSelectedHandler(envelope);
     if (wantsJson) stdout.write(JSON.stringify(proof, null, 2) + '\n');
     else renderReport('app-verify', proof);
-    if (result.code !== 0 || !proof.passed)
-      fail('Trusted local handler failed synthetic assertions or cleanup', result.code || 1);
+    if (code !== 0 || !proof.passed)
+      fail('Trusted local handler failed synthetic assertions or cleanup', code || 1);
     return;
   }
   if (command === 'app-debug') {
