@@ -1,3 +1,25 @@
+# v0.4.0-beta.14 candidate — Opt-in local Python handler pilot
+
+The new CLI takes exactly one explicit developer-selected local `.py` file
+under 20 KiB. The bounded source+SHA256 envelope is sent via Docker stdin,
+not argv/env/host mount. Source execution occurs only inside a one-shot
+Docker container after verifying isolated account identity. The remote MCP
+and PR Action expose no code execution interface. Docker is **not** a
+security guarantee against hostile developer code; only trusted local
+source should be selected.
+
+Real signed AWS Emulator 1.0.385 local QA reproduced a duplicate SQS
+message in the buggy order handler and passed the conditional-write handler.
+Both runs independently verified eight assertions (success only in fixed)
+and all seven cleanup checks. The rich synthetic input includes typed
+DynamoDB business fields. Historical SDK 436-model and 20-read-only-probe
+claims have been moved away from README headline presentation.
+
+All Python, Node, Windows, package allowlist and hosted signed-emulator
+integration gates remain mandatory before merging/tagging beta.14.
+
+---
+
 # v0.4.0-beta.13 candidate — Root Action and separate-consumer acceptance
 
 The new root `action.yml` exposes the same existing Architecture Review

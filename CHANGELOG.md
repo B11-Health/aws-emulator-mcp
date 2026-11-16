@@ -1,3 +1,24 @@
+## v0.4.0-beta.14 — Opt-in local Python application-handler pilot (candidate)
+
+- New `app-verify <trusted-local-handler.py> [--json]` command: source is
+  transmitted over Docker stdin; no host mounts, forwarded AWS credentials
+  or remote MCP entrypoint. Tests a developer-selected `submit_order`
+  function against signed local AWS Emulator S3/DynamoDB/SQS.
+- More realistic synthetic order includes tenant, customer, line items,
+  currency and amount. Eight assertions cover duplicate suppression, typed
+  DynamoDB business fields, one SQS event and a matching S3 receipt; seven
+  scoped cleanup/absence checks must pass.
+- Saved results from official signed AWS Emulator 1.0.385 show the
+  intentionally buggy handler publishes twice and the conditional-write
+  handler publishes once. These are app-specific tests, not general AWS
+  API fidelity, full application support or a transactional outbox.
+- The README no longer markets 436 SDK models or 20 read-only zero-argument
+  smoke calls as headline capabilities; the coverage methodology retains
+  the historical data with explicit interpretation boundaries.
+- Explicit source execution is **local-terminal-only**, use only code
+  you own and trust; Docker is not a hostile-code security guarantee.
+  No new arbitrary code execution on MCP or GitHub PR Action surfaces.
+
 ## v0.4.0-beta.13 — Repository-root GitHub Action and consumer proof (candidate)
 
 - Added a repository-root `action.yml` entrypoint for

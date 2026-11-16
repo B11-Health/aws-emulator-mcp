@@ -1,0 +1,174 @@
+{
+  "buggy": {
+    "accountVerified": true,
+    "assertions": [
+      {
+        "name": "first submission accepted",
+        "passed": true
+      },
+      {
+        "name": "duplicate retry rejected",
+        "passed": false
+      },
+      {
+        "name": "exactly one accepted submission",
+        "passed": false
+      },
+      {
+        "name": "exactly one SQS fulfillment event",
+        "passed": false
+      },
+      {
+        "name": "event body matches logical order",
+        "passed": true
+      },
+      {
+        "name": "DynamoDB row matches submitted order",
+        "passed": true
+      },
+      {
+        "name": "typed tenant, customer, currency and totals match",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches submitted order",
+        "passed": true
+      }
+    ],
+    "case": "local-order-handler",
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify SQS queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "dataExposure": "Source, input order, SDK responses and handler logs omitted",
+    "emulatorVersion": "Version: 1.0.385",
+    "error": "A duplicate-order invariant or resource cleanup failed",
+    "limits": "One trusted local Python function submit_order(dynamodb,s3,sqs,*,table,bucket,queue_url,order); a synthetic repeated-order scenario; S3/DynamoDB/SQS SDK calls and cleanup in a one-shot network-disabled Docker container. NOT arbitrary application discovery, a full PR runner, hostile-code sandbox, real AWS validation, an IAM security test, or a transactional-outbox guarantee.",
+    "observed": {
+      "acceptedSubmissions": 2,
+      "businessFieldsMatch": true,
+      "dbOrderPresent": true,
+      "duplicateSuppressed": false,
+      "queueEvents": 2,
+      "receiptMatches": true
+    },
+    "passed": false,
+    "schemaVersion": 1,
+    "sourceSha256": "f3ebc836a07b7bbc54f752011761799ffcc70b182e1db23c28e173e9e4d27fe8"
+  },
+  "emulatorVersion": "1.0.385",
+  "evidenceKind": "opt-in-local-python-handler",
+  "fixed": {
+    "accountVerified": true,
+    "assertions": [
+      {
+        "name": "first submission accepted",
+        "passed": true
+      },
+      {
+        "name": "duplicate retry rejected",
+        "passed": true
+      },
+      {
+        "name": "exactly one accepted submission",
+        "passed": true
+      },
+      {
+        "name": "exactly one SQS fulfillment event",
+        "passed": true
+      },
+      {
+        "name": "event body matches logical order",
+        "passed": true
+      },
+      {
+        "name": "DynamoDB row matches submitted order",
+        "passed": true
+      },
+      {
+        "name": "typed tenant, customer, currency and totals match",
+        "passed": true
+      },
+      {
+        "name": "S3 receipt matches submitted order",
+        "passed": true
+      }
+    ],
+    "case": "local-order-handler",
+    "cleanup": [
+      {
+        "name": "delete isolated SQS queue",
+        "passed": true
+      },
+      {
+        "name": "verify SQS queue absent",
+        "passed": true
+      },
+      {
+        "name": "delete synthetic receipt",
+        "passed": true
+      },
+      {
+        "name": "delete isolated S3 bucket",
+        "passed": true
+      },
+      {
+        "name": "verify S3 bucket absent",
+        "passed": true
+      },
+      {
+        "name": "delete isolated DynamoDB table",
+        "passed": true
+      },
+      {
+        "name": "verify DynamoDB table absent",
+        "passed": true
+      }
+    ],
+    "dataExposure": "Source, input order, SDK responses and handler logs omitted",
+    "emulatorVersion": "Version: 1.0.385",
+    "error": null,
+    "limits": "One trusted local Python function submit_order(dynamodb,s3,sqs,*,table,bucket,queue_url,order); a synthetic repeated-order scenario; S3/DynamoDB/SQS SDK calls and cleanup in a one-shot network-disabled Docker container. NOT arbitrary application discovery, a full PR runner, hostile-code sandbox, real AWS validation, an IAM security test, or a transactional-outbox guarantee.",
+    "observed": {
+      "acceptedSubmissions": 1,
+      "businessFieldsMatch": true,
+      "dbOrderPresent": true,
+      "duplicateSuppressed": true,
+      "queueEvents": 1,
+      "receiptMatches": true
+    },
+    "passed": true,
+    "schemaVersion": 1,
+    "sourceSha256": "1e90d72c1354d6e7fcc0f59aa54ae7ce7abce226ca38a8f73f762e35e2a5e13a"
+  },
+  "isolation": "One-shot --network none Docker, no host mounts or AWS host credentials",
+  "recordedOn": "2026-11-15",
+  "schemaVersion": 1,
+  "scope": "Synthetic repeated order for a developer-selected handler; not arbitrary app, PR code, AWS or IAM fidelity"
+}

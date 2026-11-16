@@ -124,6 +124,33 @@ def verify():
     print("APPLICATION_DEBUG_PASS", "duplicate events 2 -> 1",
           "cleaned before and after", flush=True)
 
+    # Unlike the packaged app-debug sample, the caller selects an actual
+    # local source file; only its bytes are sent to the no-network Docker
+    # worker. This proves a selected app handler is verified, not just a
+    # bundled demonstration.
+    from hashlib import sha256
+    for variant, expected_status, accepted, messages in (
+        ("fixed", 0, 1, 1), ("buggy", 1, 2, 2),
+    ):
+        file = ROOT / "examples/byo-order-handler" / (variant + ".py")
+        trial = run("app-verify", extra=[str(file)], json_mode=True, timeout=180)
+        assert trial.returncode == expected_status, trial.stderr[-800:]
+        outcome = json.loads(trial.stdout)
+        assert outcome["passed"] is (variant == "fixed")
+        assert outcome["accountVerified"]
+        assert outcome["sourceSha256"] == sha256(file.read_bytes()).hexdigest()
+        assert outcome["observed"]["acceptedSubmissions"] == accepted
+        assert outcome["observed"]["queueEvents"] == messages
+        assert outcome["observed"]["businessFieldsMatch"] is True
+        assert outcome["observed"]["receiptMatches"] is True
+        assert len(outcome["assertions"]) == 8
+        assert len(outcome["cleanup"]) == 7
+        assert all(c["passed"] for c in outcome["cleanup"])
+        assert "local" in outcome["limits"].lower()
+        assert variant not in trial.stderr.lower()  # no source path disclosed
+        print("BYO_PYTHON_HANDLER_SIGNED_EMULATOR_PASS", variant,
+              accepted, "accepted", messages, "events", flush=True)
+
     failure = run("failure-lab", extra=["compare"], json_mode=True, timeout=180)
     assert failure.returncode == 0, failure.stderr[-1000:]
     proof = json.loads(failure.stdout)

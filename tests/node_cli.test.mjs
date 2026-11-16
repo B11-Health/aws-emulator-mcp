@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 const requirePackage = () => readFileSync(new URL('../package.json', import.meta.url), 'utf8');
 
@@ -46,7 +46,7 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   const pkg = JSON.parse(requirePackage());
   assert.equal(pkg.name, 'aws-emulator-mcp');
   assert.equal(pkg.bin['aws-emulator-mcp'], './bin/aws-emulator-mcp.mjs');
-  assert.equal(pkg.version, '0.4.0-beta.13');
+  assert.equal(pkg.version, '0.4.0-beta.14');
   assert.equal(pkg.bin['codegym-aws'], undefined);
   const result = cli('help');
   assert.equal(result.status, 0);
@@ -163,6 +163,47 @@ test('app-debug restricts execution to packaged variants before Docker is called
   const result = cli('help');
   assert.match(result.stdout, /app-debug/);
   assert.match(result.stdout, /compare \(default\), buggy, fixed/);
+});
+
+test('opt-in local app-verify refuses unsafe source input before Docker', () => {
+  assert.equal(cli('app-verify').status, 2);
+  assert.equal(cli('app-verify','https://example.org/order.py').status, 2);
+  assert.equal(cli('app-verify','file:./order.py').status, 2);
+  assert.equal(cli('app-verify','--shell').status, 2);
+  assert.equal(cli('app-verify','app.py','--json','--json').status, 2);
+  assert.equal(cli('app-verify','../../etc/passwd').status, 2);
+  const dir=mkdtempSync(path.join(tmpdir(),'aws-mcp-local-source-'));
+  try {
+    const file=path.join(dir,'handler.py');
+    writeFileSync(file,'# private source file\n');
+    // A valid local file may reach Docker verification, but a nonlocal
+    // Docker endpoint is rejected *before any container starts*.
+    const blocked=spawnSync(process.execPath,[BIN,'app-verify',file,'--json'],{
+      encoding:'utf8',timeout:12000,
+      env:{...process.env,DOCKER_HOST:'tcp://192.0.2.4:2375'}
+    });
+    assert.equal(blocked.status,1);
+    assert.match(blocked.stderr,/Refusing nonlocal DOCKER_HOST/);
+    assert.equal(blocked.stdout,'');
+    assert.doesNotMatch(blocked.stderr,/private source/);
+    writeFileSync(file,Buffer.from([0xff,0xfe,0xfd]));
+    assert.equal(cli('app-verify',file).status,2);
+    writeFileSync(file,'z'.repeat(20*1024+1));
+    assert.equal(cli('app-verify',file).status,2);
+    writeFileSync(file,'valid Python?');
+    assert.equal(cli('app-verify',path.join(dir,'no.txt')).status,2);
+    if(process.platform!=='win32'){
+      const link=path.join(dir,'alias.py');
+      symlinkSync(file,link);
+      assert.equal(cli('app-verify',link).status,2);
+    }
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+  const help=cli('help').stdout;
+  assert.match(help,/app-verify <file>/);
+  assert.match(help,/No host mounts/);
+  const src=readFileSync(BIN,'utf8');
+  assert.match(src,/dockerArgs\('app-verify'\)/);
+  assert.doesNotMatch(src,/docker cp |--volume/);
 });
 
 test('contract CLI refuses remote paths, bad files and bad shapes before Docker', () => {

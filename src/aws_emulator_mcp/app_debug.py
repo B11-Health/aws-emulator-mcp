@@ -15,6 +15,7 @@ from pathlib import Path
 import secrets
 import sys
 import time
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2] / "examples" / "order-intake"
 SOURCES = {
@@ -120,11 +121,15 @@ def _collect_messages(queue):
     return messages
 
 
-def _run_variant(variant):
-    """Execute a reviewed application module; never accept caller paths/code."""
+def _run_variant(variant, *, handler=None):
+    """Run bundled source, or an explicitly supplied local handler in Docker.
+
+    The local handler is only callable by the separate opt-in app_verify CLI.
+    MCP app-debug keeps its strict bundled variant allowlist.
+    """
     from aws_emulator_mcp import aws_sdk
     from aws_emulator_mcp import server as aws
-    if variant not in SOURCES:
+    if variant not in SOURCES and not (variant == "local" and callable(handler)):
         raise aws.LocalError("Unknown app debugging variant")
     if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
         raise aws.LocalError("Application debugger requires isolated Docker lab")
@@ -135,6 +140,16 @@ def _run_variant(variant):
     queue = "mcp_app_events_" + suffix
     key = "receipts/order-" + suffix + ".json"
     order = {"id": "order-" + suffix, "sku": "local-widget", "quantity": 2}
+    if variant == "local":
+        # Deliberately more realistic than an id/message DynamoDB toy: the
+        # caller must persist a tenant, total and line count as typed attrs.
+        # Every fixture is synthetic; no external customer data.
+        order.update({
+            "tenantId": "synthetic-tenant", "customerId": "synthetic-customer",
+            "currency": "USD", "totalCents": 2598,
+            "lineItems": [{"sku": "local-widget", "quantity": 2,
+                           "unitPriceCents": 1299}],
+        })
     created = {"table": False, "bucket": False, "queue": False, "receipt": False}
     report = {
         "variant": variant,
@@ -147,6 +162,7 @@ def _run_variant(variant):
             "queueEvents": None,
             "duplicateSuppressed": None,
             "dbOrderPresent": None,
+            "businessFieldsMatch": None,
             "receiptMatches": None,
         },
         "cleanup": [],
@@ -174,7 +190,8 @@ def _run_variant(variant):
         dynamodb = aws_sdk._client("dynamodb")[2]
         s3 = aws_sdk._client("s3")[2]
         sqs = aws_sdk._client("sqs")[2]
-        app = _load_app(variant)
+        app = (_load_app(variant) if handler is None else
+               SimpleNamespace(submit_order=handler))
         created["receipt"] = True  # cleanup attempted even if the first write times out
         first = app.submit_order(dynamodb, s3, sqs,
                                  table=table, bucket=bucket,
@@ -188,6 +205,13 @@ def _run_variant(variant):
         row = rows.get("Item", {})
         present = (row.get("sku", {}).get("S") == order["sku"]
                    and row.get("status", {}).get("S") == "queued")
+        business_fields_match = (
+            row.get("tenantId", {}).get("S") == order["tenantId"]
+            and row.get("customerId", {}).get("S") == order["customerId"]
+            and row.get("currency", {}).get("S") == order["currency"]
+            and row.get("totalCents", {}).get("N") == str(order["totalCents"])
+            and row.get("lineCount", {}).get("N") == str(len(order["lineItems"]))
+        ) if variant == "local" else None
         receipt = aws.s3_get_object(bucket, key)
         expected_body = json.dumps(order, sort_keys=True, separators=(",", ":"))
         matches = receipt["text"] == expected_body
@@ -198,6 +222,7 @@ def _run_variant(variant):
             "queueEvents": len(messages),
             "duplicateSuppressed": second.get("accepted") is False,
             "dbOrderPresent": present,
+            "businessFieldsMatch": business_fields_match,
             "receiptMatches": matches,
         }
         _mark(report, "first submission accepted", first.get("accepted") is True)
@@ -206,13 +231,18 @@ def _run_variant(variant):
         _mark(report, "exactly one SQS fulfillment event", len(messages) == 1)
         _mark(report, "event body matches logical order", bool(messages) and message_match)
         _mark(report, "DynamoDB row matches submitted order", present)
+        if variant == "local":
+            _mark(report, "typed tenant, customer, currency and totals match",
+                  business_fields_match)
         _mark(report, "S3 receipt matches submitted order", matches)
     except Exception as exc:
         # Never leak arbitrary SDK exception text or local credentials/paths
         # into application debugging evidence.
         report["error"] = (
-            str(exc)[:160] if isinstance(exc, (aws.LocalError, ValueError))
-            else "Unexpected local app-debug failure"
+            "Local handler exception; check the synthetic assertions and source"
+            if variant == "local" else
+            (str(exc)[:160] if isinstance(exc, (aws.LocalError, ValueError))
+             else "Unexpected local app-debug failure")
         )
     finally:
         if created["queue"]:
@@ -236,7 +266,8 @@ def _run_variant(variant):
                 "DynamoDB table remains"))
     checks = report["assertions"]
     report["passed"] = (
-        report["error"] is None and len(checks) == 7
+        report["error"] is None
+        and len(checks) == (8 if variant == "local" else 7)
         and all(item["passed"] for item in checks)
         and bool(report["cleanup"])
         and all(item["passed"] for item in report["cleanup"])

@@ -1,5 +1,11 @@
 # AWS Emulator MCP — measured AWS service coverage
 
+**The model count and the 20 zero-argument read-only smoke responses
+are historical diagnostics, not supported-service coverage or adoption
+metrics.** Repeated stateful API workflows and application invariants
+provide stronger evidence. The [opt-in Python handler test](BYO_HANDLER.md)
+demonstrates one explicitly bounded application scenario.
+
 > **Read this first:** SDK model discovery is **not** AWS Emulator implementation coverage, and an API smoke response is **not** fidelity compared with real AWS.
 
 This is a **version-specific, independently rerunnable local smoke test**. It is not a claim that all operations of any service work, or that AWS security/IAM behavior can be validated locally.

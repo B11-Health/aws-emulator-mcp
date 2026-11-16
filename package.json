@@ -1,6 +1,6 @@
 {
   "name": "aws-emulator-mcp",
-  "version": "0.4.0-beta.13",
+  "version": "0.4.0-beta.14",
   "description": "Local-first MCP adapter for the official AWS Emulator with an isolated Docker lab",
   "type": "module",
   "bin": {
@@ -86,7 +86,13 @@
     "examples/architecture/review/after.json",
     "examples/architecture/review/reference/architecture-diff.svg",
     "examples/architecture/review/reference/report.json",
-    "examples/architecture/review/reference/summary.md"
+    "examples/architecture/review/reference/summary.md",
+    "src/aws_emulator_mcp/app_verify.py",
+    "docs/BYO_HANDLER.md",
+    "docs/evidence/byo-handler-aws-emulator-1.0.385.json",
+    "examples/byo-order-handler/README.md",
+    "examples/byo-order-handler/buggy.py",
+    "examples/byo-order-handler/fixed.py"
   ],
   "license": "MIT",
   "repository": {
@@ -116,7 +122,9 @@
     "drawio",
     "architecture-review",
     "pull-request-preview",
-    "blueprint-diff"
+    "blueprint-diff",
+    "bring-your-own-app",
+    "python-handler-testing"
   ],
   "scripts": {
     "test": "node --test tests/node_cli.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs",
