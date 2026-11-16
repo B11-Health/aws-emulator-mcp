@@ -3,13 +3,14 @@
  * Neither AWS credentials nor writable host directories are passed to Docker.
  */
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.13';
+const VERSION = '0.4.0-beta.14';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');
@@ -46,6 +47,8 @@ Commands:
   failure-lab      Reproduce missing events, timeout recovery and deduplication
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack
+  app-verify <file> Verify YOUR trusted Python order handler in local Docker
+                   No host mounts, outbound network, AWS account, or remote MCP execution
   app-debug [mode] Run the packaged order-intake bug/fix against real AWS APIs
                    Modes: compare (default), buggy, fixed
   self-test        Exercise supported services and scoped cleanup
@@ -160,6 +163,20 @@ function renderReport(command, result) {
       '  Duration: ' + (result.duration_ms / 1000).toFixed(2) + ' seconds',
       '  ' + (result.passed ? 'All checks passed; lab resources removed.' :
         'Failure: ' + (result.error || 'inspect JSON evidence')));
+  } else if (command === 'app-verify') {
+    lines.push('  ' + mark(result.passed) + '  Local Python order-handler verification',
+      '  Source SHA-256: ' + String(result.sourceSha256 || 'unverified').slice(0,20) + '…',
+      '  Trusted local source executed in isolated Docker (never via MCP)',
+      '  Application calls: DynamoDB / S3 / SQS',
+      '  Accepted submissions: ' + result.observed?.acceptedSubmissions,
+      '  SQS events: ' + result.observed?.queueEvents,
+      '  Rich DynamoDB fields match: ' + String(result.observed?.businessFieldsMatch),
+      '  Checks: ' + (result.assertions || []).filter(a => a.passed).length +
+        '/' + (result.assertions || []).length,
+      '  Cleanup: ' + (result.cleanup || []).filter(c => c.passed).length +
+        '/' + (result.cleanup || []).length,
+      '  Scope: One selected Python handler, NOT whole-app or AWS fidelity',
+      '');
   } else if (command === 'app-debug') {
     const evidence = result.variant === 'compare' ? result : result.result;
     if (result.variant === 'compare') {
@@ -456,6 +473,47 @@ async function main() {
     else renderReport('failure-lab', parsed);
     if (result.code !== 0 || !parsed.passed)
       fail('Failure Lab scenario assertions or cleanup failed', result.code || 1);
+    return;
+  }
+  if (command === 'app-verify') {
+    const wantsJson = args.includes('--json');
+    const rest = args.filter(x => x !== '--json');
+    if (rest.length !== 1 || args.length > 2 ||
+        args.filter(x => x === '--json').length > 1 ||
+        rest[0].startsWith('-') || rest[0].length > 260 ||
+        /^(https?:|file:)/i.test(rest[0])) {
+      fail('Usage: aws-emulator-mcp app-verify <trusted-local-handler.py> [--json]', 2);
+    }
+    let source, raw;
+    try {
+      const file = rest[0];
+      const info = lstatSync(file);
+      if (!info.isFile() || info.isSymbolicLink() ||
+          info.size < 1 || info.size > 20 * 1024 ||
+          !file.endsWith('.py')) throw Error('invalid source file');
+      raw = readFileSync(file);
+      source = new TextDecoder('utf-8', { fatal: true }).decode(raw);
+      if (!source.trim() || source.includes('\0')) throw Error('invalid source data');
+    } catch {
+      fail('Choose a bounded, regular local Python .py file (max 20 KiB, no symlinks)', 2);
+    }
+    const envelope = {
+      schemaVersion: 1, source,
+      sourceSha256: createHash('sha256').update(raw).digest('hex')
+    };
+    // Source bytes are sent via stdin into this one-shot no-network Docker
+    // container. Nothing is bind-mounted, and no host credentials are passed.
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const result = await runCaptured(
+      dockerArgs('app-verify'), JSON.stringify(envelope));
+    let proof;
+    try { proof = JSON.parse(result.raw); }
+    catch { fail('Local handler returned no valid sanitized evidence', result.code || 1); }
+    if (wantsJson) stdout.write(JSON.stringify(proof, null, 2) + '\n');
+    else renderReport('app-verify', proof);
+    if (result.code !== 0 || !proof.passed)
+      fail('Trusted local handler failed synthetic assertions or cleanup', result.code || 1);
     return;
   }
   if (command === 'app-debug') {

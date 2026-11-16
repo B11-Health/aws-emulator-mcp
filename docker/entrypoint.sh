@@ -5,7 +5,7 @@ export PATH="$HOME/.local/bin:$PATH"
 export AWS_EMULATOR_PORT=9297
 mode="${1:-mcp}"
 case "$mode" in
-  mcp|doctor|demo|self-test|catalog|experiment|coverage|app-debug|contract|failure-lab) ;;
+  mcp|doctor|demo|self-test|catalog|experiment|coverage|app-debug|app-verify|contract|failure-lab) ;;
   *) echo "Unsupported command: $mode" >&2; exit 2 ;;
 esac
 if [[ "$mode" == catalog ]]; then
@@ -40,6 +40,7 @@ case "$mode" in
   coverage) python3 -m aws_emulator_mcp.aws_sdk coverage "${2:-all}" ;;
   experiment) python3 -m aws_emulator_mcp.labs run "${2:-}" ;;
   app-debug) python3 -m aws_emulator_mcp.app_debug "${2:-}" ;;
+  app-verify) timeout -s TERM --kill-after=5s 150s python3 -m aws_emulator_mcp.app_verify ;;
   failure-lab) python3 -m aws_emulator_mcp.failure_lab "${2:-compare}" ;;
   contract) python3 -m aws_emulator_mcp.contract_case execute ;;
 esac

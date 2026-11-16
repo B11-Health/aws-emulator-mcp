@@ -19,7 +19,7 @@ connection is required to generate them.**
 ## Try the built-in blueprint
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.13"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
 
 aws-emulator-mcp architecture demo
 ```

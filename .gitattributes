@@ -8,3 +8,6 @@ examples/order-intake/fixed/order_service.py text eol=lf
 # Architecture Review reference diagrams and hashes must match across OSes.
 examples/architecture/review/reference/** text eol=lf
 examples/architecture/review/*.json text eol=lf
+# SHA256 identities of locally selected app source must match across platforms.
+examples/byo-order-handler/*.py text eol=lf
+docs/evidence/byo-handler-aws-emulator-1.0.385.json text eol=lf

@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.13">Latest GitHub release</a> ·
+  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14">Latest GitHub release</a> ·
   <a href="#get-started">Get started</a> ·
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
@@ -30,23 +30,23 @@
 ## Explore the actual outputs first
 
 **No AWS account, website or Docker required to inspect the artifacts.**
-The [v0.4.0-beta.13 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.13)
-includes six downloadable, SHA-256-verified assets: the actual architecture
+The [v0.4.0-beta.14 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14)
+includes directly downloadable, checksum-verifiable artifacts: the actual architecture
 diagram, editable draw.io source, CloudFormation YAML, an example archive,
 an npm package, and checksums.
 
 | Preview | What it proves | |
 |:--|:--|:--|
-| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
-| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
-| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
-| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.13/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
+| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
+| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
+| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
+| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
 
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.13"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
 aws-emulator-mcp architecture demo
 ```
 
@@ -71,7 +71,28 @@ requires local Docker. No command here deploys to a real AWS account.
 | SQS fulfillment messages | **2** | **1** |
 | Resource cleanup checks | **7/7** | **7/7** |
 
-The [application walkthrough](docs/APP_DEBUGGING.md) includes the Python source, exact patch, run-by-run assertions, and a [saved test result](docs/evidence/app-debug-aws-emulator-1.0.365.json). This demo runs the bundled reference fix; it does not execute code supplied by an agent.
+The [application walkthrough](docs/APP_DEBUGGING.md) includes the Python source, exact patch, run-by-run assertions, and a [saved test result](docs/evidence/app-debug-aws-emulator-1.0.365.json). This demo runs the bundled reference fix; the MCP tool does not execute code supplied by an agent.
+
+## Test your own Python handler, not just our bundled files
+
+A first, intentionally limited **Bring Your Own App pilot** lets you
+choose a trusted local Python `submit_order` function. It executes only
+after an explicit terminal command, in a one-shot network-disabled Docker
+container, against verified local DynamoDB, S3 and SQS APIs.
+
+```bash
+aws-emulator-mcp app-verify examples/byo-order-handler/fixed.py --json
+aws-emulator-mcp app-verify examples/byo-order-handler/buggy.py --json  # expected failure
+```
+
+[**Source ABI, security limits, and actual 1.0.385 test evidence.**](docs/BYO_HANDLER.md)
+The developer-selected fixed handler passed 8/8 functional assertions and
+7/7 cleanup checks; the deliberately broken handler reproduced **two**
+accepted orders and **two** SQS events. Typed tenant/customer/currency and
+amount fields are included. These are **emulator application tests**, not
+proof of AWS compatibility or an arbitrary repository test runner.
+**Only use Python source you own and trust.** This command cannot be invoked
+through the MCP server or the read-only PR Actions.
 
 ## See architecture changes *before* anyone deploys
 
@@ -98,7 +119,7 @@ aws-emulator-mcp architecture review \
 a full-history checkout required):
 
 ```yaml
-- uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.13
+- uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.14
   with:
     manifest: .aws-emulator/architecture.json
     fail-on-risk: high
@@ -197,7 +218,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.13
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.14
         with:
           directory: .aws-emulator/contracts
 ```
@@ -226,7 +247,7 @@ only needed when running the local AWS Emulator** and SDK tests. The first
 Docker image build requires an internet connection and sufficient free disk space.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.13"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
 
 # Run the before-and-after application test
 aws-emulator-mcp app-debug compare
@@ -273,15 +294,15 @@ Eight built-in experiments exercise S3, DynamoDB, SQS, SNS, EC2, EventBridge, SS
 </p>
 
 - **29 curated MCP tools**, plus **9 Docker-only tools** for SDK discovery, API invocation, coverage, application debugging, replayable contracts and failure/recovery testing.
-- **436 service models** available through the installed AWS SDK. Model discovery does **not** mean every operation is supported by the emulator.
-- **20/20 read-only API probes** responded in the recorded v1.0.343 coverage run. The selected probes also responded in a subsequent v1.0.365 run.
-- A [coverage comparison command](docs/COVERAGE.md) helps spot response regressions between emulator versions.
+- **Verified stateful workflows:** reproducible order-processing bug and reference fix, a developer-selected Python order handler, isolated SDK contracts and GitHub PR review.
+- **Coverage is measured per operation and application workflow—not by SDK catalog size.** An SDK model is not an implemented emulator service; passing zero-argument `List*`/`Describe*` probes does not prove write behavior, real events, IAM or AWS compatibility.
+- The [exact historical read-only probe results and methodology](docs/COVERAGE.md) are available for reproducibility, **not** as a general supported-service coverage score.
 
 The Docker integration uses local-only, network-isolated runtime containers and emulator-issued credentials. AWS Emulator is intended for development and testing, **not production AWS**; API fidelity and IAM behavior vary. See the [coverage report](docs/COVERAGE.md) and [security notes](SECURITY.md).
 
 ## Documentation and contributing
 
-[Guided onboarding](docs/ONBOARDING.md) · [Demo gallery](docs/DEMO_GALLERY.md) · [Application debugging](docs/APP_DEBUGGING.md) · [Failure Lab](docs/FAILURE_LAB.md) · [Service coverage](docs/COVERAGE.md) · [Architecture and setup](docs/DOCKER_NPM_BETA.md) · [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/B11-Health/aws-emulator-mcp/issues)
+[Guided onboarding](docs/ONBOARDING.md) · [Demo gallery](docs/DEMO_GALLERY.md) · [Application debugging](docs/APP_DEBUGGING.md) · [Your Python handler](docs/BYO_HANDLER.md) · [Failure Lab](docs/FAILURE_LAB.md) · [Service coverage](docs/COVERAGE.md) · [Architecture and setup](docs/DOCKER_NPM_BETA.md) · [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/B11-Health/aws-emulator-mcp/issues)
 
 ---
 

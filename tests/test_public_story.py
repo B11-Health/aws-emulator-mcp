@@ -5,7 +5,8 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 PAGES=("README.md","docs/WHAT_YOU_CAN_BUILD.md","docs/LAUNCH_DEMO.md",
-       "docs/linkedin-draft.md","docs/APP_DEBUGGING.md",
+       "docs/linkedin-draft.md","docs/APP_DEBUGGING.md","docs/BYO_HANDLER.md",
+       "examples/byo-order-handler/README.md",
        "docs/ONBOARDING.md","docs/DEMO_GALLERY.md",
        "docs/FAILURE_LAB.md", "examples/reliability-lab/README.md",
        "docs/COMMUNITY_REVIEW.md", "CONTRIBUTING.md")
@@ -120,8 +121,11 @@ class ProductStoryTests(unittest.TestCase):
         body=(ROOT/"README.md").read_text(encoding="utf-8")
         self.assertIn("29 curated MCP tools",body)
         self.assertIn("9 Docker-only tools",body)
-        self.assertIn("436 service models",body)
-        self.assertIn("20/20 read-only",body)
+        self.assertNotIn("436 service models",body)
+        self.assertNotIn("20/20 read-only",body)
+        self.assertIn("Coverage is measured per operation",body)
+        self.assertIn("docs/BYO_HANDLER.md",body)
+        self.assertIn("app-verify examples/byo-order-handler/fixed.py",body)
         self.assertIn("not yet published on npm",body)
         self.assertNotIn("img.shields.io/npm/v/",body)
         self.assertIn("actions/workflows/tests.yml/badge.svg?branch=master",body)
@@ -131,6 +135,27 @@ class ProductStoryTests(unittest.TestCase):
         self.assertEqual([(item["service"],item["operation"]) for item in evidence["results"]],
                          list(aws_sdk.READ_ONLY_PROBES))
         self.assertTrue(all(item["status"]=="responded" for item in evidence["results"]))
+
+    def test_user_handler_evidence_matches_actual_source_hashes(self):
+        import json
+        import hashlib
+        proof=json.loads((ROOT/"docs/evidence/byo-handler-aws-emulator-1.0.385.json").read_text(encoding="utf-8"))
+        self.assertEqual(proof["emulatorVersion"], "1.0.385")
+        self.assertEqual(proof["evidenceKind"], "opt-in-local-python-handler")
+        for mode, accepted, events in (("fixed", 1, 1), ("buggy", 2, 2)):
+            with self.subTest(mode=mode):
+                data=proof[mode]
+                source=ROOT/"examples/byo-order-handler"/(mode+".py")
+                self.assertEqual(data["sourceSha256"],
+                                 hashlib.sha256(source.read_bytes()).hexdigest())
+                self.assertEqual(data["observed"]["acceptedSubmissions"],accepted)
+                self.assertEqual(data["observed"]["queueEvents"],events)
+                self.assertTrue(data["observed"]["businessFieldsMatch"])
+                self.assertEqual(len(data["assertions"]),8)
+                self.assertEqual(len(data["cleanup"]),7)
+                self.assertTrue(all(x["passed"] for x in data["cleanup"]))
+        self.assertTrue(proof["fixed"]["passed"])
+        self.assertFalse(proof["buggy"]["passed"])
 
     def test_real_app_debugging_evidence_is_verifiable(self):
         import json

@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.13 GitHub-source candidate**; use a published and
+This is the **v0.4.0-beta.14 GitHub-source preview**; use a published and
 tested Git tag or exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
@@ -12,7 +12,7 @@ You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on
 Install from the public GitHub source while the npm registry release is pending:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#master"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
 aws-emulator-mcp doctor
 aws-emulator-mcp demo
 aws-emulator-mcp config copilot
@@ -21,7 +21,7 @@ aws-emulator-mcp config copilot
 Or run without a global installation:
 
 ```sh
-npm exec --yes --package="github:B11-Health/aws-emulator-mcp#master" -- aws-emulator-mcp demo
+npm exec --yes --package="github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14" -- aws-emulator-mcp demo
 ```
 
 Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
@@ -98,7 +98,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.13`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b13`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.14`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b14`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 
@@ -139,7 +139,7 @@ This does not execute developer application source or simulate a real outage.
 
 
 The current version of this source release is
-`v0.4.0-beta.13`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
+`v0.4.0-beta.14`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
 are welcome from AWS builders and coding-agent developers.
 
 ## Beta.10: run the contracts in a pull request
@@ -180,10 +180,25 @@ a separately approved AWS change set.
 
 Repository-root `action.yml` lets developers install the read-only
 Architecture Review directly as
-`uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.13`.
+`uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.14`.
 The nested Action path remains supported. An independent root-action
 CI job validates that the Action runs against a fresh checkout and
 produces the same bounded, credential-free blueprint evidence.
 To see actual separate-repository runs, follow
 [the pass and expected-block demos](ARCHITECTURE_REVIEW.md).
 This does not mean the Action is already listed on GitHub Marketplace.
+
+
+## Beta.14: local Python handler acceptance, separated from MCP
+
+An opt-in `app-verify <trusted-local.py>` command sends one bounded
+UTF-8 Python source file to a one-shot, network-disabled Docker worker via
+stdin, with no host mounts or AWS credentials. The worker first verifies
+isolated emulator identity, then tests an actual order handler against
+typed synthetic DynamoDB fields, S3 receipt and SQS message on an identical
+retry, and verifies 7/7 cleanup checks. See the
+[limited pilot and safety instructions](BYO_HANDLER.md).
+
+This **executes selected user code**, so do not run untrusted PRs or third-party
+code. It is not exposed as a remote MCP tool, GitHub Action or general repo
+test runner; a Docker container is not a perfect malicious-code sandbox.

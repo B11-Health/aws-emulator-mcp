@@ -208,3 +208,24 @@ DynamoDB-key mutation produced an expected code-2 failure while still
 uploading all 11 verified artifacts. Neither run claims independent
 community adoption or production AWS parity. Root Action Marketplace
 listing is a separate publisher-approved step.
+
+
+## v0.4.0-beta.14 — Genuine user-selected Python handler, CLI-only
+
+The application-acceptance pilot tests a developer's manually selected
+Python order handler, not just the bundled order-intake source. The
+`app-verify` command must refuse remote URL inputs, symlinks, oversized
+or invalid UTF-8 local files before Docker, and must transmit source
+through stdin into the no-network/no-host-mount one-shot worker with
+verified account `000000000000`. The worker is non-root, bounded by Docker
+resource limits and a 150-second execution deadline.
+
+The pinned sample intentionally publishes twice; the fixed sample writes
+a typed synthetic DynamoDB order and exactly one SQS event after retry,
+with a matching receipt. Real emulator tests must assert eight functional
+invariants, all seven cleanup checks and source SHA-256 integrity. The
+remote MCP tool catalog and all PR Actions must **not** accept arbitrary
+caller source or code-execution inputs. This is a trusted local
+opt-in feature, not hostile-source sandboxing, a general app runner or
+AWS fidelity guarantee. README now explicitly treats SDK models and
+the 20 historical read-only probe responses as **diagnostic context**.
