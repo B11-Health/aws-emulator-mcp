@@ -173,6 +173,10 @@ aws-emulator-mcp failure-lab compare
 The [Failure Lab](docs/FAILURE_LAB.md) reproduces a missing fulfillment event
 from a fragile order workflow, verifies a recoverable pending-state approach,
 and shows why an idempotent consumer matters when SQS deliveries duplicate.
+A separate, unreleased source-branch scenario (`failure-lab partial-compare`)
+checks a DynamoDB write followed by a failed S3 receipt upload and tests
+whether retry recovers both the receipt and SQS event. See
+[partial-write limitations](docs/FAILURE_LAB.md#new-partial-write-scenario-dynamodb-saved-receipt-never-uploaded).
 The fault is injected at the local SDK boundary; the state changes are
 verified through actual AWS Emulator APIs. [Recorded run evidence](docs/evidence/failure-lab-aws-emulator-1.0.385.json). Your agent can use
 `failure_lab_catalog` to inspect both reviewed application sources and their

@@ -22,9 +22,39 @@ Your AI assistant can also call `failure_lab_catalog` to inspect the scenario
 definitions, complete reviewed application source, unified diff and source hashes, and `failure_lab_run` with
 `{"scenario":"compare"}` to execute it over the local Docker MCP connection.
 
-The individual scenarios are `fragile-before-send`, `recover-before-send`,
-and `recover-lost-ack`. No caller-provided paths, code, scripts, endpoints,
+The original SQS scenarios are `fragile-before-send`, `recover-before-send`,
+and `recover-lost-ack`. The source-branch addition includes
+`fragile-before-receipt`, `recover-before-receipt` and `partial-compare`.
+No caller-provided paths, code, scripts, endpoints,
 credentials or arbitrary fault specifications are accepted.
+
+## New partial-write scenario: DynamoDB saved, receipt never uploaded
+
+From a checkout containing this change (**not the published beta.14 tag**), run:
+
+```bash
+node bin/aws-emulator-mcp.mjs failure-lab partial-compare
+node bin/aws-emulator-mcp.mjs failure-lab partial-compare --json > partial-evidence.json
+```
+
+The harness creates fresh synthetic DynamoDB, S3 and SQS resources for each
+reviewed application variant, then wraps **only the first S3 PutObject** to
+throw `RequestTimeout` **before forwarding it**. The DynamoDB order write
+already succeeded; the S3 receipt and SQS event do not exist when the failure
+occurs. Then the harness retries the exact same order against the retained
+state and checks the results through actual emulator APIs.
+
+| Application | State after failure | S3 after retry | SQS after retry |
+| --- | --- | --- | ---: |
+| Fragile conditional-write guard | `queued` (premature) | Receipt still missing | 0 |
+| Recoverable pending-state producer | `pending` | Receipt restored and verified | 1 |
+
+The recovered run also verifies exactly one synthetic consumer marker and all
+seven teardown checks. Counts are expected outcomes; **only live runs passing
+CI should be described as observed emulator evidence**. This does not kill
+an application process or simulate real S3 downtime: the exception is injected
+at the SDK boundary, while DynamoDB and subsequent successful S3/SQS calls
+execute against AWS Emulator. It is not proof of transactional-outbox atomicity.
 
 ## Three related failures and recoveries
 

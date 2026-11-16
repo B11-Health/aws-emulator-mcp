@@ -20,14 +20,20 @@ import time
 ROOT = Path(__file__).resolve().parents[2] / "examples"
 FRAGILE = ROOT / "order-intake" / "fixed" / "order_service.py"
 RECOVERABLE = ROOT / "reliability-lab" / "recovery" / "order_service.py"
-SCENARIOS = ("fragile-before-send", "recover-before-send", "recover-lost-ack", "compare")
+RUN_SCENARIOS = (
+    "fragile-before-send", "recover-before-send", "recover-lost-ack",
+    "fragile-before-receipt", "recover-before-receipt",
+)
+SCENARIOS = RUN_SCENARIOS + ("partial-compare", "compare")
 LIMITATIONS = (
     "One fault is injected inside a local Python SDK wrapper, not by the AWS "
     "Emulator service or a live network. Real emulator calls persist synthetic "
     "S3/DynamoDB/SQS resources. The recovered producer is at-least-once; the "
     "single synthetic consumer-effect marker is idempotent, but neither broker "
     "exactly-once semantics nor production AWS fidelity, IAM, security or "
-    "crash atomicity is established."
+    "crash atomicity is established. The before-receipt test injects a local "
+    "pre-call S3 timeout after a real DynamoDB write; it does not kill a "
+    "process, simulate concurrent execution or prove a transactional outbox."
 )
 
 
@@ -60,17 +66,20 @@ def catalog():
         "faults": {
             "before-send": "Inject one synthetic RequestTimeout before SQS receives SendMessage",
             "lost-ack": "Forward actual SQS SendMessage, then inject RequestTimeout to simulate a lost response",
+            "before-receipt": "After DynamoDB write, reject the first S3 PutObject before forwarding it",
         },
         "invariants": [
             "A failed first send leaves recoverable order state pending",
+            "A failed first receipt upload leaves DynamoDB state while S3/SQS stay empty",
+            "A retry of pending work restores the S3 receipt before SQS publication",
             "A retry after pre-send failure publishes one fulfillment event",
             "A retry after response loss can publish two events with one stable eventId",
             "Conditional DynamoDB consumer marker records one effect despite duplicate deliveries",
             "Every uniquely named experiment resource is deleted",
         ],
         "instructions": (
-            "Call failure_lab_run with scenario='compare' to reproduce the "
-            "original missing-event failure and verify the two recovery cases. "
+            "Run scenario='compare' for SQS faults or 'partial-compare' "
+            "to reproduce a partial DynamoDB/S3/SQS workflow and verify retry. "
             "Inspect fragileSource, recoverableSource and sourceDiff. The lab runs only bundled reviewed sources; arbitrary code is not accepted."
         ),
         "limitations": LIMITATIONS,
@@ -79,9 +88,9 @@ def catalog():
 
 def _load_app(scenario):
     from aws_emulator_mcp import server as aws
-    if scenario not in SCENARIOS[:-1]:
+    if scenario not in RUN_SCENARIOS:
         raise aws.LocalError("Invalid reviewed reliability scenario")
-    name = "fragile" if scenario == "fragile-before-send" else "recoverable"
+    name = "fragile" if scenario.startswith("fragile-") else "recoverable"
     path = FRAGILE if name == "fragile" else RECOVERABLE
     spec = importlib.util.spec_from_file_location("_mcp_failure_lab_" + name, path)
     if spec is None or spec.loader is None:
@@ -112,6 +121,27 @@ class InjectSendFailure:
                 "SendMessage",
             )
         response = self.client.send_message(**kwargs)
+        self.forwarded += 1
+        return response
+
+
+class InjectReceiptFailure:
+    """Reject one S3 PutObject locally before the emulator sees the request."""
+    def __init__(self, client):
+        self.client = client
+        self.injected = 0
+        self.forwarded = 0
+
+    def put_object(self, **kwargs):
+        if not self.injected:
+            self.injected = 1
+            from botocore.exceptions import ClientError
+            raise ClientError(
+                {"Error": {"Code": "RequestTimeout",
+                           "Message": "Synthetic pre-call S3 receipt failure"}},
+                "PutObject",
+            )
+        response = self.client.put_object(**kwargs)
         self.forwarded += 1
         return response
 
@@ -200,7 +230,7 @@ def _consume(queue, dynamodb, table, expected_order, *, dedupe):
 def _run_one(scenario):
     from aws_emulator_mcp import server as aws
     from aws_emulator_mcp import aws_sdk
-    if scenario not in SCENARIOS[:-1]:
+    if scenario not in RUN_SCENARIOS:
         raise aws.LocalError("Unknown failure-lab scenario")
     if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
         raise aws.LocalError("Failure Lab requires the isolated Docker runtime")
@@ -213,7 +243,8 @@ def _run_one(scenario):
     receipt_key = "receipts/" + order["id"] + ".json"
     receipt_body = json.dumps(order, sort_keys=True, separators=(",", ":"))
     started = {"table": False, "bucket": False, "queue": False, "receipt": False}
-    fragile = scenario == "fragile-before-send"
+    fragile = scenario.startswith("fragile-")
+    partial = scenario.endswith("-before-receipt")
     lost_ack = scenario == "recover-lost-ack"
     report = {
         "schemaVersion": 1, "scenario": scenario, "passed": False,
@@ -225,6 +256,8 @@ def _run_one(scenario):
             "consumerEffectMarkers": None, "duplicatesIgnored": None,
             "retryOutcome": None, "receiptMatches": None,
             "injectedFaults": None, "forwardedSqsCalls": None,
+            "forwardedS3Calls": None, "receiptPresentAfterFault": None,
+            "receiptPresentAfterRetry": None,
         }, "error": None, "durationMs": None, "limitations": LIMITATIONS,
     }
     try:
@@ -246,24 +279,28 @@ def _run_one(scenario):
         s3 = aws_sdk._client("s3")[2]
         sqs = aws_sdk._client("sqs")[2]
         app = _load_app(scenario)
-        wrapper = InjectSendFailure(sqs, forward_before_error=lost_ack)
+        sender = sqs if partial else InjectSendFailure(
+            sqs, forward_before_error=lost_ack)
+        receipts = InjectReceiptFailure(s3) if partial else s3
         from botocore.exceptions import ClientError
         started["receipt"] = True
         initial_error = None
         try:
-            app.submit_order(dynamodb, s3, wrapper,
+            app.submit_order(dynamodb, receipts, sender,
                              table=table, bucket=bucket,
                              queue_url=queue_url, order=order)
         except ClientError as exc:
             initial_error = exc.response.get("Error", {}).get("Code")
         state_after_fault = _status(table, order["id"])
-        # Give the application its genuine second invocation with the same
-        # logical order, exactly as a client might retry after a timeout.
-        second = app.submit_order(dynamodb, s3, wrapper,
+        after_fault_keys = aws.s3_list_objects(bucket)["keys"] if partial else None
+        # Retry the same logical order against persisted emulator state.
+        second = app.submit_order(dynamodb, receipts, sender,
                                   table=table, bucket=bucket,
                                   queue_url=queue_url, order=order)
         state_after_retry = _status(table, order["id"])
-        receipt = aws.s3_get_object(bucket, receipt_key)
+        after_retry_keys = aws.s3_list_objects(bucket)["keys"]
+        receipt_present = receipt_key in after_retry_keys
+        receipt = aws.s3_get_object(bucket, receipt_key) if receipt_present else None
         events = _consume(queue, dynamodb, table, order, dedupe=not fragile)
         report["observed"] = {
             "firstCallErrorCode": initial_error,
@@ -273,26 +310,38 @@ def _run_one(scenario):
             "consumerEffectMarkers": events["effectMarkers"],
             "duplicatesIgnored": events["duplicatesIgnored"],
             "retryOutcome": second.get("status"),
-            "receiptMatches": receipt.get("text") == receipt_body,
-            "injectedFaults": wrapper.injected,
-            "forwardedSqsCalls": wrapper.forwarded,
+            "receiptMatches": receipt is not None and receipt.get("text") == receipt_body,
+            "injectedFaults": receipts.injected if partial else sender.injected,
+            "forwardedSqsCalls": None if partial else sender.forwarded,
+            "forwardedS3Calls": receipts.forwarded if partial else None,
+            "receiptPresentAfterFault": receipt_key in after_fault_keys if partial else None,
+            "receiptPresentAfterRetry": receipt_present,
         }
         _check(report, "one synthetic timeout injected at SDK boundary",
-               wrapper.injected == 1 and initial_error == "RequestTimeout")
-        _check(report, "S3 receipt matches the submitted order",
-               report["observed"]["receiptMatches"])
+               (receipts.injected if partial else sender.injected) == 1
+               and initial_error == "RequestTimeout")
+        if partial:
+            _check(report, "receipt was absent immediately after injected failure",
+                   not report["observed"]["receiptPresentAfterFault"])
+            _check(report, "receipt state after retry matches expected outcome",
+                   report["observed"]["receiptMatches"] if not fragile else
+                   not report["observed"]["receiptPresentAfterRetry"])
+        else:
+            _check(report, "S3 receipt matches the submitted order",
+                   report["observed"]["receiptMatches"])
         _check(report, "retry did not accept a second logical order",
                second.get("accepted") is False)
         if fragile:
-            _check(report, "prematurely marked queued before attempted SQS publish",
+            _check(report, "prematurely marked queued before completing workflow",
                    state_after_fault == "queued")
             _check(report, "retry suppressed by previous conditional write",
                    second.get("status") == "duplicate")
             _check(report, "missing fulfillment event reproduced",
                    state_after_retry == "queued" and events["messages"] == 0
-                   and wrapper.forwarded == 0)
+                   and (not partial or not report["observed"]["receiptPresentAfterRetry"])
+                   and (partial or sender.forwarded == 0))
         else:
-            _check(report, "pending work persisted after failed acknowledgement",
+            _check(report, "pending work persisted after local SDK failure",
                    state_after_fault == "pending")
             _check(report, "retry completed pending work",
                    second.get("status") == "queued" and state_after_retry == "queued")
@@ -300,12 +349,18 @@ def _run_one(scenario):
                    events["eventBodiesValid"])
             if lost_ack:
                 _check(report, "lost acknowledgement forwarded original SQS send",
-                       wrapper.forwarded == 2 and events["messages"] == 2)
+                       sender.forwarded == 2 and events["messages"] == 2)
                 _check(report, "consumer effect is recorded once despite duplicate messages",
                        events["effectMarkers"] == 1 and events["duplicatesIgnored"] == 1)
+            elif partial:
+                _check(report, "retry wrote exactly one S3 receipt and SQS event",
+                       receipts.forwarded == 1 and report["observed"]["receiptMatches"]
+                       and events["messages"] == 1)
+                _check(report, "consumer effect recorded exactly once",
+                       events["effectMarkers"] == 1 and events["duplicatesIgnored"] == 0)
             else:
                 _check(report, "retry after presend failure publishes one event",
-                       wrapper.forwarded == 1 and events["messages"] == 1)
+                       sender.forwarded == 1 and events["messages"] == 1)
                 _check(report, "consumer effect recorded exactly once",
                        events["effectMarkers"] == 1 and events["duplicatesIgnored"] == 0)
     except Exception as exc:
@@ -346,7 +401,18 @@ def _run_one(scenario):
 def run(scenario="compare"):
     from aws_emulator_mcp import server as aws
     if not isinstance(scenario, str) or scenario not in SCENARIOS:
-        raise aws.LocalError("Unknown failure-lab scenario: choose compare, fragile-before-send, recover-before-send, or recover-lost-ack")
+        raise aws.LocalError("Unknown failure-lab scenario; inspect failure_lab_catalog for reviewed modes")
+    if scenario == "partial-compare":
+        broken = _run_one("fragile-before-receipt")
+        recovered = _run_one("recover-before-receipt")
+        return {
+            "schemaVersion": 1, "scenario": "partial-compare",
+            "passed": broken["passed"] and recovered["passed"],
+            "partialWriteReproduced": broken["passed"],
+            "partialWriteRecoveryVerified": recovered["passed"],
+            "baseline": broken, "recovery": recovered,
+            "limitations": LIMITATIONS,
+        }
     if scenario != "compare":
         data = _run_one(scenario)
         return {"schemaVersion": 1, "scenario": scenario,
@@ -368,7 +434,7 @@ def run(scenario="compare"):
 def main(argv=None):
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1 or args[0] not in SCENARIOS:
-        print("Usage: python -m aws_emulator_mcp.failure_lab compare|fragile-before-send|recover-before-send|recover-lost-ack", file=sys.stderr)
+        print("Usage: python -m aws_emulator_mcp.failure_lab <reviewed-scenario>", file=sys.stderr)
         return 2
     result = run(args[0])
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))

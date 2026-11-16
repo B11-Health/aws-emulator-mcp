@@ -169,6 +169,33 @@ def verify():
     assert comparison["after"]["sourceSha256"] == sha256(corrected.read_bytes()).hexdigest()
     print("BYO_HANDLER_COMPARE_PASS", "duplicate 2 -> 1", "cleanups green", flush=True)
 
+    partial = run("failure-lab", extra=["partial-compare"], json_mode=True, timeout=180)
+    assert partial.returncode == 0, partial.stderr[-1000:]
+    partial_report = json.loads(partial.stdout)
+    assert partial_report["passed"]
+    assert partial_report["partialWriteReproduced"]
+    assert partial_report["partialWriteRecoveryVerified"]
+    broken = partial_report["baseline"]
+    restored = partial_report["recovery"]
+    assert broken["verifiedAccount"] == restored["verifiedAccount"] == "000000000000"
+    assert broken["observed"]["statusAfterFault"] == "queued"
+    assert broken["observed"]["receiptPresentAfterFault"] is False
+    assert broken["observed"]["receiptPresentAfterRetry"] is False
+    assert broken["observed"]["queueEvents"] == 0
+    assert restored["observed"]["statusAfterFault"] == "pending"
+    assert restored["observed"]["receiptPresentAfterFault"] is False
+    assert restored["observed"]["receiptMatches"] is True
+    assert restored["observed"]["forwardedS3Calls"] == 1
+    assert restored["observed"]["queueEvents"] == 1
+    assert restored["observed"]["consumerEffectMarkers"] == 1
+    for report in (broken, restored):
+        assert report["observed"]["firstCallErrorCode"] == "RequestTimeout"
+        assert report["observed"]["injectedFaults"] == 1
+        assert len(report["cleanup"]) == 7
+        assert all(item["passed"] for item in report["cleanup"])
+        assert all(item["passed"] for item in report["assertions"])
+    print("PARTIAL_WRITE_RECOVERY_PASS", "missing receipt/event -> recovered exactly once", flush=True)
+
     failure = run("failure-lab", extra=["compare"], json_mode=True, timeout=180)
     assert failure.returncode == 0, failure.stderr[-1000:]
     proof = json.loads(failure.stdout)
@@ -309,6 +336,7 @@ def verify():
                 "expect": {"errorCode": "RequestTimeout"}
             }]
         }}),
+        msg(28, "failure_lab_run", {"scenario": "partial-compare"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=180)
@@ -386,7 +414,8 @@ def verify():
           "untrusted fault rejected", flush=True)
 
     lab_catalog = content(rows[23])
-    assert len(lab_catalog["scenarios"]) == 4
+    assert len(lab_catalog["scenarios"]) == 7
+    assert "partial-compare" in lab_catalog["scenarios"]
     assert "def submit_order" in lab_catalog["fragileSource"]
     assert "pending" in lab_catalog["recoverableSource"]
     assert "--- a/examples/order-intake/fixed/order_service.py" in lab_catalog["sourceDiff"]
@@ -396,6 +425,16 @@ def verify():
     assert lab_evidence["result"]["observed"]["queueEvents"] == 1
     assert all(item["passed"] for item in lab_evidence["result"]["cleanup"])
     assert rows[25]["error"]["code"] == -32602
+    new_evidence = content(rows[28])
+    assert new_evidence["passed"] and new_evidence["scenario"] == "partial-compare"
+    assert new_evidence["partialWriteReproduced"] and new_evidence["partialWriteRecoveryVerified"]
+    assert new_evidence["baseline"]["observed"]["queueEvents"] == 0
+    assert new_evidence["recovery"]["observed"]["queueEvents"] == 1
+    assert all(item["passed"] for report in (
+        new_evidence["baseline"], new_evidence["recovery"])
+        for item in report["cleanup"])
+    print("PARTIAL_WRITE_MCP_PASS", "reviewed partial-write recovery and cleanup",
+          flush=True)
     print("FAILURE_LAB_MCP_PASS", "reviewed recovery, untrusted scenario rejected",
           flush=True)
 

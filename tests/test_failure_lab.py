@@ -94,6 +94,8 @@ class FailureLabTests(unittest.TestCase):
         self.assertIn("+++ b/examples/reliability-lab/recovery/order_service.py", evidence["sourceDiff"])
         self.assertNotIn("AWS_ACCESS_KEY_ID", evidence["sourceDiff"])
         self.assertIn("before SQS", evidence["faults"]["before-send"])
+        self.assertIn("DynamoDB write", evidence["faults"]["before-receipt"])
+        self.assertIn("partial-compare", evidence["scenarios"])
         self.assertIn("local Python SDK wrapper", evidence["limitations"])
         self.assertIn("arbitrary code is not accepted", evidence["instructions"])
 
@@ -121,6 +123,52 @@ class FailureLabTests(unittest.TestCase):
             self.assertEqual(len(sqs.sent), 2)
             self.assertEqual(sender.injected, 1)
             self.assertEqual(sender.forwarded, 2)
+
+    def test_one_shot_receipt_failure_occurs_after_db_write_but_before_s3(self):
+        with with_fake_botocore():
+            dynamo, s3, sqs, app, kwargs = submit_fixture("recover-before-receipt")
+            injector = lab.InjectReceiptFailure(s3)
+            with self.assertRaises(FakeClientError) as caught:
+                app.submit_order(dynamo, injector, sqs, **kwargs)
+            self.assertEqual(caught.exception.response["Error"]["Code"], "RequestTimeout")
+            self.assertIn("id-1", dynamo.rows)
+            self.assertEqual(dynamo.rows["id-1"]["status"]["S"], "pending")
+            self.assertEqual(s3.stored, {})
+            self.assertEqual(sqs.sent, [])
+            self.assertEqual(injector.injected, 1)
+            self.assertEqual(injector.forwarded, 0)
+
+    def test_fragile_partial_write_loses_receipt_and_event_even_after_retry(self):
+        with with_fake_botocore():
+            dynamo, s3, sqs, app, kwargs = submit_fixture("fragile-before-receipt")
+            injector = lab.InjectReceiptFailure(s3)
+            with self.assertRaises(FakeClientError):
+                app.submit_order(dynamo, injector, sqs, **kwargs)
+            self.assertEqual(dynamo.rows["id-1"]["status"]["S"], "queued")
+            second = app.submit_order(dynamo, injector, sqs, **kwargs)
+            self.assertEqual(second["status"], "duplicate")
+            self.assertFalse(second["accepted"])
+            self.assertEqual(s3.stored, {})
+            self.assertEqual(sqs.sent, [])
+            self.assertEqual(injector.forwarded, 0)
+
+    def test_recoverable_partial_write_restores_receipt_and_publishes_once(self):
+        with with_fake_botocore():
+            dynamo, s3, sqs, app, kwargs = submit_fixture("recover-before-receipt")
+            injector = lab.InjectReceiptFailure(s3)
+            with self.assertRaises(FakeClientError):
+                app.submit_order(dynamo, injector, sqs, **kwargs)
+            self.assertEqual(dynamo.rows["id-1"]["status"]["S"], "pending")
+            result = app.submit_order(dynamo, injector, sqs, **kwargs)
+            self.assertEqual(result, {"accepted": False, "status": "queued"})
+            self.assertEqual(dynamo.rows["id-1"]["status"]["S"], "queued")
+            self.assertEqual(injector.injected, 1)
+            self.assertEqual(injector.forwarded, 1)
+            self.assertEqual(len(sqs.sent), 1)
+            receipt = "receipts/id-1.json"
+            self.assertEqual(json.loads(s3.stored[receipt]), kwargs["order"])
+            self.assertEqual(json.loads(sqs.sent[0]["MessageBody"])["eventId"],
+                             "fulfillment:id-1")
 
     def test_existing_retry_guard_loses_event_after_presend_fault(self):
         with with_fake_botocore():
@@ -234,6 +282,18 @@ class FailureLabTests(unittest.TestCase):
             self.assertTrue(lab.run("compare")["passed"])
         with patch.object(lab, "_run_one", side_effect=[fake, dict(fake, passed=False), fake]):
             self.assertFalse(lab.run("compare")["passed"])
+
+    def test_partial_compare_requires_both_bounded_runs(self):
+        fake = {"passed": True, "cleanup": [{"passed": True}]}
+        with patch.object(lab, "_run_one", side_effect=[fake, fake]) as worker:
+            result = lab.run("partial-compare")
+        self.assertTrue(result["passed"])
+        self.assertTrue(result["partialWriteReproduced"])
+        self.assertTrue(result["partialWriteRecoveryVerified"])
+        self.assertEqual([c.args[0] for c in worker.call_args_list],
+                         ["fragile-before-receipt", "recover-before-receipt"])
+        with patch.object(lab, "_run_one", side_effect=[fake, dict(fake, passed=False)]):
+            self.assertFalse(lab.run("partial-compare")["passed"])
 
     def test_saved_emulator_evidence_is_consistent_and_synthetic(self):
         evidence_path = ROOT / "docs/evidence/failure-lab-aws-emulator-1.0.385.json"
