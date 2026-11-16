@@ -91,6 +91,26 @@ aws-emulator-mcp app-verify examples/byo-order-handler/buggy.py --json  # expect
 aws-emulator-mcp app-verify /path/to/my-order-handler.py --json
 ```
 
+**Compare your own before/after handlers** (new in the source branch; **not in the published beta.14 tag**):
+
+```bash
+# From a checkout containing this feature (requires local Docker):
+node bin/aws-emulator-mcp.mjs app-compare \
+  examples/byo-order-handler/buggy.py \
+  examples/byo-order-handler/fixed.py --markdown > byo-comparison.md
+# Or export redacted machine-readable proof for a PR:
+node bin/aws-emulator-mcp.mjs app-compare \
+  examples/byo-order-handler/buggy.py \
+  examples/byo-order-handler/fixed.py --json > byo-comparison.json
+```
+
+Each file runs against **separate ephemeral Docker labs**. A passing comparison
+requires the old handler to reproduce exactly two accepted submissions and
+two fulfillment messages, the new handler to pass all eight invariants, and
+both runs to pass all seven cleanup checks. Output includes source hashes,
+not code, payloads or SDK responses. This is **only** the order-handler pilot;
+never feed untrusted PR code into this opt-in local command.
+
 [**Source ABI, security limits, and actual 1.0.385 test evidence.**](docs/BYO_HANDLER.md)
 The developer-selected fixed handler passed 8/8 functional assertions and
 7/7 cleanup checks; the deliberately broken handler reproduced **two**
