@@ -169,6 +169,33 @@ def verify():
     assert comparison["after"]["sourceSha256"] == sha256(corrected.read_bytes()).hexdigest()
     print("BYO_HANDLER_COMPARE_PASS", "duplicate 2 -> 1", "cleanups green", flush=True)
 
+    partial = run("failure-lab", extra=["partial-compare"], json_mode=True, timeout=180)
+    assert partial.returncode == 0, partial.stderr[-1000:]
+    partial_report = json.loads(partial.stdout)
+    assert partial_report["passed"]
+    assert partial_report["partialWriteReproduced"]
+    assert partial_report["partialWriteRecoveryVerified"]
+    broken = partial_report["baseline"]
+    restored = partial_report["recovery"]
+    assert broken["verifiedAccount"] == restored["verifiedAccount"] == "000000000000"
+    assert broken["observed"]["statusAfterFault"] == "queued"
+    assert broken["observed"]["receiptPresentAfterFault"] is False
+    assert broken["observed"]["receiptPresentAfterRetry"] is False
+    assert broken["observed"]["queueEvents"] == 0
+    assert restored["observed"]["statusAfterFault"] == "pending"
+    assert restored["observed"]["receiptPresentAfterFault"] is False
+    assert restored["observed"]["receiptMatches"] is True
+    assert restored["observed"]["forwardedS3Calls"] == 1
+    assert restored["observed"]["queueEvents"] == 1
+    assert restored["observed"]["consumerEffectMarkers"] == 1
+    for report in (broken, restored):
+        assert report["observed"]["firstCallErrorCode"] == "RequestTimeout"
+        assert report["observed"]["injectedFaults"] == 1
+        assert len(report["cleanup"]) == 7
+        assert all(item["passed"] for item in report["cleanup"])
+        assert all(item["passed"] for item in report["assertions"])
+    print("PARTIAL_WRITE_RECOVERY_PASS", "missing receipt/event -> recovered exactly once", flush=True)
+
     failure = run("failure-lab", extra=["compare"], json_mode=True, timeout=180)
     assert failure.returncode == 0, failure.stderr[-1000:]
     proof = json.loads(failure.stdout)

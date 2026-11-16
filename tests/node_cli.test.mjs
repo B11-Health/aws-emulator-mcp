@@ -245,6 +245,9 @@ test('Failure Lab CLI rejects arbitrary code, paths and invalid modes before Doc
   assert.equal(shown.status, 0);
   assert.match(shown.stdout, /failure-lab/);
   assert.match(shown.stdout, /lost-ack/);
+  assert.match(shown.stdout, /partial-compare/);
+  assert.equal(cli('failure-lab', 'arbitrary-remote', '--json').status, 2);
+  assert.equal(cli('failure-lab', 'fragile-before-receipt', '--json', '--json').status, 2);
 });
 
 

@@ -25,3 +25,11 @@ IAM correctness, or AWS compatibility.
 Run `aws-emulator-mcp failure-lab compare` (or `--json`) to see the original
 failure and both recovery paths. All resources are synthetic, uniquely
 named, and deleted after each scenario.
+
+## Additional partial-write experiment (source branch only)
+
+`node bin/aws-emulator-mcp.mjs failure-lab partial-compare` reuses both
+reviewed implementations and fails the first S3 PutObject after the real
+DynamoDB order write. It then compares whether a retry repairs the missing
+receipt and fulfillment event. No arbitrary source is accepted. See
+[Failure Lab](../../docs/FAILURE_LAB.md).

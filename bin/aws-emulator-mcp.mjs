@@ -47,7 +47,8 @@ Commands:
   architecture demo|build|review  Generate diagrams, CloudFormation and PR change reviews offline
   failure-lab      Reproduce missing events, timeout recovery and deduplication
                    Modes: compare (default), fragile-before-send,
-                   recover-before-send, recover-lost-ack
+                   recover-before-send, recover-lost-ack, partial-compare
+                   (before/after a synthetic S3 receipt-upload failure)
   app-verify <file> Verify YOUR trusted Python order handler in local Docker
   app-compare <before.py> <after.py>  Reproduce a bug and verify your own fix
                    JSON or PR-ready Markdown evidence; trusted local files only
@@ -245,6 +246,20 @@ function renderReport(command, result) {
         '  CONSUMER: single idempotency effect marker: ' + ack.consumerEffectMarkers,
         '  Cleanup: ' + [result.baseline, result.presendRecovery, result.lostAckRecovery]
           .map(x => x.cleanup.filter(c => c.passed).length + '/' + x.cleanup.length).join(' | '));
+    } else if (result.scenario === 'partial-compare') {
+      const broken = result.baseline.observed;
+      const recovered = result.recovery.observed;
+      lines.push('  ' + mark(result.passed) + '  DynamoDB -> S3 -> SQS partial-write recovery',
+        '  Fault: first S3 receipt upload rejected at local SDK boundary',
+        '  DynamoDB order after first write: ' + broken.statusAfterFault,
+        '  FRAGILE: receipt after retry: ' + String(broken.receiptPresentAfterRetry) +
+          '; SQS events: ' + broken.queueEvents,
+        '  RECOVERED: receipt matches: ' + String(recovered.receiptMatches) +
+          '; SQS events: ' + recovered.queueEvents,
+        '  Consumer effect markers after recovery: ' + recovered.consumerEffectMarkers,
+        '  Cleanup: ' + [result.baseline, result.recovery]
+          .map(x => x.cleanup.filter(c => c.passed).length + '/' + x.cleanup.length).join(' | '),
+        '  Synthetic SDK timeout, NOT an actual crash or AWS service outage.');
     } else {
       const row = result.result;
       lines.push('  ' + mark(result.passed) + '  Failure Lab: ' + result.scenario,
@@ -507,11 +522,12 @@ async function main() {
   if (command === 'failure-lab') {
     const jsonFlag = args.includes('--json');
     const rest = args.filter(x => x !== '--json');
-    const modes = ['compare', 'fragile-before-send', 'recover-before-send', 'recover-lost-ack'];
+    const modes = ['compare', 'fragile-before-send', 'recover-before-send', 'recover-lost-ack',
+      'partial-compare', 'fragile-before-receipt', 'recover-before-receipt'];
     if (args.length > 2 || rest.length > 1 ||
         args.filter(x => x === '--json').length > 1 ||
         (rest.length && !modes.includes(rest[0]))) {
-      fail('Usage: aws-emulator-mcp failure-lab [compare|fragile-before-send|recover-before-send|recover-lost-ack] [--json]', 2);
+      fail('Usage: aws-emulator-mcp failure-lab [compare|partial-compare|reviewed-scenario] [--json]', 2);
     }
     requireDocker();
     if (!imageExists()) await buildImage();

@@ -728,7 +728,7 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
         spec("failure_lab_catalog",
              "Inspect reviewed AWS retry-failure scenarios, app source SHA-256 and expected invariants without execution."),
         spec("failure_lab_run",
-             "Reproduce a lost fulfillment event and test recovery from one injected SDK timeout or lost SQS acknowledgement using real isolated AWS Emulator API calls. Reviewed scenarios only.",
+             "Reproduce S3 receipt partial writes, missing SQS events, and recovery after synthetic SDK timeouts or lost acknowledgements against isolated AWS Emulator APIs. Reviewed scenarios only.",
              {"scenario": STR}),
     ])
     TOOLS[-2]["annotations"] = {"readOnlyHint": True, "destructiveHint": False,
