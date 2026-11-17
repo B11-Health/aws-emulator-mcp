@@ -25,6 +25,17 @@ A reviewer can also assess the architecture and documentation **without installi
 - A passing contract validates the **declared emulated API sequence**, not arbitrary developer application source, IAM fidelity, or production AWS behavior.
 - Isolated tests shouldn't receive your AWS credentials or real customer data. Never share such data in a report.
 
+## Fast no-build installation feedback (current source checkout)
+
+On `master` (not the pinned beta.14 tag), run `node bin/aws-emulator-mcp.mjs
+preflight --json` from a checkout. It inspects only the local Node/Docker
+prerequisites and image cache, without downloading or launching the emulator.
+A missing Docker daemon is expected to return exit code 1 while still yielding
+machine-readable diagnostics. Your operating system, success/failure, and the
+command that blocked you are more useful than a screenshot of a successful
+build. Review any output before sharing it, and do not include private paths,
+credentials or internal source.
+
 ## Minimal reproducible experiment
 
 Requirements: Node.js 20+, running local Docker, and an internet connection for the first signed-emulator image build.
