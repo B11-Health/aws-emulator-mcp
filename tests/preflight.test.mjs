@@ -30,6 +30,7 @@ test('ready local Docker is checked read-only, no builds or API calls', () => {
   assert.equal(report.emulatorReady, true);
   assert.equal(report.imageCached, true);
   assert.equal(report.nextCommand, 'aws-emulator-mcp doctor');
+  assert.equal(report.sourceCheckoutCommand, 'node bin/aws-emulator-mcp.mjs doctor');
   assert.equal(report.dockerVersion, '25.0.16');
   assert.deepEqual(calls.map(x=>x.split(' ')[0]), ['--version', 'context', 'info', 'image']);
   assert.ok(calls.every(x => !/build|run|pull|exec|login|secret/.test(x)));
@@ -43,6 +44,7 @@ test('missing Docker still gives no-Docker architecture path, skips other probes
   assert.equal(report.architectureReady,true);
   assert.match(report.checks.docker.reason,/Docker CLI unavailable/);
   assert.equal(report.nextCommand,'aws-emulator-mcp architecture demo');
+  assert.equal(report.sourceCheckoutCommand,'node bin/aws-emulator-mcp.mjs architecture demo');
   assert.equal(calls.length, 1);
   assert.match(printPreflight(report),/No container was launched or built/);
 });
@@ -91,6 +93,7 @@ test('uncached image requires a later build, not a failed preflight', () => {
   assert.equal(report.imageCached,false);
   assert.equal(report.checks.image.passed,false);
   assert.match(report.checks.image.reason,/requires download/);
+  assert.match(report.limitations,/Cached tag does not verify source identity/);
 });
 
 test('Node 18 cannot run this package even when Docker is available', () => {

@@ -51,12 +51,14 @@ cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs preflight
 # Or get a bounded, sanitized report to include in a field report:
 node bin/aws-emulator-mcp.mjs preflight --json
+# Still useful without Docker or a global CLI installation:
+node bin/aws-emulator-mcp.mjs architecture demo
 ```
 
 `preflight` checks Node.js, local Docker context, **Linux-container mode** and daemon, and whether the
 versioned image is cached. **It never builds or launches Docker containers.**
 Without Docker, Architecture Studio still works. A successful preflight is
-not a disk-capacity check or proof of emulator API coverage. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
+not a disk-capacity check, image-source verification or proof of emulator API coverage. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
 
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):

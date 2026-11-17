@@ -23,6 +23,8 @@ git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs preflight
 node bin/aws-emulator-mcp.mjs preflight --json
+# The no-Docker fallback works directly from the checkout:
+node bin/aws-emulator-mcp.mjs architecture demo
 ```
 
 The command checks Node.js 20+, Docker CLI, whether the selected Docker context
@@ -32,7 +34,8 @@ run user Python source or dump environment variables. If Docker is missing or
 stopped, it exits **1** with the next safe no-Docker command, and JSON is still
 written to stdout. Invalid flags exit **2**. If the local daemon is ready,
 it exits **0**; the first emulator command may still require a sizable signed
-image download. The check **cannot** verify Docker disk capacity, upstream
+image download. A cached Docker tag is **not** proof it matches the current
+source checkout. The check **cannot** verify Docker disk capacity, upstream
 service fidelity or production IAM.
 
 On Windows PowerShell, the same two `node bin/aws-emulator-mcp.mjs preflight`

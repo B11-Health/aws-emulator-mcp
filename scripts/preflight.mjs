@@ -42,8 +42,9 @@ export function inspectPreflight({
     dockerVersion: null,
     checks,
     nextCommand: nodeOk ? 'aws-emulator-mcp architecture demo' : 'Install Node.js 20+',
+    sourceCheckoutCommand: nodeOk ? 'node bin/aws-emulator-mcp.mjs architecture demo' : 'Install Node.js 20+',
     guidance: 'Architecture demo needs no Docker; Docker-backed commands need a local daemon and enough image space.',
-    limitations: 'Read-only local checks only. Does not check disk capacity, AWS API parity, outbound network, or execute any emulator.',
+    limitations: 'Read-only local checks only. Cached tag does not verify source identity. Does not check disk capacity, AWS API parity, outbound network, or execute any emulator.',
   };
   // Never attempt to contact an ambient remote daemon, even to query version.
   if (dockerHost && !LOCAL_DOCKER.test(dockerHost)) {
@@ -83,7 +84,10 @@ export function inspectPreflight({
   checks.image = result(output.imageCached, output.imageCached
     ? '' : 'First emulator command will build the signed image; requires download and substantial disk space');
   output.emulatorReady = nodeOk && checks.docker.passed;
-  if (output.emulatorReady) output.nextCommand = 'aws-emulator-mcp doctor';
+  if (output.emulatorReady) {
+    output.nextCommand = 'aws-emulator-mcp doctor';
+    output.sourceCheckoutCommand = 'node bin/aws-emulator-mcp.mjs doctor';
+  }
   return output;
 }
 
@@ -95,12 +99,13 @@ export function printPreflight(report) {
     `  ${mark(report.checks.docker?.passed)} Local Docker CLI + daemon`,
   ];
   if (report.dockerVersion) out.push(`  Docker server: ${report.dockerVersion}`);
-  if (report.imageCached !== null) out.push(`  Signed emulator image cached: ${report.imageCached ? 'yes' : 'no'}`);
+  if (report.imageCached !== null) out.push(`  Versioned Docker image tag present: ${report.imageCached ? 'yes' : 'no'} (not a source verification)`);
   if (report.checks.docker?.reason) out.push(`  Blocker: ${report.checks.docker.reason}`);
   if (report.checks.image?.reason) out.push(`  Note: ${report.checks.image.reason}`);
   out.push(`  Architecture-only path ready: ${report.architectureReady ? 'yes' : 'no'}`,
     `  Emulator launch prerequisites: ${report.emulatorReady ? 'ready' : 'blocked'}`,
-    `  Next: ${report.nextCommand}`,
+    `  Next (from source checkout): ${report.sourceCheckoutCommand}`,
+    `  Next (if globally installed): ${report.nextCommand}`,
     '  No container was launched or built. No credentials or private paths reported.',
     '  Disk space and upstream service fidelity are not tested.', '');
   return out.join('\n');
