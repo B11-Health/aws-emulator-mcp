@@ -41,6 +41,33 @@ document.querySelectorAll('[data-mission]').forEach(button=>{
   showMission(next,true);
  });
 });
+// Static client-selector guide. It only reveals instructions; no MCP/API calls.
+function selectClient(index, moveFocus = false){
+ const buttons=[...document.querySelectorAll('[data-client]')];
+ if(!buttons[index])return;
+ buttons.forEach((button,i)=>{
+  const active=i===index;
+  button.setAttribute('aria-selected',String(active));
+  button.tabIndex=active?0:-1;
+  const panel=el('client-panel-'+i);
+  panel.hidden=!active;
+  if(active && moveFocus)button.focus();
+ });
+}
+document.querySelectorAll('[data-client]').forEach(button=>{
+ button.addEventListener('click',()=>selectClient(Number(button.dataset.client)));
+ button.addEventListener('keydown',event=>{
+  if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const tabs=[...document.querySelectorAll('[data-client]')];
+  const i=Number(button.dataset.client);
+  const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+    (i+(['ArrowRight','ArrowDown'].includes(event.key)?1:-1)+tabs.length)%tabs.length;
+  selectClient(next,true);
+ });
+});
+selectClient(0,false);
+
 async function copyText(text){
  if(navigator.clipboard && window.isSecureContext){await navigator.clipboard.writeText(text);return}
  const field=document.createElement('textarea');field.value=text;field.setAttribute('aria-hidden','true');field.style.position='fixed';field.style.opacity='0';document.body.appendChild(field);field.select();
