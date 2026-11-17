@@ -1,3 +1,17 @@
+# AWS Emulator MCP v0.4.0-beta.15 - release candidate QA
+
+**Scope:** opt-in local trusted Python handler comparisons; a synthetic partial-write recovery lab; first-run preflight and offline artifact proof; Docker image source fingerprint; native-vs-MCP comparison guide.
+
+**Release policy:** independent community prerelease, not AWS-endorsed or production IAM/fidelity validation. Hosted Windows, npm, Python, MCP client and signed-emulator tests are mandatory before tagging. An outside cold-install trial and independent security review remain outstanding.
+
+**Existing evidence:** Reviewed PRs #33-39 passed GitHub CI. The latest Docker run used signed AWS Emulator v1.0.488 and included partial-write and source-identity tests. Those are maintainer-created tests, not outside adoption.
+
+**Security:** developer-selected Python is trusted-local CLI only, never executable via MCP or untrusted PR Actions. No AWS production credentials are needed for the local emulator.
+
+**Artifacts to publish:** versioned source tarball, architecture diagram, CloudFormation template, offline trial evidence and SHA256 checksums. Tie all assets to the reviewed commit. Do not retag existing releases.
+
+---
+
 # v0.4.0-beta.14 candidate — Opt-in local Python handler pilot
 
 The new CLI takes exactly one explicit developer-selected local `.py` file

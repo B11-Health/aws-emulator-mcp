@@ -4,7 +4,7 @@
 
 ## Current packaging status
 
-This is the **v0.4.0-beta.14 GitHub-source preview**; use a published and
+This is the **v0.4.0-beta.15 GitHub-source preview**; use a published and
 tested Git tag or exact commit for reproducible deployments. The package is not yet published to the npm registry (the unscoped npm registry name is not published or reserved by this repository yet), and the beta Docker image is built locally, not downloaded from a claimed official image registry.
 
 You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on Windows/macOS, Docker Desktop). No local Python, AWS account, production credentials or AWS CLI is required for this MCP experience.
@@ -12,7 +12,7 @@ You need **Node.js 20+ and Docker Desktop/Engine running** (Linux containers; on
 Install from the public GitHub source while the npm registry release is pending:
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 aws-emulator-mcp doctor
 aws-emulator-mcp demo
 aws-emulator-mcp config copilot
@@ -21,7 +21,7 @@ aws-emulator-mcp config copilot
 Or run without a global installation:
 
 ```sh
-npm exec --yes --package="github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14" -- aws-emulator-mcp demo
+npm exec --yes --package="github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15" -- aws-emulator-mcp demo
 ```
 
 Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
@@ -43,7 +43,7 @@ Windows/macOS first-use endorsement or full AWS parity.
 4. Verify the locally generated CA, emulator-issued credentials, HTTPS health, and isolated STS account.
 5. Launch MCP over standard input/output or run a synthetic order demo. When the container exits, its temporary resources and credentials disappear.
 
-**Source-checkout cache safety (on `master`, not yet released as beta.15):**
+**Source-checkout cache safety (included in beta.15):**
 The launcher computes a deterministic SHA-256 fingerprint of the Dockerfile
 and every packaged file copied into the runtime image. Before reusing a
 locally tagged image it checks the corresponding OCI label; a missing or
@@ -108,7 +108,7 @@ Use `aws-emulator-mcp mcp` only from an MCP client. Its stdout is reserved for J
 
 The npm tarball must install in a fresh prefix and run a real MCP handshake. Clean CI must build the container, perform doctor, synthetic order, SDK discovery and invocation, reject unmodeled calls cleanly, verify scoped cleanup, and confirm zero external network access. Outside-user Windows/macOS onboarding and an external source/installer review remain **unverified** and are required before claiming stable release. The previous promotional video is **not** considered acceptance evidence.
 
-**Version notation:** The Node/npm beta uses semver `0.4.0-beta.14`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b14`. The v0.3.0 Windows source installer remains a separate compatibility path.
+**Version notation:** The Node/npm beta uses semver `0.4.0-beta.15`; the embedded Python wheel and MCP server report the PEP 440 equivalent `0.4.0b15`. The v0.3.0 Windows source installer remains a separate compatibility path.
 
 ## Versioned regression gate (beta.5)
 
@@ -149,7 +149,7 @@ This does not execute developer application source or simulate a real outage.
 
 
 The current version of this source release is
-`v0.4.0-beta.14`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
+`v0.4.0-beta.15`. [Peer review and first-run feedback](COMMUNITY_REVIEW.md)
 are welcome from AWS builders and coding-agent developers.
 
 ## Beta.10: run the contracts in a pull request
@@ -190,7 +190,7 @@ a separately approved AWS change set.
 
 Repository-root `action.yml` lets developers install the read-only
 Architecture Review directly as
-`uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.14`.
+`uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.15`.
 The nested Action path remains supported. An independent root-action
 CI job validates that the Action runs against a fresh checkout and
 produces the same bounded, credential-free blueprint evidence.

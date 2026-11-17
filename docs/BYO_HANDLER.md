@@ -12,9 +12,9 @@ AWS Emulator package (more than 1 GB of disk). No AWS account, AWS CLI,
 production credentials or cloud deployment is required.
 
 ```sh
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 # The example source files are in the Git repository, not your working directory:
-git clone --depth 1 --branch v0.4.0-beta.14 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 
 # Should PASS: 1 accepted order, 1 SQS event, 8 assertions, 7 cleanup checks
@@ -35,9 +35,8 @@ handler logs in the report. Each run creates fresh synthetic resources.
 
 ## Compare a developer-selected bug and fix, with PR-ready evidence
 
-The unreleased source branch adds `app-compare`; **it is not part of the
-v0.4.0-beta.14 tagged npm installation above**. In a checkout containing
-this feature, supply two different, trusted local Python handler files:
+Beta.15 adds `app-compare`. In a beta.15 checkout, supply two different,
+trusted local Python handler files:
 
 ```bash
 node bin/aws-emulator-mcp.mjs app-compare \

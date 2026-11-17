@@ -23,14 +23,14 @@ definitions, complete reviewed application source, unified diff and source hashe
 `{"scenario":"compare"}` to execute it over the local Docker MCP connection.
 
 The original SQS scenarios are `fragile-before-send`, `recover-before-send`,
-and `recover-lost-ack`. The source-branch addition includes
+and `recover-lost-ack`. The beta.15 release includes
 `fragile-before-receipt`, `recover-before-receipt` and `partial-compare`.
 No caller-provided paths, code, scripts, endpoints,
 credentials or arbitrary fault specifications are accepted.
 
 ## New partial-write scenario: DynamoDB saved, receipt never uploaded
 
-From a checkout containing this change (**not the published beta.14 tag**), run:
+From a beta.15 checkout, run:
 
 ```bash
 node bin/aws-emulator-mcp.mjs failure-lab partial-compare

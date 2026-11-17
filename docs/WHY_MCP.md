@@ -19,10 +19,10 @@ The example tests, source and cross-repository PR Actions are **maintainer-opera
 
 ## Try the distinction before you download Docker
 
-From a clone of the current **`master` source** (the GitHub v0.4.0-beta.14 release does not include the newest commands):
+From a checkout of the **v0.4.0-beta.15 release**:
 
 ```bash
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs try --json
 ```
@@ -47,7 +47,7 @@ The final scenario injects a **synthetic pre-call S3 receipt timeout after Dynam
 - **IAM and production safety are separate:** the emulator does not enforce production IAM/resource policies. Always validate real access controls and integration behavior in appropriate AWS test accounts before deployment.
 - **Source execution has a strict boundary:** developer-selected Python handlers run only after an explicit local CLI command. Do **not** feed the command untrusted pull-request code. Docker isolation is defense in depth, not a security guarantee against malicious code. The remotely callable MCP adapter and read-only PR gate cannot execute arbitrary supplied source.
 - **Infrastructure output is a proposal:** generated CloudFormation and diagrams are only the explicitly supported S3/DynamoDB/SQS subset and require independent review. No tool in the default adapter deploys to AWS.
-- **Release clarity:** new `master` features are not part of the last tagged v0.4.0-beta.14 release until separately published and verified.
+- **Release clarity:** use a reviewed tag or commit; later changes to `master` are not automatically part of beta.15.
 
 ## What would make it worth installing?
 

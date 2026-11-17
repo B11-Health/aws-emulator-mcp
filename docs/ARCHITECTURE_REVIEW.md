@@ -60,7 +60,7 @@ jobs:
         with:
           fetch-depth: 0 # Required to read the base commit; don't execute PR code
           persist-credentials: false
-      - uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.14
+      - uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.15
         with:
           manifest: .aws-emulator/architecture.json
           fail-on-risk: high
@@ -120,7 +120,7 @@ time is marked as *no baseline* rather than silently fabricating one.
 Requires Node.js 20+ and Git, but **no Docker or AWS account**:
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 
 aws-emulator-mcp architecture review \
   examples/architecture/review/before.json \

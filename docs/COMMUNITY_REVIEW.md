@@ -36,7 +36,7 @@ as a successful one when accompanied by a safe, reproducible description.
 
 ## Fast no-build installation feedback (current source checkout)
 
-On `master` (not the pinned beta.14 tag), run `node bin/aws-emulator-mcp.mjs
+On the beta.15 release checkout, run `node bin/aws-emulator-mcp.mjs
 preflight --json` from a checkout. It inspects only the local Node/Docker
 prerequisites and image cache, without downloading or launching the emulator.
 A missing Docker daemon is expected to return exit code 1 while still yielding
@@ -50,7 +50,7 @@ credentials or internal source.
 Requirements: Node.js 20+, running local Docker, and an internet connection for the first signed-emulator image build.
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 aws-emulator-mcp doctor
 aws-emulator-mcp contract fault-demo --json
 ```
