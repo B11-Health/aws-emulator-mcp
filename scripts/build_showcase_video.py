@@ -162,7 +162,7 @@ def render_scene(scene,index,progress):
         txt(d,(102,top+200),"Source blueprint comparison — no AWS deployment",20,MUTED)
     elif scene['kind']=='agent':
         card(d,(72,top,1080,bottom),(12,27,40))
-        txt(d,(98,top+30),"> node bin/aws-emulator-mcp.mjs config vscode",21,MINT,False,True)
+        txt(d,(98,top+30),"> node bin/aws-emulator-mcp.mjs config copilot",21,MINT,False,True)
         txt(d,(104,top+88),'"aws-emulator-local": {',24,MUTED,False,True)
         txt(d,(136,top+132),'"type": "stdio",',23,INK,False,True)
         txt(d,(136,top+176),'"args": [".../aws-emulator-mcp.mjs", "mcp"]',20,INK,False,True)

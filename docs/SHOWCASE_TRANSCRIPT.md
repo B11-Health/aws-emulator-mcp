@@ -39,4 +39,4 @@ Caption: Hosted CI passed  ·  AWS Emulator 1.0.491  ·  NOT AWS production pari
 **Total runtime:** approximately 87 seconds.
 No AWS account, external speech provider or copyrighted music was used to make this explainer.
 
-**Reproduce commands and limitations:** [Demo studio](https://b11-health.github.io/aws-emulator-mcp/), [Onboarding](ONBOARDING.md), [Failure Lab](FAILURE_LAB.md).
+**Reproduce commands and limitations:** [Demo studio](index.html), [Onboarding](ONBOARDING.md), [Failure Lab](FAILURE_LAB.md).
