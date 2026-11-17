@@ -10,6 +10,7 @@ import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compare.mjs';
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
+import { imageSourceDigest } from '../scripts/image_identity.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.14';
@@ -94,9 +95,17 @@ function requireDocker() {
   if (info.status !== 0) fail('Docker daemon not running or inaccessible to this user.');
 }
 function imageExists() {
-  return spawnSync('docker', ['image', 'inspect', IMAGE], {
-    stdio: 'ignore', timeout: 10000, windowsHide: true
-  }).status === 0;
+  // A semver tag alone may point to an older checkout's Python bundle.
+  // Only reuse a locally built image with matching Docker-copy inputs.
+  const expected = imageSourceDigest(ROOT);
+  const observed = spawnSync('docker', ['image', 'inspect', IMAGE,
+    '--format', '{{index .Config.Labels "dev.aws-emulator-mcp.source-sha256"}}'], {
+    encoding: 'utf8', timeout: 10000, windowsHide: true, shell: false
+  });
+  if (observed.status === 0 && observed.stdout.trim() !== expected) {
+    stderr.write('AWS Emulator MCP: cached image source differs or is unverified; rebuilding local image.\n');
+  }
+  return observed.status === 0 && observed.stdout.trim() === expected;
 }
 function dockerArgs(mode, extra = []) {
   return ['run', '--rm', '-i', '--network', 'none',
@@ -119,7 +128,9 @@ async function buildImage() {
     fail('Bundled Docker source missing; reinstall from a verified source release.');
   }
   stderr.write('AWS Emulator MCP: building a local image with the signed official AWS Emulator.\n');
-  const child = spawn('docker', ['build', '--pull', '-t', IMAGE, '-f', 'docker/Dockerfile', ROOT], {
+  const digest = imageSourceDigest(ROOT);
+  const child = spawn('docker', ['build', '--pull', '--build-arg',
+    'AWS_MCP_SOURCE_SHA256=' + digest, '-t', IMAGE, '-f', 'docker/Dockerfile', ROOT], {
     stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false
   });
   child.stdout.pipe(stderr); // Docker build output must never corrupt MCP stdout.

@@ -35,7 +35,8 @@ stopped, it exits **1** with the next safe no-Docker command, and JSON is still
 written to stdout. Invalid flags exit **2**. If the local daemon is ready,
 it exits **0**; the first emulator command may still require a sizable signed
 image download. A cached Docker tag is **not** proof it matches the current
-source checkout. The check **cannot** verify Docker disk capacity, upstream
+source checkout; on `master`, the CLI compares an embedded build-input digest
+before launching and rebuilds on a mismatch. The check **cannot** verify Docker disk capacity, upstream
 service fidelity or production IAM.
 
 On Windows PowerShell, the same two `node bin/aws-emulator-mcp.mjs preflight`

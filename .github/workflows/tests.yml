@@ -288,6 +288,10 @@ jobs:
         run: |
           docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.14 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
           docker image inspect aws-emulator-mcp:0.4.0-beta.14 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
+          expected_source_digest="$(node scripts/image_identity.mjs)"
+          observed_source_digest="$(docker image inspect aws-emulator-mcp:0.4.0-beta.14 --format '{{index .Config.Labels "dev.aws-emulator-mcp.source-sha256"}}')"
+          test "$observed_source_digest" = "$expected_source_digest"
+          echo "DOCKER_SOURCE_IDENTITY_PASS ${expected_source_digest:0:12}"
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E
