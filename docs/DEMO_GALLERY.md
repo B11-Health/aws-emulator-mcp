@@ -27,6 +27,8 @@ The illustrated tests are **not live terminal capture**.
 | **Your trusted Python fix and a risky schema change** | [22-second source-review demo](assets/demos/beta15-source-review-demo.mp4) | Compare two trusted local handlers; inspect architecture risk flags |
 | **Connect a coding assistant** | [9-second MCP setup demo](assets/demos/beta15-connect-agent-demo.mp4) | Generate VS Code MCP configuration; Docker required for actual emulator tools |
 
+The assistant-connection clip now demonstrates the **native Copilot mcpServers** command, not the deprecated editor-managed VS Code JSON. [Current desktop setup guidance](DESKTOP_INSTALL.md) also covers the optional, unsigned Claude Desktop MCPB preview.
+
 [All six copyable demo missions](https://b11-health.github.io/aws-emulator-mcp/) · [Actual beta.15 QA evidence](SHOWCASE_EVIDENCE.md)
 
 ## Product tour · 25 seconds

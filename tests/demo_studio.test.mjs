@@ -90,7 +90,7 @@ test('mission scripts are first-party and expose scope warnings, not simulated A
  assert.equal((js.match(/\{tag:'/g)||[]).length,6);
  for(const command of ['try --json','app-debug compare --json',
   'failure-lab partial-compare --json','app-compare examples/byo-order-handler/',
-  'architecture review examples/architecture/review/','config vscode']){
+  'architecture review examples/architecture/review/','config copilot']){
   assert.ok(js.includes(command),'Missing documented command '+command);
  }
  assert.ok(js.includes('not a network-connected AWS emulator'));
