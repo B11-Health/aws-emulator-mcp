@@ -53,7 +53,7 @@ node bin/aws-emulator-mcp.mjs preflight
 node bin/aws-emulator-mcp.mjs preflight --json
 ```
 
-`preflight` checks Node.js, local Docker context and daemon, and whether the
+`preflight` checks Node.js, local Docker context, **Linux-container mode** and daemon, and whether the
 versioned image is cached. **It never builds or launches Docker containers.**
 Without Docker, Architecture Studio still works. A successful preflight is
 not a disk-capacity check or proof of emulator API coverage. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).

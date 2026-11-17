@@ -62,13 +62,21 @@ export function inspectPreflight({
     checks.docker = result(false, 'Local Docker context could not be verified; remote contexts are not supported');
     return output;
   }
-  const info = safeCommand(run, ['info', '--format', '{{.ServerVersion}}'], 6000);
-  const version = info.stdout.trim();
-  if (info.status !== 0 || !VERSION_TEXT.test(version)) {
+  const info = safeCommand(run, ['info', '--format', '{{.OSType}}|{{.ServerVersion}}'], 6000);
+  if (info.status !== 0) {
     checks.docker = result(false, 'Local Docker daemon unavailable; start Docker Desktop/Engine and check docker info');
     return output;
   }
-  output.dockerVersion = version;
+  const parts = info.stdout.trim().split('|');
+  if (parts.length !== 2 || !VERSION_TEXT.test(parts[1])) {
+    checks.docker = result(false, 'Unable to verify Docker daemon type and version');
+    return output;
+  }
+  if (parts[0] !== 'linux') {
+    checks.docker = result(false, 'Linux containers required; switch Docker Desktop from Windows containers to Linux containers');
+    return output;
+  }
+  output.dockerVersion = parts[1];
   checks.docker = result(true);
   const cached = safeCommand(run, ['image', 'inspect', image, '--format', '{{.Id}}'], 4000);
   output.imageCached = cached.status === 0;

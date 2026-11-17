@@ -26,7 +26,7 @@ node bin/aws-emulator-mcp.mjs preflight --json
 ```
 
 The command checks Node.js 20+, Docker CLI, whether the selected Docker context
-uses a local Unix socket or Windows named pipe, daemon availability and image
+uses a local Unix socket or Windows named pipe, Docker Linux-container mode, daemon availability and image
 cache state. It does **not** contact AWS, pull an image, start a container,
 run user Python source or dump environment variables. If Docker is missing or
 stopped, it exits **1** with the next safe no-Docker command, and JSON is still

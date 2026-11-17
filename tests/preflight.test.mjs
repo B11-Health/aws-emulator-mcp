@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bin = path.join(root, 'bin/aws-emulator-mcp.mjs');
 const localContext = JSON.stringify('unix:///var/run/docker.sock') + '\n';
 const socket = 'unix:///var/run/docker.sock';
-function fakeRun({cli = true, context = localContext, info = '25.0.16\n', image = false} = {}) {
+function fakeRun({cli = true, context = localContext, info = 'linux|25.0.16\n', image = false} = {}) {
   const calls = [];
   const run = (args) => {
     calls.push(args.join(' '));
@@ -64,6 +64,15 @@ test('unverified/remote context rejects Docker info and image operations', () =>
     assert.deepEqual(calls.map(x=>x.split(' ')[0]),['--version','context']);
     assert.match(report.checks.docker.reason,/context could not be verified/);
   }
+});
+
+test('running Windows-container engine is rejected before image probe', () => {
+  const {run,calls} = fakeRun({info:'windows|25.0.16\n',image:true});
+  const report = inspectPreflight({nodeVersion:'22.0.0',platform:'win32',dockerHost:'',run});
+  assert.equal(report.emulatorReady,false);
+  assert.equal(report.imageCached,null);
+  assert.match(report.checks.docker.reason,/Linux containers required/);
+  assert.equal(calls.length,3);
 });
 
 test('local daemon stopped is a blocker without triggering image build', () => {
