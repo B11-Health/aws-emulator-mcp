@@ -16,6 +16,8 @@ test('demo hub has six accessible scenario tabs, main landmark, video and captio
  assert.equal((html.match(/data-mission="[0-5]"/g)||[]).length,6);
  assert.match(html,/role="tabpanel"/);
  assert.match(html,/proof-first-beta15\.mp4/);
+ assert.match(html,/https:\/\/b11-health\.github\.io\/aws-emulator-mcp\//);
+ assert.match(html,/property="og:image"/);
  assert.match(html,/kind="captions"[^>]*srclang="en"/);
  assert.match(html,/limitations|Not a production outage|does not execute AWS APIs/i);
  assert.ok(existsSync(path.join(docs,'.nojekyll')));

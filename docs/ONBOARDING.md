@@ -4,7 +4,7 @@ AWS Emulator MCP connects a compatible local AI assistant to a disposable AWS de
 
 ## Start by watching the example
 
-[**Narrated beta.15 walkthrough (87 seconds)**](assets/demos/proof-first-beta15.mp4) · [Six interactive demo missions](index.html) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md)
+[**Narrated beta.15 walkthrough (87 seconds)**](assets/demos/proof-first-beta15.mp4) · [Six interactive demo missions](https://b11-health.github.io/aws-emulator-mcp/) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md)
 
 The first mission only verifies local architecture generation. Docker-backed
 labs are optional next steps; you need a local Docker Engine with Linux
@@ -15,7 +15,7 @@ containers and sufficient disk space to run real emulated API calls.
 The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15)
 includes a viewable SVG, an editable draw.io diagram, actual CloudFormation
 YAML, a synthetic SDK contract, a bundled example archive and checksums.
-This is the GitHub repository itself: there is no separate product website.
+A public [GitHub Pages Demo Studio](https://b11-health.github.io/aws-emulator-mcp/) is available for exploring the reviewed missions; it is a static educational site and does **not** run emulated AWS APIs in your browser.
 
 [Open the diagram](../examples/architecture/reference/diagram.svg) ·
 [Inspect CloudFormation](../examples/architecture/reference/template.yaml) ·

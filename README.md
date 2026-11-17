@@ -18,6 +18,7 @@
 <p align="center">
   <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15">Latest GitHub release</a> ·
   <a href="#get-started">Get started</a> ·
+  <a href="https://b11-health.github.io/aws-emulator-mcp/">Interactive Demo Studio</a> ·
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
   <a href="docs/ARCHITECTURE_STUDIO.md">Architecture Studio</a> ·
@@ -31,7 +32,7 @@
 
 [![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
 
-**[Watch the narrated 87-second walkthrough](docs/assets/demos/proof-first-beta15.mp4)** · [Interactive demo studio (source)](docs/index.html) · [Transcript and captions](docs/SHOWCASE_TRANSCRIPT.md) · [Proof and limitations](docs/SHOWCASE_EVIDENCE.md)
+**[Watch the narrated 87-second walkthrough](docs/assets/demos/proof-first-beta15.mp4)** · [Try the interactive Demo Studio](https://b11-health.github.io/aws-emulator-mcp/) · [Transcript and captions](docs/SHOWCASE_TRANSCRIPT.md) · [Proof and limitations](docs/SHOWCASE_EVIDENCE.md)
 
 Start with the smallest real check on **Node.js 20+**. Docker and AWS credentials
 are not required to do this first step:
