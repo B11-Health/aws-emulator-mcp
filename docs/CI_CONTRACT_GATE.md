@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 28
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.14
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.15
         with:
           directory: .aws-emulator/contracts
 ```
@@ -54,7 +54,7 @@ repository. The MCP itself does not read or execute your application source.
 Requires Node.js 20+, running local Docker and the GitHub-source package:
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 
 aws-emulator-mcp gate .aws-emulator/contracts
 ```

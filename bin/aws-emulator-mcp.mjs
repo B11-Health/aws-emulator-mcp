@@ -14,7 +14,7 @@ import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.4.0-beta.14';
+const VERSION = '0.4.0-beta.15';
 const IMAGE = 'aws-emulator-mcp:' + VERSION;
 const SOURCE = 'https://github.com/B11-Health/aws-emulator-mcp';
 const EXPERIMENT_FILE = path.join(ROOT, 'src', 'aws_emulator_mcp', 'experiments.json');

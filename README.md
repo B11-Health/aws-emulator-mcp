@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14">Latest GitHub release</a> ·
+  <a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15">Latest GitHub release</a> ·
   <a href="#get-started">Get started</a> ·
   <a href="docs/DEMO_GALLERY.md">Watch the demos</a> ·
   <a href="docs/ONBOARDING.md#interactive-tour">Guided tour</a> ·
@@ -41,26 +41,26 @@ general-purpose application runner or cloud deployment tool.
 ## Explore the actual outputs first
 
 **No AWS account, website or Docker required to inspect the artifacts.**
-The [v0.4.0-beta.14 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14)
+The [v0.4.0-beta.15 GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15)
 includes directly downloadable, checksum-verifiable artifacts: the actual architecture
 diagram, editable draw.io source, CloudFormation YAML, an example archive,
 an npm package, and checksums.
 
 | Preview | What it proves | |
 |:--|:--|:--|
-| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
-| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
-| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
-| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
+| [Architecture SVG](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/examples/architecture/reference/diagram.svg) | Proposed S3, DynamoDB and SQS nodes and conceptual connections | **View** |
+| [Editable draw.io diagram](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/examples/architecture/reference/diagram.drawio) | Same graph in editable source form | **Inspect** |
+| [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
+| [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
 
 **Test the architecture tool without Docker or an AWS account.** On the
-current `master` source checkout (not the tagged beta.14 release), one command
+beta.15 checkout, one command
 builds a temporary architecture, validates the seven generated artifacts and
 their hashes, reports the three supported resource types and a separate
 14-step **unexecuted** synthetic contract, then removes the temporary files:
 
 ```bash
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs try
 # Sanitized, bounded proof for a developer feedback report:
@@ -71,11 +71,10 @@ This verifies only the offline architecture generator, **not** AWS API
 behavior, IAM policy enforcement or a deployment. To keep and inspect the
 artifacts, run `node bin/aws-emulator-mcp.mjs architecture demo`.
 
-**Check local readiness before the large emulator build** (unreleased source-branch
-feature, not in the tagged beta.14 installation):
+**Check local readiness before the large emulator build** (included in beta.15):
 
 ```bash
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs preflight
 # Or get a bounded, sanitized report to include in a field report:
@@ -96,7 +95,7 @@ same-tag checkout collisions; it is not a security signature. [Setup details](do
 and npm; Docker is not needed for generation):
 
 ```bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 aws-emulator-mcp architecture demo
 ```
 
@@ -132,7 +131,7 @@ container, against verified local DynamoDB, S3 and SQS APIs.
 
 ```bash
 # To run the shipped examples, first open the versioned Git checkout:
-git clone --depth 1 --branch v0.4.0-beta.14 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 aws-emulator-mcp app-verify examples/byo-order-handler/fixed.py --json
 aws-emulator-mcp app-verify examples/byo-order-handler/buggy.py --json  # expected failure
@@ -141,7 +140,7 @@ aws-emulator-mcp app-verify examples/byo-order-handler/buggy.py --json  # expect
 aws-emulator-mcp app-verify /path/to/my-order-handler.py --json
 ```
 
-**Compare your own before/after handlers** (new in the source branch; **not in the published beta.14 tag**):
+**Compare your own trusted before/after handlers** (included in beta.15):
 
 ```bash
 # From a checkout containing this feature (requires local Docker):
@@ -195,7 +194,7 @@ aws-emulator-mcp architecture review \
 a full-history checkout required):
 
 ```yaml
-- uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.14
+- uses: B11-Health/aws-emulator-mcp@v0.4.0-beta.15
   with:
     manifest: .aws-emulator/architecture.json
     fail-on-risk: high
@@ -223,7 +222,7 @@ aws-emulator-mcp failure-lab compare
 The [Failure Lab](docs/FAILURE_LAB.md) reproduces a missing fulfillment event
 from a fragile order workflow, verifies a recoverable pending-state approach,
 and shows why an idempotent consumer matters when SQS deliveries duplicate.
-A separate, unreleased source-branch scenario (`failure-lab partial-compare`)
+The beta.15 `failure-lab partial-compare` scenario
 checks a DynamoDB write followed by a failed S3 receipt upload and tests
 whether retry recovers both the receipt and SQS event. See
 [partial-write limitations](docs/FAILURE_LAB.md#new-partial-write-scenario-dynamodb-saved-receipt-never-uploaded).
@@ -298,7 +297,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.14
+      - uses: B11-Health/aws-emulator-mcp/.github/actions/contract-gate@v0.4.0-beta.15
         with:
           directory: .aws-emulator/contracts
 ```
@@ -327,7 +326,7 @@ only needed when running the local AWS Emulator** and SDK tests. The first
 Docker image build requires an internet connection and sufficient free disk space.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 
 # Run the before-and-after application test
 aws-emulator-mcp app-debug compare

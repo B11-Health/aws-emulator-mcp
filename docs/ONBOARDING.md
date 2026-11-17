@@ -4,22 +4,21 @@ AWS Emulator MCP connects a compatible local AI assistant to a disposable AWS de
 
 ## 1. See the real output on GitHub (no install)
 
-The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14)
+The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15)
 includes a viewable SVG, an editable draw.io diagram, actual CloudFormation
 YAML, a synthetic SDK contract, a bundled example archive and checksums.
 This is the GitHub repository itself: there is no separate product website.
 
 [Open the diagram](../examples/architecture/reference/diagram.svg) ·
 [Inspect CloudFormation](../examples/architecture/reference/template.yaml) ·
-[Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14)
+[Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15)
 
 ## First step: a disposable, offline architecture test
 
-In the current `master` checkout (this feature is **not** in the tagged
-beta.14 release), run:
+In a beta.15 checkout, run:
 
 ```bash
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs try
 node bin/aws-emulator-mcp.mjs try --json
@@ -39,11 +38,10 @@ credentials, endpoints or customer data.
 
 ## Check prerequisites before building the image
 
-On the current `master` source checkout (the tagged beta.14 package **does not**
-include this new command), run the read-only first-run check:
+On a beta.15 source checkout, run the read-only first-run check:
 
 ```bash
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs preflight
 node bin/aws-emulator-mcp.mjs preflight --json
@@ -75,7 +73,7 @@ requires internet access, but generating the blueprint does not require
 Docker, an AWS account, or production credentials.
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.14"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 aws-emulator-mcp architecture demo
 ~~~
 

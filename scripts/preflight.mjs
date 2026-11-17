@@ -24,7 +24,7 @@ export function inspectPreflight({
   nodeVersion = process.versions.node,
   platform = process.platform,
   dockerHost = process.env.DOCKER_HOST,
-  image = 'aws-emulator-mcp:0.4.0-beta.14',
+  image = 'aws-emulator-mcp:0.4.0-beta.15',
   run = (args, timeout) => spawnSync('docker', args, {
     encoding: 'utf8', timeout, windowsHide: true, shell: false
   })

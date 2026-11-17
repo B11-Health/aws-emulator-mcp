@@ -1,3 +1,16 @@
+# v0.4.0-beta.15 - developer preview (2026-11-17)
+
+- Trusted-local Python order-handler comparison exports sanitized evidence from separate isolated runs.
+- Partial-write failure lab injects an S3 receipt timeout after DynamoDB persistence and verifies retry recovery, not crash atomicity.
+- No-build preflight and offline trial checks; the latter validates seven architecture outputs without Docker or AWS access.
+- Docker image cache now requires a matching runtime-source fingerprint.
+- Onboarding explains when native AWS Emulator/SDKs are preferable.
+- CI covers Windows, packaged Node CLI, Python, official MCP clients and signed emulator tests.
+
+This independent prerelease is not an AWS service, production IAM test, AWS compatibility guarantee, external audit or verified outside-user adoption.
+
+---
+
 ## v0.4.0-beta.14 — Opt-in local Python application-handler pilot (candidate)
 
 - New `app-verify <trusted-local-handler.py> [--json]` command: source is
