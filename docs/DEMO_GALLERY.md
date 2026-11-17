@@ -8,7 +8,7 @@ The new beta.15 walkthrough has **spoken narration and English captions**. The o
 
 [![Watch the narrated beta.15 demo](assets/demos/proof-first-beta15-poster.jpg)](assets/demos/proof-first-beta15.mp4)
 
-**[Watch the narrated demo](assets/demos/proof-first-beta15.mp4)** · [English captions](assets/demos/proof-first-beta15.vtt) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md) · [Interactive six-mission demo studio](index.html)
+**[Watch the narrated demo](assets/demos/proof-first-beta15.mp4)** · [English captions](assets/demos/proof-first-beta15.vtt) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md) · [Interactive six-mission demo studio](https://b11-health.github.io/aws-emulator-mcp/)
 
 The video explains the **offline first run**, a duplicated SQS event fixed by a DynamoDB conditional write, a **synthetic** failed S3 receipt upload and retry, trusted-local Python handler comparisons, source-level architecture review, and local MCP client configuration. [Claims and measured evidence](SHOWCASE_EVIDENCE.md).
 
@@ -27,7 +27,7 @@ The illustrated tests are **not live terminal capture**.
 | **Your trusted Python fix and a risky schema change** | [22-second source-review demo](assets/demos/beta15-source-review-demo.mp4) | Compare two trusted local handlers; inspect architecture risk flags |
 | **Connect a coding assistant** | [9-second MCP setup demo](assets/demos/beta15-connect-agent-demo.mp4) | Generate VS Code MCP configuration; Docker required for actual emulator tools |
 
-[All six copyable demo missions](index.html) · [Actual beta.15 QA evidence](SHOWCASE_EVIDENCE.md)
+[All six copyable demo missions](https://b11-health.github.io/aws-emulator-mcp/) · [Actual beta.15 QA evidence](SHOWCASE_EVIDENCE.md)
 
 ## Product tour · 25 seconds
 

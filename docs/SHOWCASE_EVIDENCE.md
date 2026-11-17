@@ -1,6 +1,6 @@
 # Demo studio: evidence ledger and limitations
 
-The [interactive demo studio](index.html) and [87-second narrated video](assets/demos/proof-first-beta15.mp4) explain **AWS Emulator MCP v0.4.0-beta.15**. This page separates actual execution from illustrative visuals.
+The [interactive demo studio](https://b11-health.github.io/aws-emulator-mcp/) and [87-second narrated video](assets/demos/proof-first-beta15.mp4) explain **AWS Emulator MCP v0.4.0-beta.15**. This page separates actual execution from illustrative visuals.
 
 ## What was actually run
 
