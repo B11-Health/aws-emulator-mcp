@@ -141,13 +141,18 @@ then verifies pending-state recovery and duplicate-safe consumer markers.
 [Watch the guided Failure Lab clip](assets/demos/failure-lab.mp4) or
 [inspect the saved result](evidence/failure-lab-aws-emulator-1.0.385.json).
 
+## Desktop assistant setup
+
+[**VS Code Copilot and Claude Desktop install guide**](DESKTOP_INSTALL.md) explains the current native Copilot configuration and an optional unsigned MCPB preview for Claude Desktop. Both require a local Docker Engine for emulator-backed MCP tools.
+
 ## 4. Connect an AI assistant
 
 Generate configuration appropriate to your client:
 
 ~~~bash
-aws-emulator-mcp config vscode
 aws-emulator-mcp config copilot
+# Legacy editor-managed VS Code settings only:
+aws-emulator-mcp config vscode
 ~~~
 
 Copy the output to your supported editor's MCP settings. The launcher communicates over standard input/output; there is no public listener.

@@ -1,0 +1,66 @@
+name: Desktop MCPB preview
+
+on:
+  pull_request:
+    paths:
+      - packaging/**
+      - scripts/build_desktop_mcpb.py
+      - scripts/verify_desktop_mcpb.py
+      - docs/DESKTOP_INSTALL.md
+      - bin/aws-emulator-mcp.mjs
+      - package.json
+      - tests/desktop_bundle.test.mjs
+      - .github/workflows/desktop-bundle.yml
+  push:
+    branches: [master]
+    paths:
+      - packaging/**
+      - scripts/build_desktop_mcpb.py
+      - scripts/verify_desktop_mcpb.py
+      - docs/DESKTOP_INSTALL.md
+      - bin/aws-emulator-mcp.mjs
+      - package.json
+      - tests/desktop_bundle.test.mjs
+      - .github/workflows/desktop-bundle.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-unsigned:
+    name: Validated unsigned MCPB (${{ matrix.label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            label: Linux
+          - runner: windows-latest
+            label: Windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate extension source and native client config
+        run: node --test tests/desktop_bundle.test.mjs
+      - name: Build with pinned official MCPB validator
+        run: python scripts/build_desktop_mcpb.py --output dist/aws-emulator-mcp-unsigned.mcpb
+      - name: Verify actual extracted offline CLI and Docker refusal
+        run: python scripts/verify_desktop_mcpb.py dist/aws-emulator-mcp-unsigned.mcpb
+      - name: Write SHA-256 checksum
+        run: python -c "import hashlib,pathlib; p=pathlib.Path('dist/aws-emulator-mcp-unsigned.mcpb'); (p.parent/'SHA256SUMS.txt').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')"
+      - name: Upload unsigned developer-preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aws-emulator-mcpb-${{ matrix.label }}-${{ github.sha }}-UNSIGNED
+          path: |
+            dist/aws-emulator-mcp-unsigned.mcpb
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

@@ -24,7 +24,7 @@ Or run without a global installation:
 npm exec --yes --package="github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15" -- aws-emulator-mcp demo
 ```
 
-Use `aws-emulator-mcp config vscode` for a VS Code `.vscode/mcp.json` server entry, or `config copilot` for a native Copilot MCP `mcpServers` entry. The configuration points to the **actual installed executable**, not an npm package that may not exist.
+For current VS Code Copilot, prefer the native **config copilot** mcpServers output. The older **config vscode** emits deprecated editor-managed servers JSON. See the [desktop setup guide](DESKTOP_INSTALL.md) for the optional unsigned MCPB preview and the difference between client configurations. The CLI points to the **actual installed executable**, not an npm package that may not exist.
 
 **Verified on a separate EC2 Docker host, November 14, 2026:** a freshly
 packed beta.8 tarball installed into a separate npm prefix and passed the full

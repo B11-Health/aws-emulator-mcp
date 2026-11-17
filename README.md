@@ -50,6 +50,12 @@ The video is an edited, narrated explanation using actual offline CLI output
 and linked project-maintained CI evidence, **not an uncut terminal capture**
 or AWS fidelity certification.
 
+## Connect to an AI assistant
+
+**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** to print a native mcpServers definition. **Claude Desktop:** an optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) reduces JSON setup, but you still need to install and run local Docker. Neither route is a hosted public MCP endpoint or a production AWS deployment.
+
+[**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
+
 ## Why another MCP if AWS already supports agents?
 
 AWS Emulator already works with AWS SDKs, the CLI and coding agents. **Use it

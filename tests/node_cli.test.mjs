@@ -31,6 +31,7 @@ test('VS Code config is valid stdio', () => {
   const result = cli('config', 'vscode');
   assert.equal(result.status, 0);
   assert.equal(JSON.parse(result.stdout).servers['aws-emulator-local'].type, 'stdio');
+  assert.match(result.stderr, /deprecated editor-managed/);
 });
 test('invalid commands/format fail before calling Docker', () => {
   assert.equal(cli('config', 'remote').status, 2);
