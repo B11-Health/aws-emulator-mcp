@@ -9,6 +9,7 @@ import path from 'node:path';
 import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compare.mjs';
+import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.14';
@@ -34,6 +35,7 @@ function help() {
 Usage: aws-emulator-mcp <command>
 
 Commands:
+  preflight [--json]  Check Node and local Docker without building an image
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
   mcp              Run 29 curated + 9 Docker-only tools via local MCP
@@ -453,6 +455,15 @@ async function runSelectedHandler(envelope) {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'preflight') {
+    if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
+      fail('Usage: aws-emulator-mcp preflight [--json]', 2);
+    const report = inspectPreflight({image: IMAGE});
+    if (args.includes('--json')) stdout.write(JSON.stringify(report, null, 2) + '\n');
+    else stdout.write(printPreflight(report) + '\n');
+    if (!report.emulatorReady) process.exitCode = 1;
+    return;
+  }
   if (command === 'architecture') {
     const script = path.join(ROOT, 'scripts', args[0] === 'review'
       ? 'architecture_review.mjs' : 'architecture_studio.mjs');

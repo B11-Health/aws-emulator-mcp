@@ -13,6 +13,33 @@ This is the GitHub repository itself: there is no separate product website.
 [Inspect CloudFormation](../examples/architecture/reference/template.yaml) ·
 [Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14)
 
+## Check prerequisites before building the image
+
+On the current `master` source checkout (the tagged beta.14 package **does not**
+include this new command), run the read-only first-run check:
+
+```bash
+git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs preflight
+node bin/aws-emulator-mcp.mjs preflight --json
+```
+
+The command checks Node.js 20+, Docker CLI, whether the selected Docker context
+uses a local Unix socket or Windows named pipe, daemon availability and image
+cache state. It does **not** contact AWS, pull an image, start a container,
+run user Python source or dump environment variables. If Docker is missing or
+stopped, it exits **1** with the next safe no-Docker command, and JSON is still
+written to stdout. Invalid flags exit **2**. If the local daemon is ready,
+it exits **0**; the first emulator command may still require a sizable signed
+image download. The check **cannot** verify Docker disk capacity, upstream
+service fidelity or production IAM.
+
+On Windows PowerShell, the same two `node bin/aws-emulator-mcp.mjs preflight`
+commands work from the repository checkout. For genuine first-run feedback,
+share only the sanitized JSON after reviewing it, and report which step was
+confusing: [developer field report](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml).
+
 ## 2. Install and generate the architecture (no Docker)
 
 Install **Node.js 20 or later**, Git and npm. Initial package installation

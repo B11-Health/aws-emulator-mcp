@@ -42,6 +42,22 @@ an npm package, and checksums.
 | [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
 | [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
 
+**Check local readiness before the large emulator build** (unreleased source-branch
+feature, not in the tagged beta.14 installation):
+
+```bash
+git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs preflight
+# Or get a bounded, sanitized report to include in a field report:
+node bin/aws-emulator-mcp.mjs preflight --json
+```
+
+`preflight` checks Node.js, local Docker context and daemon, and whether the
+versioned image is cached. **It never builds or launches Docker containers.**
+Without Docker, Architecture Studio still works. A successful preflight is
+not a disk-capacity check or proof of emulator API coverage. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
+
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):
 

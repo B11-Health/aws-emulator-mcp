@@ -21,6 +21,7 @@ body:
         - I tested a GitHub pull-request gate
         - This duplicates tools or workflows I already use
         - I want a specific AWS service or SDK operation tested
+        - I ran preflight only (no Docker image build)
         - I found a documentation or onboarding problem
         - Other honest product feedback
     validations:
@@ -30,6 +31,9 @@ body:
     attributes:
       label: Where did you test?
       options:
+        - Windows (Node only / no Docker yet)
+        - macOS (Node only / no Docker yet)
+        - Linux (Node only / no Docker yet)
         - Windows + Docker Desktop
         - macOS + Docker Desktop
         - Linux + Docker Engine
@@ -37,19 +41,19 @@ body:
         - Haven't tested yet — design review only
         - Other environment
     validations:
-      required: true
+      required: false
   - type: textarea
     id: goal
     attributes:
-      label: What were you trying to accomplish?
+      label: What were you trying to accomplish? (optional)
       description: A single concrete workflow or question is more helpful than a feature wishlist.
       placeholder: "I wanted my coding agent to verify the effects of an SQS retry before a PR merges..."
     validations:
-      required: true
+      required: false
   - type: textarea
     id: observation
     attributes:
-      label: What happened? What would have made this useful?
+      label: What happened, or what blocked you?
       description: Include a redacted 2-3 step reproduction or the alternative tool/workflow you'd use instead.
       placeholder: "I expected... Instead... I'd switch to this tool if..."
     validations:
@@ -69,7 +73,7 @@ body:
     id: evidence
     attributes:
       label: Sanitized test evidence (optional)
-      description: Only include synthetic values, expected vs observed status, and cleanup results.
+      description: Include only reviewed, synthetic output such as a sanitized preflight --json result; no paths or secrets.
       render: json
   - type: dropdown
     id: priority
@@ -81,7 +85,7 @@ body:
         - Medium — useful improvement
         - Low — polish or documentation
     validations:
-      required: true
+      required: false
   - type: checkboxes
     id: safety
     attributes:
