@@ -39,6 +39,8 @@ jobs:
             label: Linux
           - runner: windows-latest
             label: Windows
+          - runner: macos-latest
+            label: macOS
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
