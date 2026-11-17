@@ -20,7 +20,9 @@ USER 10001:10001
 RUN bash scripts/install_wsl.sh \
  && python3 -m compileall -q src \
  && /home/emulatormcp/.local/bin/aws-emulator --version
+ARG AWS_MCP_SOURCE_SHA256=unverified
 LABEL org.opencontainers.image.source="https://github.com/B11-Health/aws-emulator-mcp" \
-      org.opencontainers.image.title="AWS Emulator MCP"
+      org.opencontainers.image.title="AWS Emulator MCP" \
+      dev.aws-emulator-mcp.source-sha256="${AWS_MCP_SOURCE_SHA256}"
 ENTRYPOINT ["bash", "docker/entrypoint.sh"]
 CMD ["mcp"]

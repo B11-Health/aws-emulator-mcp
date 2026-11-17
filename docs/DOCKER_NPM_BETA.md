@@ -43,6 +43,16 @@ Windows/macOS first-use endorsement or full AWS parity.
 4. Verify the locally generated CA, emulator-issued credentials, HTTPS health, and isolated STS account.
 5. Launch MCP over standard input/output or run a synthetic order demo. When the container exits, its temporary resources and credentials disappear.
 
+**Source-checkout cache safety (on `master`, not yet released as beta.15):**
+The launcher computes a deterministic SHA-256 fingerprint of the Dockerfile
+and every packaged file copied into the runtime image. Before reusing a
+locally tagged image it checks the corresponding OCI label; a missing or
+mismatched label causes a local rebuild. This prevents a newer source checkout
+from accidentally running an older Python/MCP worker that happens to have
+the same human version tag. It is **not** an authentication mechanism against
+someone with write access to the Docker daemon, does not validate upstream AWS
+service fidelity, and does not pin all remote build dependencies.
+
 Every runtime container is `--network none`, `--cap-drop ALL`, `--security-opt no-new-privileges`, `--pids-limit 256`, `--memory 2g`. The launcher publishes **no ports**, mounts **no host paths**, and forwards **no AWS environment variables or credentials**.
 
 The official Linux emulator binary is approximately **994 MB unpacked** for the tested v1.0.338 AMD64 package, so the image is currently larger than 1 GB. The npm package is small and does not contain the binary. The initial build downloads the upstream signed package; subsequent CLI runs reuse the cached image.

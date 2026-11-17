@@ -58,7 +58,10 @@ node bin/aws-emulator-mcp.mjs architecture demo
 `preflight` checks Node.js, local Docker context, **Linux-container mode** and daemon, and whether the
 versioned image is cached. **It never builds or launches Docker containers.**
 Without Docker, Architecture Studio still works. A successful preflight is
-not a disk-capacity check, image-source verification or proof of emulator API coverage. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
+not a disk-capacity check, image-source verification or proof of emulator API coverage.
+Docker-backed commands in the current source checkout verify a build-input
+fingerprint before image reuse and rebuild stale cached bundles. This prevents
+same-tag checkout collisions; it is not a security signature. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
 
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):
