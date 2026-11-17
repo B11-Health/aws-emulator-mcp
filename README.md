@@ -27,6 +27,17 @@
   <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a>
 </p>
 
+## Why another MCP if AWS already supports agents?
+
+AWS Emulator already works with AWS SDKs, the CLI and coding agents. **Use it
+directly if those tools meet your needs.** This independent adapter is worth
+considering when an agent needs bounded MCP operations, a reproducible
+synthetic failure/repair experiment, or a read-only source-level PR review
+with sanitized evidence. It is **not** an AWS compatibility layer, IAM tester,
+general-purpose application runner or cloud deployment tool.
+
+[**Compare native AWS Emulator vs this adapter: concrete tasks, commands and tradeoffs.**](docs/WHY_MCP.md)
+
 ## Explore the actual outputs first
 
 **No AWS account, website or Docker required to inspect the artifacts.**
