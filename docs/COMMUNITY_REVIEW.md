@@ -25,6 +25,15 @@ A reviewer can also assess the architecture and documentation **without installi
 - A passing contract validates the **declared emulated API sequence**, not arbitrary developer application source, IAM fidelity, or production AWS behavior.
 - Isolated tests shouldn't receive your AWS credentials or real customer data. Never share such data in a report.
 
+## One-command offline trial for a first-time reviewer
+
+From the current source checkout, run `node bin/aws-emulator-mcp.mjs try --json`.
+This verifies seven generated architecture artifacts in a temporary directory
+and leaves no local files behind. No Docker or AWS account is needed. The
+result contains only a source hash, counters and declared scope; it does not
+prove that AWS services, IAM or deployments work. A failed result is as useful
+as a successful one when accompanied by a safe, reproducible description.
+
 ## Fast no-build installation feedback (current source checkout)
 
 On `master` (not the pinned beta.14 tag), run `node bin/aws-emulator-mcp.mjs

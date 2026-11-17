@@ -11,6 +11,7 @@ import { stderr, stdout, execPath, exit } from 'node:process';
 import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compare.mjs';
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
+import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.14';
@@ -36,6 +37,7 @@ function help() {
 Usage: aws-emulator-mcp <command>
 
 Commands:
+  try [--json]     Verify 7 architecture artifacts offline in a temporary workspace
   preflight [--json]  Check Node and local Docker without building an image
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -466,6 +468,17 @@ async function runSelectedHandler(envelope) {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'try') {
+    if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
+      fail('Usage: aws-emulator-mcp try [--json]', 2);
+    let report;
+    try { report = runOfflineTrial(); }
+    catch { fail('Offline installation test failed; inspect architecture demo and package files', 1); }
+    stdout.write(args.includes('--json') ? JSON.stringify(report, null, 2) + '\n'
+      : formatOfflineTrial(report) + '\n');
+    return;
+  }
+
   if (command === 'preflight') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
       fail('Usage: aws-emulator-mcp preflight [--json]', 2);

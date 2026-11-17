@@ -22,6 +22,7 @@ body:
         - This duplicates tools or workflows I already use
         - I want a specific AWS service or SDK operation tested
         - I ran preflight only (no Docker image build)
+        - I ran the disposable offline trial (no Docker)
         - I found a documentation or onboarding problem
         - Other honest product feedback
     validations:

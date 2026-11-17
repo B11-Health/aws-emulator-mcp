@@ -42,6 +42,24 @@ an npm package, and checksums.
 | [CloudFormation YAML](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/template.yaml) | The three actual resources the template defines | **Review** |
 | [14-step AWS SDK contract](https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.14/examples/architecture/reference/contract.json) | Separate synthetic test plan, validated with the local emulator | **Inspect** |
 
+**Test the architecture tool without Docker or an AWS account.** On the
+current `master` source checkout (not the tagged beta.14 release), one command
+builds a temporary architecture, validates the seven generated artifacts and
+their hashes, reports the three supported resource types and a separate
+14-step **unexecuted** synthetic contract, then removes the temporary files:
+
+```bash
+git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs try
+# Sanitized, bounded proof for a developer feedback report:
+node bin/aws-emulator-mcp.mjs try --json
+```
+
+This verifies only the offline architecture generator, **not** AWS API
+behavior, IAM policy enforcement or a deployment. To keep and inspect the
+artifacts, run `node bin/aws-emulator-mcp.mjs architecture demo`.
+
 **Check local readiness before the large emulator build** (unreleased source-branch
 feature, not in the tagged beta.14 installation):
 

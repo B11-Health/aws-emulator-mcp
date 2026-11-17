@@ -13,6 +13,30 @@ This is the GitHub repository itself: there is no separate product website.
 [Inspect CloudFormation](../examples/architecture/reference/template.yaml) ·
 [Read the release notes](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.14)
 
+## First step: a disposable, offline architecture test
+
+In the current `master` checkout (this feature is **not** in the tagged
+beta.14 release), run:
+
+```bash
+git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs try
+node bin/aws-emulator-mcp.mjs try --json
+```
+
+This does not require Docker, an AWS account, npm global install, or
+credentials. It creates a throwaway working directory, generates and checks
+all seven Architecture Studio files (including hashes), and deletes that
+directory. It reports the generated 14-step synthetic SDK contract as **not
+executed**; no emulator, AWS endpoints or production resources are touched.
+A passing trial does **not** establish AWS fidelity or IAM behavior. To keep
+the outputs, use `node bin/aws-emulator-mcp.mjs architecture demo`.
+
+Please share the sanitized JSON with a [first-run field report](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml),
+including what would make the next step useful. Do not paste private source,
+credentials, endpoints or customer data.
+
 ## Check prerequisites before building the image
 
 On the current `master` source checkout (the tagged beta.14 package **does not**

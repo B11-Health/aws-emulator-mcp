@@ -109,6 +109,11 @@ jobs:
         run: |
           npm pack --dry-run --json | Out-File -Encoding utf8 "$env:RUNNER_TEMP/npm-pack.json"
           python -c "import json,os,pathlib; d=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'npm-pack.json').read_text(encoding='utf-8-sig'))[0]; allowed=set(json.loads(pathlib.Path('package.json').read_text())['files'])|{'package.json','LICENSE','README.md'}; actual={x['path'] for x in d['files']}; assert actual==allowed, {'extra':sorted(actual-allowed),'missing':sorted(allowed-actual)}; assert not any('__pycache__' in x or x.endswith('.pyc') for x in actual); print('Windows npm package exact allowlist PASS',len(actual))"
+      - name: Verify no-Docker installation trial on Windows
+        shell: pwsh
+        run: |
+          node bin/aws-emulator-mcp.mjs try --json | Out-File -Encoding utf8 "$env:RUNNER_TEMP/offline-trial.json"
+          python -c "import json,os,pathlib; p=json.loads(pathlib.Path(os.environ['RUNNER_TEMP'],'offline-trial.json').read_text(encoding='utf-8-sig')); assert p['passed'] and p['artifactCount']==7 and p['syntheticContractSteps']==14 and p['dockerUsed']==False and p['cloudCallsMade']==False; print('WINDOWS_OFFLINE_TRIAL_PASS')"
       - name: Verify deterministic Architecture Review on Windows
         shell: pwsh
         run: |
@@ -174,6 +179,15 @@ jobs:
           PY
           npm pack --silent
           npm install --prefix .qa-npm --no-audit --no-fund --ignore-scripts ./aws-emulator-mcp-0.4.0-beta.14.tgz
+          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs try --json > /tmp/aws-emulator-mcp-offline-trial.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/aws-emulator-mcp-offline-trial.json'))
+          assert p['passed'] and p['artifactCount']==7 and p['syntheticContractSteps']==14
+          assert p['dockerUsed'] is False and p['cloudCallsMade'] is False
+          assert p['generatedFilesPreserved'] is False
+          print('INSTALLED_OFFLINE_TRIAL_PASS')
+          PY
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs config copilot > /tmp/aws-emulator-mcp-mcp-config.json
           python3 - <<'PY'
           import json
