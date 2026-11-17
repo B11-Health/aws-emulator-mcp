@@ -2,7 +2,32 @@
 
 A short introduction is more useful than a wall of commands. Start with the product tour, then choose the workflow you want to try.
 
-All clips are **caption-led and silent**, with a visible guided mouse pointer. The interface presents results from saved local AWS Emulator test runs; it is a walkthrough, not a live connection or an AI patch-generation session. The source and measured API results are linked below.
+The new beta.15 walkthrough has **spoken narration and English captions**. The older clips below are silent and caption-led. All are edited explainers based on source code or recorded emulator test results, **not continuous live terminal sessions**. Run the documented commands to reproduce the tests yourself.
+
+## Beta.15: from first run to failure-proof workflow · 87 seconds
+
+[![Watch the narrated beta.15 demo](assets/demos/proof-first-beta15-poster.jpg)](assets/demos/proof-first-beta15.mp4)
+
+**[Watch the narrated demo](assets/demos/proof-first-beta15.mp4)** · [English captions](assets/demos/proof-first-beta15.vtt) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md) · [Interactive six-mission demo studio](index.html)
+
+The video explains the **offline first run**, a duplicated SQS event fixed by a DynamoDB conditional write, a **synthetic** failed S3 receipt upload and retry, trusted-local Python handler comparisons, source-level architecture review, and local MCP client configuration. [Claims and measured evidence](SHOWCASE_EVIDENCE.md).
+
+
+
+## Four bite-size beta.15 demos
+
+Each clip is a narrated excerpt from the full tutorial, with a visible
+explanatory caption and corresponding section in the [transcript](SHOWCASE_TRANSCRIPT.md).
+The illustrated tests are **not live terminal capture**.
+
+| Start here | Watch | What to try afterward |
+| --- | --- | --- |
+| **First 30 seconds** — zero Docker | [12-second quickstart](assets/demos/beta15-quickstart-demo.mp4) | Run the offline command to verify seven artifacts |
+| **Duplicate order and partial-write recovery** | [21-second reliability demo](assets/demos/beta15-reliability-demo.mp4) | Run the reviewed sample application and synthetic S3 timeout |
+| **Your trusted Python fix and a risky schema change** | [22-second source-review demo](assets/demos/beta15-source-review-demo.mp4) | Compare two trusted local handlers; inspect architecture risk flags |
+| **Connect a coding assistant** | [9-second MCP setup demo](assets/demos/beta15-connect-agent-demo.mp4) | Generate VS Code MCP configuration; Docker required for actual emulator tools |
+
+[All six copyable demo missions](index.html) · [Actual beta.15 QA evidence](SHOWCASE_EVIDENCE.md)
 
 ## Product tour · 25 seconds
 
@@ -30,8 +55,8 @@ All clips are **caption-led and silent**, with a visible guided mouse pointer. T
 
 ## Try the failure-and-recovery lab
 
-No video has been published for this new workflow yet. The experiment itself
-is runnable and independently verified through the installed CLI:
+The recorded beta.15 walkthrough now includes this workflow. You can
+reproduce the earlier failure comparison through the installed CLI:
 
 ```bash
 aws-emulator-mcp failure-lab compare
@@ -68,10 +93,10 @@ Then open **http://127.0.0.1:8765/docs/onboarding/**. The tour works without a n
 ## Reproduce the demonstrated application test
 
 ~~~bash
-npm install -g "github:B11-Health/aws-emulator-mcp#master"
+npm install -g "github:B11-Health/aws-emulator-mcp#v0.4.0-beta.15"
 aws-emulator-mcp app-debug compare --json
 ~~~
 
 You can inspect the [recorded v1.0.365 application evidence](evidence/app-debug-aws-emulator-1.0.365.json) and the [patch](../examples/order-intake/reference.patch). The fixed variant is a packaged reference implementation; executing arbitrary AI-authored patches is outside the current beta.
 
-The videos have no narration or soundtrack by design. They are edited guides; the live API results are available through the CLI and source-based tests.
+The beta.15 video has narration and captions; older videos remain silent. These are edited guides. Actual API results are verified through the CLI and linked CI/source-based tests.

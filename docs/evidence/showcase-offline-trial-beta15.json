@@ -1,0 +1,25 @@
+{
+  "provenance": "Executed on maintainer-controlled Windows host using v0.4.0-beta.15 source",
+  "command": "node bin/aws-emulator-mcp.mjs try --json",
+  "exitCode": 0,
+  "result": {
+    "schemaVersion": 1,
+    "passed": true,
+    "test": "offline-architecture-generation",
+    "artifactCount": 7,
+    "resourceTypes": [
+      "AWS::DynamoDB::Table",
+      "AWS::S3::Bucket",
+      "AWS::SQS::Queue"
+    ],
+    "syntheticContractSteps": 14,
+    "sourceSha256": "5e2644b2f47dff4dbeb4be783307f50049dfbf6bffee7286a9b047f873938216",
+    "dockerUsed": false,
+    "cloudCallsMade": false,
+    "generatedFilesPreserved": false,
+    "limitations": "Proves the local architecture generator and artifact checksums, not AWS deployment, IAM, service fidelity or application behavior.",
+    "nextCommand": "aws-emulator-mcp architecture demo",
+    "sourceCheckoutNextCommand": "node bin/aws-emulator-mcp.mjs architecture demo"
+  },
+  "scope": "Offline architecture generator only; synthetic contract not executed."
+}

@@ -2,6 +2,14 @@
 
 AWS Emulator MCP connects a compatible local AI assistant to a disposable AWS development lab. You can run the examples directly from your terminal, or let the agent operate the local MCP tools.
 
+## Start by watching the example
+
+[**Narrated beta.15 walkthrough (87 seconds)**](assets/demos/proof-first-beta15.mp4) · [Six interactive demo missions](index.html) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md)
+
+The first mission only verifies local architecture generation. Docker-backed
+labs are optional next steps; you need a local Docker Engine with Linux
+containers and sufficient disk space to run real emulated API calls.
+
 ## 1. See the real output on GitHub (no install)
 
 The [latest GitHub release](https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15)

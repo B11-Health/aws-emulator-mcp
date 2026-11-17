@@ -1,0 +1,49 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:04.572
+An AI coding agent shouldn't just say a pull request looks good.
+
+00:00:04.572 --> 00:00:09.143
+It should help reproduce a bug, verify a change, and show evidence.
+
+00:00:09.143 --> 00:00:15.052
+Start with Node.js and Git. Run the offline try command. On our Windows
+
+00:00:15.052 --> 00:00:20.961
+test machine it verified seven architecture files, with zero Docker or AWS calls.
+
+00:00:20.961 --> 00:00:26.319
+Now use local Docker for real emulator API tests. This sample order handler
+
+00:00:26.319 --> 00:00:31.678
+sends two fulfillment events for one retried order. The reviewed fix sends one.
+
+00:00:31.678 --> 00:00:36.737
+What happens when DynamoDB saves an order but the S3 receipt upload
+
+00:00:36.737 --> 00:00:41.796
+times out? A fragile retry loses the event. Pending-state recovery restores it.
+
+00:00:41.796 --> 00:00:47.407
+You can compare two trusted Python handlers you own. Each runs in a separate
+
+00:00:47.407 --> 00:00:53.018
+isolated lab. The report checks the bug, the fix, source hashes, and cleanup.
+
+00:00:53.018 --> 00:00:58.480
+Before approving infrastructure changes, Architecture Review can flag a DynamoDB partition
+
+00:00:58.480 --> 00:01:03.941
+key change. That's a source-level warning, not an AWS change set.
+
+00:01:03.941 --> 00:01:08.612
+Generate a local MCP configuration for your coding assistant. Then ask it
+
+00:01:08.612 --> 00:01:13.283
+to run a reviewed failure test and explain the evidence, not to guess.
+
+00:01:13.283 --> 00:01:20.244
+These reviewed scenarios passed GitHub CI with signed AWS Emulator version one point zero point four
+
+00:01:20.244 --> 00:01:27.205
+nine one. Local success does not prove AWS production parity or IAM enforcement. Your feedback helps.

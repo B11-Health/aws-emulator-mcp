@@ -1,0 +1,29 @@
+{
+  "provenance": "Executed on maintainer-controlled Windows host using v0.4.0-beta.15 source",
+  "command": "node bin/aws-emulator-mcp.mjs preflight --json",
+  "exitCode": 1,
+  "result": {
+    "schemaVersion": 1,
+    "platform": "win32",
+    "nodeMajor": 22,
+    "architectureReady": true,
+    "emulatorReady": false,
+    "imageCached": null,
+    "dockerVersion": null,
+    "checks": {
+      "node": {
+        "passed": true,
+        "reason": ""
+      },
+      "docker": {
+        "passed": false,
+        "reason": "Docker CLI unavailable; install Docker Desktop or Docker Engine"
+      }
+    },
+    "nextCommand": "aws-emulator-mcp architecture demo",
+    "sourceCheckoutCommand": "node bin/aws-emulator-mcp.mjs architecture demo",
+    "guidance": "Architecture demo needs no Docker; Docker-backed commands need a local daemon and enough image space.",
+    "limitations": "Read-only local checks only. Cached tag does not verify source identity. Does not check disk capacity, AWS API parity, outbound network, or execute any emulator."
+  },
+  "scope": "Local readiness only; deliberately no Docker daemon, cloud API, or image download."
+}

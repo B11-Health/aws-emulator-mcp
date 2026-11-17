@@ -27,6 +27,28 @@
   <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a>
 </p>
 
+## See the proof in 90 seconds
+
+[![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
+
+**[Watch the narrated 87-second walkthrough](docs/assets/demos/proof-first-beta15.mp4)** · [Interactive demo studio (source)](docs/index.html) · [Transcript and captions](docs/SHOWCASE_TRANSCRIPT.md) · [Proof and limitations](docs/SHOWCASE_EVIDENCE.md)
+
+Start with the smallest real check on **Node.js 20+**. Docker and AWS credentials
+are not required to do this first step:
+
+~~~bash
+git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs try --json
+~~~
+
+That verifies seven generated architecture artifacts and explicitly reports the
+14-step contract as **not executed**. For real emulator-backed tests, install
+local Docker with **Linux containers** and run preflight followed by doctor.
+The video is an edited, narrated explanation using actual offline CLI output
+and linked project-maintained CI evidence, **not an uncut terminal capture**
+or AWS fidelity certification.
+
 ## Why another MCP if AWS already supports agents?
 
 AWS Emulator already works with AWS SDKs, the CLI and coding agents. **Use it
