@@ -96,3 +96,29 @@ test('mission scripts are first-party and expose scope warnings, not simulated A
  assert.ok(js.includes('not a network-connected AWS emulator'));
  assert.ok(!js.includes('fetch('),'Demo hub should not make network API calls');
 });
+
+
+test('client install guide has three keyboard-accessible paths with correct limitations',()=>{
+ const html=read('index.html');
+ const js=read('demo-studio.js');
+ const css=read('demo-studio.css');
+ assert.equal((html.match(/data-client="[0-2]"/g)||[]).length,3);
+ for(let i=0;i<3;i++){
+  assert.match(html,new RegExp('id="client-tab-'+i+'"[^>]*role="tab"'));
+  assert.match(html,new RegExp('role="tabpanel" id="client-panel-'+i+'"'));
+  assert.match(html,new RegExp('aria-controls="client-panel-'+i+'"'));
+ }
+ assert.match(html,/config copilot/);
+ assert.match(html,/mcpServers/);
+ assert.match(html,/UNSIGNED/);
+ assert.match(html,/SHA256SUMS/);
+ assert.match(html,/local Docker/i);
+ assert.match(html,/not yet verified/i);
+ assert.match(html,/does not validate production IAM/i);
+ assert.match(html,/href="https:\/\/github\.com\/B11-Health\/aws-emulator-mcp\/actions\/workflows\/desktop-bundle\.yml"/);
+ assert.match(js,/function selectClient\(/);
+ assert.match(js,/client-panel-/);
+ assert.match(js,/ArrowRight/);
+ assert.match(css,/\[hidden\]\{display:none!important\}/);
+ assert.doesNotMatch(js,/fetch\(/);
+});
