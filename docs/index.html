@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b111d">
+<meta name="description" content="Six evidence-backed AWS Emulator MCP demos: from zero-Docker setup to repeatable application failure tests and PR architecture review.">
+<title>Demo Studio | AWS Emulator MCP</title>
+<link rel="stylesheet" href="demo-studio.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#missions">Demos</a><a href="#install">Get started</a><a href="#evidence">Evidence</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
+<main id="main">
+<section class="hero wrap" id="top">
+ <div class="hero-copy">
+  <div class="eyebrow"><span class="signal"></span> OPEN SOURCE · v0.4.0-beta.15</div>
+  <h1>Don’t just ask if it works.<em>Make your agent show the proof.</em></h1>
+  <p class="lead">Reproduce a bug, inspect the evidence, verify the fix. An isolated AWS development lab your AI assistant can operate—without deploying to AWS.</p>
+  <div class="hero-actions"><a class="button primary" href="#install">Try it without Docker ↘</a><a class="button outline" href="#watch">Watch the walkthrough ▶</a></div>
+  <p class="fineprint">No AWS account for these demonstrations. Docker is only needed for actual emulator-backed tests. The offline preview does not execute AWS APIs.</p>
+  <div class="stats"><div><strong>38</strong><span>MCP tools</span></div><div><strong>7</strong><span>offline files verified</span></div><div><strong>3</strong><span>sample AWS services</span></div></div>
+ </div>
+ <div class="diagram-card">
+  <div class="diagram-top"><span><span class="signal"></span> ORDER FULFILLMENT</span><span>illustrative workflow</span></div>
+  <svg viewBox="0 0 580 290" role="img" aria-label="DynamoDB writes the order, S3 receipt upload fails, then an application retry restores S3 and publishes one SQS event">
+   <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#8aa0b8"/></marker></defs>
+   <rect x="20" y="35" width="170" height="146" rx="14" class="node"/><rect x="205" y="35" width="170" height="146" rx="14" class="node"/><rect x="390" y="35" width="170" height="146" rx="14" class="node"/>
+   <path d="M190 107H205M375 107H390" marker-end="url(#arrow)" class="connector"/>
+   <text x="36" y="70" class="node-icon">▥</text><text x="36" y="104" class="node-title">DynamoDB</text><text x="36" y="131" class="node-sub">Order persisted</text><text x="36" y="155" class="node-ok">✓ SAVED</text>
+   <text x="221" y="70" class="node-icon">▣</text><text x="221" y="104" class="node-title">S3</text><text x="221" y="131" class="node-sub">Receipt upload</text><text x="221" y="155" class="node-bad">✕ TIMEOUT</text>
+   <text x="406" y="70" class="node-icon">↗</text><text x="406" y="104" class="node-title">SQS</text><text x="406" y="131" class="node-sub">Fulfillment event</text><text x="406" y="155" class="node-sub">not published yet</text>
+   <path d="M103 181V217H288V181" class="retry"/><text x="178" y="208" class="retry-label">retry pending order</text>
+   <rect x="20" y="240" width="540" height="35" rx="8" class="result"/><text x="37" y="263" class="result-label">RECOVERED   ·   receipt restored   ·   one event published</text>
+  </svg>
+  <div class="diagram-bottom"><span>Bounded synthetic SDK fault</span><span>Not a production outage</span></div>
+ </div>
+</section>
+<section class="section wrap" id="install">
+ <div class="section-header"><p class="eyebrow">01 / THE 30-SECOND FIRST RUN</p><h2>Install nothing heavy. See proof first.</h2><p>You'll need Node.js 20+ and Git. No Docker, AWS account, or globally installed package required.</p></div>
+ <div class="install-grid">
+  <div class="terminal"><div class="terminal-head"><span>TERMINAL — WINDOWS / macOS / LINUX</span><span class="terminal-status">offline</span></div><pre id="install-command" tabindex="0"><code>git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs try --json</code></pre><button type="button" class="copy-button" data-copy="install-command">Copy commands</button></div>
+  <div class="verified"><div class="verified-top">ACTUAL LOCAL OUTPUT <span class="pass">PASS</span></div><div class="big-number">7 / 7</div><p>Architecture artifacts checked</p><div class="data-row"><span>Resources</span><strong>S3 · DynamoDB · SQS</strong></div><div class="data-row"><span>Contract</span><strong>14 steps, not executed</strong></div><div class="data-row"><span>Docker / AWS calls</span><strong>0 / 0</strong></div><a href="evidence/showcase-offline-trial-beta15.json">Inspect actual JSON ↗</a></div>
+ </div>
+ <div class="note"><strong>Want to keep the output?</strong> Run <code>node bin/aws-emulator-mcp.mjs architecture demo</code>. You’ll get editable diagrams, CloudFormation drafts, and a synthetic test plan in <code>reports/architecture-studio/</code>. Nothing deploys.</div>
+</section>
+<section class="section wrap" id="missions">
+ <div class="section-header"><p class="eyebrow">02 / SIX HANDS-ON MISSIONS</p><h2>Pick a problem. Understand the result.</h2><p>These are explanatory examples backed by linked tests—not a live emulator connection in your browser. Use the command for your own run.</p></div>
+ <div class="missions">
+  <div class="mission-tabs" role="tablist" aria-label="Choose demo">
+   <button type="button" role="tab" id="tab-0" data-mission="0" aria-controls="mission-panel" aria-selected="true"><span>01</span><strong>First 30 seconds</strong><small>No Docker</small></button>
+   <button type="button" role="tab" id="tab-1" data-mission="1" aria-controls="mission-panel" aria-selected="false" tabindex="-1"><span>02</span><strong>Catch a duplicate</strong><small>Emulated AWS APIs</small></button>
+   <button type="button" role="tab" id="tab-2" data-mission="2" aria-controls="mission-panel" aria-selected="false" tabindex="-1"><span>03</span><strong>Recover a partial write</strong><small>Synthetic SDK fault</small></button>
+   <button type="button" role="tab" id="tab-3" data-mission="3" aria-controls="mission-panel" aria-selected="false" tabindex="-1"><span>04</span><strong>Test your own fix</strong><small>Trusted local Python</small></button>
+   <button type="button" role="tab" id="tab-4" data-mission="4" aria-controls="mission-panel" aria-selected="false" tabindex="-1"><span>05</span><strong>Review infrastructure</strong><small>Read-only change risk</small></button>
+   <button type="button" role="tab" id="tab-5" data-mission="5" aria-controls="mission-panel" aria-selected="false" tabindex="-1"><span>06</span><strong>Connect your assistant</strong><small>Local MCP stdio</small></button>
+  </div>
+  <article class="mission-panel" id="mission-panel" role="tabpanel" aria-labelledby="tab-0" tabindex="0">
+   <p id="mission-tag" class="mission-tag">NO DOCKER REQUIRED · VERIFIED OFFLINE</p>
+   <h3 id="mission-title">Prove the install works</h3><p id="mission-story">Check the generator before downloading an emulator image.</p>
+   <div class="metrics"><div><span id="metric-a-label">Artifacts verified</span><strong id="metric-a">7</strong></div><div><span id="metric-b-label">Cloud API calls</span><strong id="metric-b">0</strong></div></div>
+   <h4>Copy and run</h4><div class="mission-terminal"><pre id="mission-command" tabindex="0"><code>node bin/aws-emulator-mcp.mjs try --json</code></pre><button class="copy-button" type="button" data-copy="mission-command">Copy</button></div>
+   <h4>What you learn</h4><p id="mission-learn">Whether the local generator produces a checked seven-file architecture bundle.</p>
+   <div class="limit"><strong>Does not prove:</strong> <span id="mission-limit">Real AWS service behavior.</span></div>
+   <a id="mission-proof" class="proof-link" href="evidence/showcase-offline-trial-beta15.json">Inspect evidence and method ↗</a><a id="mission-video" class="mission-video" href="assets/demos/beta15-quickstart-demo.mp4" target="_blank" rel="noopener noreferrer">▶ Watch this part (12 seconds)</a>
+  </article>
+ </div>
+ <div class="note"><strong>Ready for real emulated API calls?</strong> Start local Docker with <strong>Linux containers</strong>, run <code>node bin/aws-emulator-mcp.mjs preflight --json</code>, then <code>node bin/aws-emulator-mcp.mjs doctor</code>. The first signed image build needs internet access and substantial disk space.</div>
+</section>
+<section class="section wrap" id="watch">
+ <div class="section-header"><p class="eyebrow">03 / NARRATED WALKTHROUGH</p><h2>Watch the story. Reproduce each step.</h2><p>Explained with actual offline CLI output and publicly verifiable GitHub CI observations. Edited walkthrough—not a continuous terminal recording.</p></div>
+ <video class="tour-video" controls playsinline preload="metadata" poster="assets/demos/proof-first-beta15-poster.jpg" width="1280" height="720" aria-label="AWS Emulator MCP beta.15 narrated demonstration"><source src="assets/demos/proof-first-beta15.mp4" type="video/mp4"><track kind="captions" src="assets/demos/proof-first-beta15.vtt" srclang="en" label="English captions">Your browser cannot play MP4. <a href="assets/demos/proof-first-beta15.mp4">Open the video.</a></video>
+ <div class="video-actions"><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/DEMO_GALLERY.md">More video demos ↗</a><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/SHOWCASE_TRANSCRIPT.md">Read the accessible transcript ↗</a><a href="https://github.com/B11-Health/aws-emulator-mcp/actions/runs/44102711476">See signed emulator CI ↗</a></div>
+ <div class="clip-grid" aria-label="Four short standalone demos">
+  <a href="assets/demos/beta15-quickstart-demo.mp4"><img src="assets/demos/beta15-quickstart-poster.jpg" loading="lazy" alt="Illustrated terminal showing seven verified artifacts"><strong>1 · First run</strong><small>12 seconds · No Docker</small></a>
+  <a href="assets/demos/beta15-reliability-demo.mp4"><img src="assets/demos/beta15-reliability-poster.jpg" loading="lazy" alt="Before and after cards comparing duplicate messages"><strong>2 · Catch and recover</strong><small>21 seconds · Signed emulator</small></a>
+  <a href="assets/demos/beta15-source-review-demo.mp4"><img src="assets/demos/beta15-source-review-poster.jpg" loading="lazy" alt="Two trusted Python handler tests and source-level review"><strong>3 · Review a fix</strong><small>22 seconds · Trusted local source</small></a>
+  <a href="assets/demos/beta15-connect-agent-demo.mp4"><img src="assets/demos/beta15-connect-agent-poster.jpg" loading="lazy" alt="Local MCP stdio configuration for a coding assistant"><strong>4 · Connect an agent</strong><small>9 seconds · Local stdio</small></a>
+ </div>
+</section>
+<section class="section wrap" id="evidence">
+ <div class="section-header"><p class="eyebrow">04 / WHAT'S REAL, WHAT ISN'T</p><h2>Clear evidence. No magic claims.</h2><p>Use our adapter when bounded MCP workflows and inspectable PR evidence help. Otherwise the native AWS SDK/CLI and AWS Emulator may be simpler.</p></div>
+ <div class="proof-cards">
+  <div><span class="proof-symbol">✓</span><h3>Passed in CI</h3><p>Hosted Windows and Linux checks, packaged CLI, official MCP clients, signed emulator API calls, cleanup, and source-fingerprint checks.</p><a href="https://github.com/B11-Health/aws-emulator-mcp/actions/runs/44102711476">View verified CI run ↗</a></div>
+  <div><span class="proof-symbol caution">!</span><h3>Not production parity</h3><p>A passing local test does not verify every AWS API, IAM policy enforcement, true process-crash behavior, distributed transactions, or security certification.</p><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/docs/WHY_MCP.md">When NOT to use the MCP ↗</a></div>
+  <div><span class="proof-symbol">↗</span><h3>Your test matters</h3><p>Try the offline command, then one Docker-backed experiment. Reports saying “this doesn’t help me because…” are valuable too.</p><a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">Send a short field report ↗</a></div>
+ </div>
+</section>
+</main>
+<footer class="footer"><div class="wrap footer-content"><div><strong>AWS Emulator MCP</strong><small>Independent developer tool · MIT · v0.4.0-beta.15</small></div><div><a href="https://github.com/B11-Health/aws-emulator-mcp">Source</a><a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15">Release</a><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/SECURITY.md">Security</a><a href="https://github.com/B11-Health/aws-emulator-mcp/issues/26">Feedback</a></div></div></footer>
+<script src="demo-studio.js" defer></script>
+</body></html>
