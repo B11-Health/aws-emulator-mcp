@@ -425,7 +425,8 @@ function renderDiff(report) {
 }
 
 function config(format = 'copilot') {
-  if (!['copilot', 'vscode'].includes(format)) fail('config format: copilot or vscode', 2);
+  if (!['copilot', 'vscode'].includes(format)) fail('config format: copilot (native) or vscode (legacy)', 2);
+  if (format === 'vscode') stderr.write('AWS Emulator MCP: config vscode uses the deprecated editor-managed servers format. For current VS Code Copilot use: config copilot (native mcpServers).\n');
   const launch = { type: 'stdio', command: execPath, args: [fileURLToPath(import.meta.url), 'mcp'] };
   const result = format === 'copilot'
     ? { mcpServers: { 'aws-emulator-local': launch } }

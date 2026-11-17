@@ -1,0 +1,48 @@
+{
+  "manifest_version": "0.3",
+  "name": "aws-emulator-mcp",
+  "display_name": "AWS Emulator MCP — Local Development Lab",
+  "version": "0.4.0-beta.15",
+  "description": "Use reviewed S3, DynamoDB, SQS and reliability lab workflows from a local Docker-based AWS Emulator. Independent community project, not AWS.",
+  "long_description": "A local, Docker-backed MCP adapter for explicit AWS Emulator test scenarios. Requires Docker Engine with Linux containers, an initial signed upstream emulator download, and sufficient disk space. It does not connect to or deploy into an AWS account. Results do not prove real AWS service fidelity or IAM enforcement.",
+  "author": {
+    "name": "B11-Health",
+    "url": "https://github.com/B11-Health"
+  },
+  "homepage": "https://b11-health.github.io/aws-emulator-mcp/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/B11-Health/aws-emulator-mcp"
+  },
+  "license": "MIT",
+  "keywords": [
+    "aws",
+    "mcp",
+    "emulator",
+    "testing",
+    "docker",
+    "s3",
+    "dynamodb",
+    "sqs"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "bin/aws-emulator-mcp.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/bin/aws-emulator-mcp.mjs",
+        "mcp"
+      ]
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "win32",
+      "darwin"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  }
+}
