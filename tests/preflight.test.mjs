@@ -135,7 +135,7 @@ test('host working-volume space is advisory and never claims Docker Desktop VM c
   assert.equal(sample.lowSpaceAdvisory,true);
   assert.equal(sample.dockerDataCapacityVerified,false);
   const {run,calls} = fakeRun({image:true});
-  const report = inspectPreflight({nodeVersion:'22.0.0',dockerHost:'',run,statfs:statfsLow});
+  const report = inspectPreflight({nodeVersion:'22.0.0',platform:'win32',dockerHost:'',run,statfs:statfsLow});
   assert.equal(report.emulatorReady,true);
   assert.equal(report.hostWorkspaceDisk.lowSpaceAdvisory,true);
   assert.match(printPreflight(report),/below 10 GiB on host working volume/);
