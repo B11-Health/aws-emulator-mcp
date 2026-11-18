@@ -59,10 +59,14 @@ export function verifyAppCaseProof(proof, sourceSha, spec, exitCode) {
     throw Error('SDK calls reported without an invoked source function');
   for (let i = 0; i < spec.invoke.expectedCalls.length; i++) {
     const ref = spec.invoke.expectedCalls[i], rec = proof.expectedCalls[i];
-    const observed = actual.get(ref.service+'.'+ref.operation)?.attempts || 0;
+    const call = actual.get(ref.service+'.'+ref.operation);
+    const observed = call?.attempts || 0;
+    // A caught SDK exception is still an attempt, not evidence of a successful
+    // application operation. Retried calls may fail before later succeeding.
+    const validated = ref.min <= observed && observed <= ref.max && (call?.successes || 0) > 0;
     if (!rec || rec.service !== ref.service || rec.operation !== ref.operation ||
         rec.min !== ref.min || rec.max !== ref.max || rec.observed !== observed ||
-        rec.passed !== (ref.min <= observed && observed <= ref.max))
+        rec.passed !== validated)
       throw Error('SDK call-count evidence mismatch');
   }
   const all = v => v.every(row => row.passed);

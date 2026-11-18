@@ -272,7 +272,8 @@ def execute(envelope):
         result["expectedCalls"].append({
             "service": item["service"], "operation": item["operation"],
             "min": item["min"], "max": item["max"],
-            "observed": actual[0], "passed": item["min"] <= actual[0] <= item["max"]})
+            "observed": actual[0], "passed": (
+                item["min"] <= actual[0] <= item["max"] and actual[1] > 0)})
     result["cleanupPassed"] = len(result["cleanup"]) == len(spec["cleanup"]) and all(
         step["passed"] for step in result["cleanup"])
     result["applicationInvariantPassed"] = (
