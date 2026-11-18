@@ -47,8 +47,10 @@ That verifies seven generated architecture artifacts and explicitly reports the
 14-step contract as **not executed**. For real emulator-backed tests, install
 local Docker with **Linux containers** and run preflight followed by doctor.
 The newer `master` source adds a **read-only preflight host-space advisory**
-and checks **cached image source fingerprints** before reuse; neither is
-a test of Docker Desktop VM capacity or AWS service fidelity. These additions
+and checks **cached image source fingerprints** before reuse. Linux Engine
+hosts can additionally expose a sanitized **host-visible Docker data-root
+volume** reading, but no host probe proves Docker Desktop VM capacity or AWS
+service fidelity. These additions
 are **not in the pinned beta.15 tag**. [First-run details](docs/ONBOARDING.md).
 The video is an edited, narrated explanation using actual offline CLI output
 and linked project-maintained CI evidence, **not an uncut terminal capture**

@@ -72,9 +72,14 @@ before launching and rebuilds on a mismatch.
 beta.15 tag):** `preflight --json` includes a `hostWorkspaceDisk` advisory,
 `imageSourceStatus`, and `imageReusable`. The host working-volume measurement
 can warn when it has under **10 GiB** of free space, but this is a **conservative
-planning advisory, not a minimum emulator requirement**. Docker Desktop may
-store its images in a different VM/disk, so a healthy host-space result **does not
-verify actual Docker storage capacity**. With a cached tag, preflight now checks
+planning advisory, not a minimum emulator requirement**. On Linux, when the
+local Docker Engine's data-root directory is also **visible on the host**,
+`hostVisibleDockerRootDisk` reports a second, more relevant host-volume
+reading. It still cannot prove that the daemon shares the same filesystem
+namespace or that an image build will fit. The daemon's private data-root
+**path is never printed**. Docker Desktop may store images in a different
+VM/disk, so a healthy host-space result **does not verify actual Docker storage
+capacity**. With a cached tag, preflight now checks
 the local Docker-copy source fingerprint and warns if an existing image would
 be rebuilt. The fingerprint is only a local cache-coherency check, **not**
 proof of an authentic package, emulator parity, IAM enforcement or upstream

@@ -55,7 +55,7 @@ export function inspectPreflight({
   dockerHost = process.env.DOCKER_HOST,
   image = 'aws-emulator-mcp:0.4.0-beta.15',
   expectedImageDigest = null,
-  statfs = () => statfsSync(process.cwd(), {bigint: true}),
+  statfs = directory => statfsSync(directory, {bigint: true}),
   run = (args, timeout) => spawnSync('docker', args, {
     encoding: 'utf8', timeout, windowsHide: true, shell: false
   })
@@ -72,13 +72,14 @@ export function inspectPreflight({
     imageCached: null,
     imageSourceStatus: 'not-checked',
     imageReusable: null,
-    hostWorkspaceDisk: inspectWorkspaceDisk(statfs),
+    hostWorkspaceDisk: inspectWorkspaceDisk(() => statfs(process.cwd())),
+    hostVisibleDockerRootDisk: null,
     dockerVersion: null,
     checks,
     nextCommand: nodeOk ? 'aws-emulator-mcp architecture demo' : 'Install Node.js 20+',
     sourceCheckoutCommand: nodeOk ? 'node bin/aws-emulator-mcp.mjs architecture demo' : 'Install Node.js 20+',
     guidance: 'Architecture demo needs no Docker; Docker-backed commands need a local daemon and enough image space.',
-    limitations: 'Read-only local checks. Host working-volume space is advisory, not Docker Desktop/VM capacity. Cached image reuse requires a matching source fingerprint. No AWS parity, outbound network, credentials, or emulator execution checked.',
+    limitations: 'Read-only local checks. Host working-volume and optional Linux host-visible Docker data-root space are advisories, not authoritative Docker Desktop/VM capacity. Cached image reuse requires a matching source fingerprint. No AWS parity, outbound network, credentials, or emulator execution checked.',
   };
   // Never attempt to contact an ambient remote daemon, even to query version.
   if (dockerHost && !LOCAL_DOCKER.test(dockerHost)) {
@@ -113,6 +114,24 @@ export function inspectPreflight({
   }
   output.dockerVersion = parts[1];
   checks.docker = result(true);
+  // Only after verifying a local Linux daemon: an optional host-visible data root.
+  // Docker Desktop/VM may expose a different namespace; this is NOT a daemon
+  // filesystem capacity query, and the private root path is never reported.
+  if (platform === 'linux') {
+    const root = safeCommand(run, ['info', '--format', '{{.DockerRootDir}}'], 4000);
+    const name = root.stdout.trim();
+    if (root.status === 0 && /^\/[A-Za-z0-9_./-]{1,240}$/.test(name) &&
+        !name.includes('/../') && !name.endsWith('/..')) {
+      const sample = inspectWorkspaceDisk(() => statfs(name));
+      output.hostVisibleDockerRootDisk = {
+        scope: 'host-visible-docker-data-root-volume',
+        freeGiB: sample.freeGiB,
+        advisoryThresholdGiB: sample.advisoryThresholdGiB,
+        lowSpaceAdvisory: sample.lowSpaceAdvisory,
+        dockerDaemonNamespaceVerified: false
+      };
+    }
+  }
   const cached = safeCommand(run, ['image', 'inspect', image, '--format', '{{.Id}}'], 4000);
   output.imageCached = cached.status === 0;
   checks.image = result(output.imageCached, output.imageCached
@@ -160,6 +179,14 @@ export function printPreflight(report) {
     if (report.hostWorkspaceDisk.lowSpaceAdvisory)
       out.push('  Advisory: below 10 GiB on host working volume; inspect actual Docker storage before an initial build.');
   } else out.push('  Host working-volume space: unavailable (Docker storage NOT verified)');
+  if (report.hostVisibleDockerRootDisk) {
+    const disk = report.hostVisibleDockerRootDisk;
+    if (disk.freeGiB !== null) {
+      out.push('  Host-visible Docker data-root volume free: ' + disk.freeGiB.toFixed(1) + ' GiB (daemon filesystem namespace NOT verified)');
+      if (disk.lowSpaceAdvisory)
+        out.push('  Advisory: host-visible Docker data root below 10 GiB; check actual daemon storage before a large image build.');
+    } else out.push('  Host-visible Docker data-root volume space: unavailable');
+  }
 
   if (report.imageCached !== null) out.push(`  Versioned Docker image tag present: ${report.imageCached ? 'yes' : 'no'} (not a source verification)`);
   if (report.checks.docker?.reason) out.push(`  Blocker: ${report.checks.docker.reason}`);

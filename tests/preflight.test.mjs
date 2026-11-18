@@ -9,13 +9,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bin = path.join(root, 'bin/aws-emulator-mcp.mjs');
 const localContext = JSON.stringify('unix:///var/run/docker.sock') + '\n';
 const socket = 'unix:///var/run/docker.sock';
-function fakeRun({cli = true, context = localContext, info = 'linux|25.0.16\n', image = false, label = 'a'.repeat(64)} = {}) {
+function fakeRun({cli = true, context = localContext, info = 'linux|25.0.16\n', image = false, label = 'a'.repeat(64), dockerRoot = '/var/lib/docker'} = {}) {
   const calls = [];
   const run = (args) => {
     calls.push(args.join(' '));
     if (args[0] === '--version') return {status: cli ? 0 : 1, stdout: 'Docker version 25.0.16'};
     if (args[0] === 'context') return {status: 0, stdout: context};
-    if (args[0] === 'info') return {status: info === null ? 1 : 0, stdout: info ?? ''};
+    if (args[0] === 'info') return args.at(-1) === '{{.DockerRootDir}}'
+      ? {status:dockerRoot === null?1:0,stdout:dockerRoot??''}
+      : {status: info === null ? 1 : 0, stdout: info ?? ''};
     if (args[0] === 'image') {
       if (args.at(-1).includes('Config.Labels')) return {status: label === null ? 1 : 0, stdout: label ?? ''};
       return {status: image ? 0 : 1, stdout: image ? 'sha256:123' : ''};
@@ -35,7 +37,7 @@ test('ready local Docker is checked read-only, no builds or API calls', () => {
   assert.equal(report.nextCommand, 'aws-emulator-mcp doctor');
   assert.equal(report.sourceCheckoutCommand, 'node bin/aws-emulator-mcp.mjs doctor');
   assert.equal(report.dockerVersion, '25.0.16');
-  assert.deepEqual(calls.map(x=>x.split(' ')[0]), ['--version', 'context', 'info', 'image']);
+  assert.deepEqual(calls.map(x=>x.split(' ')[0]), ['--version', 'context', 'info', 'info', 'image']);
   assert.ok(calls.every(x => !/build|run|pull|exec|login|secret/.test(x)));
   assert.doesNotMatch(JSON.stringify(report), /var\/run\/docker\.sock|password|token|account-id/i);
 });
@@ -210,4 +212,49 @@ test('remote Docker host refuses before any Docker call or cache fingerprint eva
   assert.equal(r.imageSourceStatus,'not-checked');
   assert.equal(sourceReads,0);
   assert.equal(calls.length,0);
+});
+
+
+test('Linux preflight distinguishes /tmp workspace from host-visible Docker data-root volume', () => {
+  const {run,calls}=fakeRun({image:false,dockerRoot:'/var/lib/docker'});
+  const statfs=directory=>directory==='/var/lib/docker'
+    ? {bsize:1024n,bavail:7n*1024n*1024n}
+    : {bsize:1024n,bavail:12n*1024n*1024n};
+  const r=inspectPreflight({nodeVersion:'22.0.0',platform:'linux',dockerHost:'',run,statfs});
+  assert.equal(r.emulatorReady,true);
+  assert.equal(r.hostWorkspaceDisk.freeGiB,12);
+  assert.equal(r.hostWorkspaceDisk.lowSpaceAdvisory,false);
+  assert.equal(r.hostVisibleDockerRootDisk.freeGiB,7);
+  assert.equal(r.hostVisibleDockerRootDisk.lowSpaceAdvisory,true);
+  assert.equal(r.hostVisibleDockerRootDisk.dockerDaemonNamespaceVerified,false);
+  assert.match(printPreflight(r),/host-visible Docker data root below 10 GiB/);
+  assert.doesNotMatch(JSON.stringify(r),/var\/lib\/docker/);
+  assert.ok(calls.includes('info --format {{.DockerRootDir}}'));
+  assert.ok(!calls.some(x=>/^build|^pull|^run|^exec/.test(x)));
+});
+
+test('host-visible Docker data-root probe degrades safely when daemon root is inaccessible', () => {
+  const {run}=fakeRun({image:true,dockerRoot:'/var/lib/docker'});
+  const r=inspectPreflight({nodeVersion:'22.0.0',platform:'linux',dockerHost:'',run,
+    statfs:directory=>{if(directory==='/var/lib/docker')throw Error('PRIVATE_DOCKER_PATH');return {bsize:1024n,bavail:11n*1024n*1024n};}});
+  assert.equal(r.emulatorReady,true);
+  assert.equal(r.hostVisibleDockerRootDisk.freeGiB,null);
+  assert.match(printPreflight(r),/data-root volume space: unavailable/);
+  assert.doesNotMatch(JSON.stringify(r),/PRIVATE_DOCKER_PATH|var\/lib\/docker/);
+  const {run:windowsRun,calls}=fakeRun({image:false});
+  const w=inspectPreflight({nodeVersion:'22.0.0',platform:'win32',dockerHost:'',run:windowsRun});
+  assert.equal(w.hostVisibleDockerRootDisk,null);
+  assert.equal(calls.filter(x=>x.includes('DockerRootDir')).length,0);
+});
+
+test('unsafe daemon root output is not opened or exposed', () => {
+  for(const dockerRoot of ['/var/lib/../secrets','relative/path','/var/lib/docker\nPRIVATE_PATH',null]) {
+    const {run}=fakeRun({image:false,dockerRoot});
+    let probed=false;
+    const r=inspectPreflight({nodeVersion:'22.0.0',platform:'linux',dockerHost:'',run,
+      statfs:()=>{probed=true;return {bsize:1024n,bavail:1024n*1024n};}});
+    assert.equal(r.hostVisibleDockerRootDisk,null);
+    assert.doesNotMatch(JSON.stringify(r),/PRIVATE_PATH|secrets/);
+    assert.equal(probed,true); // The unrelated host-working-volume probe still ran.
+  }
 });

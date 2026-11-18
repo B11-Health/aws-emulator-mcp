@@ -22,8 +22,12 @@ preflight additionally reports a **read-only host working-volume free-space
 advisory** and, if a local Docker image tag already exists, whether its
 source fingerprint matches the checkout. Under 10 GiB of host working-volume
 free space is only a **planning warning**, not a launch blocker or a
-measurement of Docker Desktop's VM/disk capacity. It never prunes or downloads
-anything; no output verifies AWS production behavior.
+measurement of Docker Desktop's VM/disk capacity. On Linux only, when a
+local Engine's data root is visible from the shell, preflight can also report
+its **host-visible volume** as a separate observation; the Docker daemon's
+filesystem namespace is not verified. No private storage path is emitted.
+Preflight never prunes or downloads anything; no output verifies AWS
+production behavior.
 
 ## VS Code: native Copilot harness (recommended)
 
