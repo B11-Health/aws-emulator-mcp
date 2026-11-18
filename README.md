@@ -99,6 +99,8 @@ This only prints configuration; it does not prove a live Claude Desktop MCP conn
 
 [**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
 
+**After pasting client config (round-three draft):** run `node bin/aws-emulator-mcp.mjs connect-check --json` for a bounded local MCP stdio handshake and read-only `emulator_status` tool reply **only when an existing local emulator image has a matching source fingerprint**. It never builds or pulls Docker images. A terminal handshake does not verify that the desktop client connected. [Exact setup and failure guidance](docs/FIRST_RUN.md#before-your-first-mcp-reply-explicitly-check-the-local-connection-round-3-draft).
+
 ## Help build and test it
 
 **Outside contributors welcome.** You do not need repository write access

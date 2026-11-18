@@ -14,6 +14,7 @@ import { inspectOfficialSession, parseOfficialSessionArgs, formatOfficialSession
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onboard.mjs';
+import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
 import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
@@ -47,6 +48,7 @@ Commands:
   project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
   project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
+  connect-check [--json]  Explicit local MCP handshake and read-only tool reply (prebuilt image only)
   official-session [--port 9297] [--identity] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -780,6 +782,19 @@ async function main() {
     stdout.write(parsed.json ? JSON.stringify(report, null, 2) + '\n'
       : formatOfficialSession(report) + '\n');
     if (!report.localHealthPassed || (parsed.identity && !report.accountIdentityVerified)) process.exitCode = 1;
+    return;
+  }
+  if (command === 'connect-check') {
+    if (args.length > 1 || (args.length===1 && args[0]!=='--json'))
+      fail('Usage: aws-emulator-mcp connect-check [--json]', 2);
+    const fromCheckout=path.resolve(process.cwd())===ROOT &&
+      !ROOT.split(path.sep).includes('node_modules');
+    const readiness=inspectPreflight({image:IMAGE,
+      expectedImageDigest:()=>imageSourceDigest(ROOT)});
+    const report=inspectMcpConnection({readiness,fromCheckout});
+    stdout.write(args[0]==='--json' ? JSON.stringify(report,null,2)+'\n'
+      : formatMcpConnection(report));
+    if (!report.passed) process.exitCode=1;
     return;
   }
   if (command === 'preflight') {

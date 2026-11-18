@@ -117,6 +117,43 @@ connection, ask Claude to call `emulator_doctor`; inspect actual tool output
 and local STS-account verification rather than assuming readiness. No
 independent Claude Desktop connection is claimed here.
 
+### Before your first MCP reply: explicitly check the local connection (round 3 draft)
+
+After you copy and review the generated Claude Desktop or Copilot entry,
+check the **same installed CLI** in a terminal **before restarting the GUI**:
+
+```sh
+# From this source checkout; omit "node bin/…" if installed globally.
+node bin/aws-emulator-mcp.mjs connect-check --json
+```
+
+This is **not the offline architecture test**. It first verifies the selected
+**local** Linux Docker Engine and the source fingerprint of the already-built
+Docker image. If the image is missing, stale or unverified, it exits **1**
+with `stage: "cached-image"` and suggests the **separate, explicit** `build`
+command. **No Docker image is built, pulled, pruned or downloaded by
+`connect-check`.** Before choosing `build`, inspect available Docker storage
+and the expected signed upstream download; that operation requires internet
+access and is **not** performed for you.
+
+Only when a **matching cached image** exists, the check starts one temporary
+local container with `--rm --network none --pull never`. It sends bounded
+JSON-RPC `initialize`, `tools/list` and `tools/call` for **read-only
+`emulator_status`**, checks that the response identifies a healthy **loopback**
+emulator, and exits **0** on success. It will not create S3 buckets or run
+application code. A timeout, corrupt reply, tool error, unsupported Docker
+context or missing prerequisites exits **1** with a sanitized failure stage;
+invalid flags exit **2**. The command will not edit desktop settings and
+never forwards production AWS credentials to the container.
+
+**Interpretation:** `status: "passed"` means a local MCP stdio handshake and
+read-only tool reply worked **from this terminal**. It does **not** establish
+that Claude Desktop or Copilot loaded the JSON, that a later Docker session
+will succeed, or that any AWS API, production IAM policy or application was
+tested. Once the check passes, restart/connect your actual desktop client and
+request `emulator_doctor`. Inspect and report **that client's actual tool
+reply**. The only verified GUI result comes from the GUI, not this check.
+
 ## 3. How do I know I tested my application?
 
 The offline first win establishes **only** that the bundled local
