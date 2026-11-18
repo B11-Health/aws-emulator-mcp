@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
@@ -128,6 +129,19 @@ test('invalid first-win evidence and exceptions fail closed and sanitize details
   assert.equal(failed.passed,false);
   assert.equal(failed.readiness.emulator,'docker_blocked');
   assert.doesNotMatch(JSON.stringify(failed),/PRIVATE_WORKSPACE|SECRET|AWS_PROFILE/);
+});
+
+test('the unmerged first-run instructions use a branch that contains onboard',()=>{
+  const readme=readFileSync(path.join(ROOT,'README.md'),'utf8');
+  const firstRun=readFileSync(path.join(ROOT,'docs/FIRST_RUN.md'),'utf8');
+  const cmd='git clone --depth 1 --branch release/agent-team-preview-20261118 https://github.com/B11-Health/aws-emulator-mcp.git';
+  assert.ok(readme.includes(cmd));
+  assert.ok(firstRun.includes(cmd));
+  assert.match(readme,/not.*current default[\s\S]{0,80}master/i);
+  assert.match(firstRun,/does not yet include this command/);
+  assert.match(readme,/onboard --offline --json/);
+  assert.match(firstRun,/pull\/74/);
+  assert.match(readme,/New in the unmerged integration preview/);
 });
 
 test('CLI offline success emits a bounded, parseable JSON report without Docker',()=>{
