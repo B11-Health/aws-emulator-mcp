@@ -87,18 +87,26 @@ export function verifyAppCaseProof(proof, sourceSha, spec, exitCode) {
     throw Error('SDK calls reported without an invoked source function');
   for (let i = 0; i < spec.invoke.expectedCalls.length; i++) {
     const ref = spec.invoke.expectedCalls[i], rec = proof.expectedCalls[i];
-    const observed = actual.get(ref.service+'.'+ref.operation)?.attempts || 0;
+    const call = actual.get(ref.service+'.'+ref.operation);
+    const observed = call?.attempts || 0;
+    // This field confirms the declared *attempt count*. Successful SDK calls
+    // are checked separately in the application invariant, so a deliberately
+    // faulted baseline can retain valid call-count evidence without going green.
+    const validated = ref.min <= observed && observed <= ref.max;
     if (!rec || rec.service !== ref.service || rec.operation !== ref.operation ||
         rec.min !== ref.min || rec.max !== ref.max || rec.observed !== observed ||
-        rec.passed !== (ref.min <= observed && observed <= ref.max))
+        rec.passed !== validated)
       throw Error('SDK call-count evidence mismatch');
   }
   const all = v => v.every(row => row.passed);
   const cleanup = proof.cleanup.length === spec.cleanup.length && all(proof.cleanup);
+  const successfulExpectedCalls = spec.invoke.expectedCalls.every(ref =>
+    (actual.get(ref.service+'.'+ref.operation)?.successes || 0) > 0);
   const invariant = proof.sourceInvoked && !proof.applicationErrors &&
       proof.setup.length === spec.setup.length && all(proof.setup) &&
       proof.checks.length === spec.checks.length && all(proof.checks) &&
-      all(proof.expectedCalls) && (!faultSpec || fault.injected);
+      all(proof.expectedCalls) && successfulExpectedCalls &&
+      (!faultSpec || fault.injected);
   if (proof.cleanupPassed !== cleanup || proof.applicationInvariantPassed !== invariant ||
       proof.passed !== (cleanup && invariant) || exitCode !== (proof.passed ? 0 : 1)) {
     throw Error('Contradictory application success or process exit evidence');

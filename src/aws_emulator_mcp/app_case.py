@@ -350,6 +350,8 @@ def execute(envelope):
         len(result["checks"]) == len(spec["checks"]) and
         all(step["passed"] for step in result["checks"]) and
         all(item["passed"] for item in result["expectedCalls"]) and
+        all(counters.get((item["service"], item["operation"]), [0, 0])[1] > 0
+            for item in spec["invoke"]["expectedCalls"]) and
         (fault is None or fault.injected))
     result["passed"] = result["applicationInvariantPassed"] and result["cleanupPassed"]
     return result

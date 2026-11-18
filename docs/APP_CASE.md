@@ -188,7 +188,10 @@ installed Python dependencies, but this first version does **not** install
 packages or import sibling files from your host project. Use a self-contained
 module or a reviewed thin adapter if your original app is more complex.
 Only clients in the case's `services` list are injected. Calls through those
-clients are observed and counted without recording argument values. A source
+clients are observed and counted without recording argument values. Expected
+Expected call-count rows measure **attempts**. For an overall green
+application invariant, each expected SDK operation must also have at least one
+successful call. A caught exception alone cannot prove a successful write. A source
 module can import dependencies already bundled in the container; this is not
 a general project packaging system.
 

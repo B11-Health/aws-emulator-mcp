@@ -63,6 +63,15 @@ test('false source hashes, mismatched cases, stale SDK counts and forged asserti
   assert.throws(()=>compare(recorded.before,wrongVersion),/same AWS Emulator version/);
 });
 
+test('zero successful expected SDK calls cannot verify an application fix',()=>{
+  const after=structuredClone(recorded.after);
+  const sent=after.sdkCalls.find(c=>c.service==='sqs' && c.operation==='SendMessage');
+  assert.ok(sent.attempts > 0);
+  sent.successes=0; // Synthetic caught exception: attempt counted, API never succeeded.
+  // A forged green runner report must fail closed even with passing state checks.
+  assert.throws(()=>compare(recorded.before,after),/Contradictory application success/);
+});
+
 test('unrelated failure does not count as a reproduced regression',()=>{
   const before=structuredClone(recorded.before);
   // Preserve the exact record's response validity while changing the failure
