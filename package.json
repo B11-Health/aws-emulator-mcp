@@ -106,6 +106,8 @@
     "src/aws_emulator_mcp/app_verify.py",
     "src/aws_emulator_mcp/app_case.py",
     "src/aws_emulator_mcp/app_case_inspect.py",
+    "src/aws_emulator_mcp/official_session_identity.py",
+    "docs/evidence/official-session-identity-aws-emulator-1.0.511.json",
     "src/aws_emulator_mcp/app_case_static_validate.py",
     "docs/BYO_HANDLER.md",
     "docs/APP_CASE.md",
