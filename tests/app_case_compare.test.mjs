@@ -83,6 +83,71 @@ test('unrelated failure does not count as a reproduced regression',()=>{
   assert.equal(compare(crashed,recorded.after).passed,false);
 });
 
+const retrySpec=JSON.parse(readFileSync(path.join(ROOT,'examples/app-case/sqs-retry-timeout.json'),'utf8'));
+const retryRecorded=JSON.parse(readFileSync(path.join(ROOT,
+  'docs/evidence/app-case-sqs-retry-aws-emulator-1.0.506.json'),'utf8'));
+const retryBugSha=digest('sqs-retry-bug.py'), retryFixSha=digest('sqs-retry-fixed.py');
+
+test('app fault evidence proves a Python recovery path, not a standalone SDK probe',()=>{
+  const before=structuredClone(retryRecorded.before), after=structuredClone(retryRecorded.after);
+  assert.equal(before.emulatorVersion,'Version: 1.0.506');
+  const comparison=compareAppCaseEvidence(before,retryBugSha,1,after,retryFixSha,0,retrySpec);
+  assert.equal(comparison.passed,true);
+  assert.equal(comparison.bugReproduced,true);
+  assert.equal(comparison.fixVerified,true);
+  assert.equal(comparison.before.appFault.injected,true);
+  assert.equal(comparison.after.appFault.injected,true);
+  assert.equal(comparison.before.sdkCalls[0].successes,0);
+  assert.equal(comparison.after.sdkCalls[0].successes,1);
+  assert.match(appCaseMarkdown(comparison),/Synthetic before-call SDK fault/);
+  assert.doesNotMatch(JSON.stringify(comparison),/synthetic-retry-event/);
+});
+
+test('real signed-emulator lost-ack negative control exposes duplicate SQS send',()=>{
+  const spec=structuredClone(retrySpec);
+  spec.invoke.fault.mode='after-success';
+  const report=retryRecorded.afterSuccessNegativeControl;
+  assert.equal(report.emulatorVersion,'Version: 1.0.506');
+  assert.equal(report.appFault.sentToEmulator,true);
+  assert.equal(report.sdkCalls[0].successes,2);
+  assert.equal(report.checks[0].assertions[1].passed,false);
+  assert.equal(report.cleanupPassed,true);
+  assert.equal(verifyAppCaseProof(report,retryFixSha,spec,1).passed,false);
+});
+
+test('missing, forged, or untriggered app fault never produces a false green',()=>{
+  const before=structuredClone(retryRecorded.before), after=structuredClone(retryRecorded.after);
+  for (const mutation of [
+    p=>{delete p.appFault},
+    p=>{p.appFault.sentToEmulator=true},
+    p=>{p.appFault.mode='after-success'},
+    p=>{p.appFault.attemptsSeen=0},
+    p=>{p.appFault.injected=false},
+    p=>{p.appFault.privateUrl='do-not-leak'},
+    p=>{p.sdkCalls[0].successes=2},
+  ]) {
+    const invalid=structuredClone(after); mutation(invalid);
+    assert.throws(()=>verifyAppCaseProof(invalid,retryFixSha,retrySpec,0),
+      /fault|SDK attempt|Missing|inconsistent/);
+  }
+  // An application that succeeds at its state assertions but never executes
+  // the selected fault is explicitly NOT a verified recovery branch.
+  const unreachable=structuredClone(after);
+  unreachable.sdkCalls=[];
+  unreachable.expectedCalls[0].observed=0;
+  unreachable.expectedCalls[0].passed=false;
+  unreachable.appFault.attemptsSeen=0;
+  unreachable.appFault.injected=false;
+  unreachable.applicationInvariantPassed=false;
+  unreachable.passed=false;
+  assert.equal(verifyAppCaseProof(unreachable,retryFixSha,retrySpec,1).passed,false);
+  assert.equal(compareAppCaseEvidence(before,retryBugSha,1,
+    unreachable,retryFixSha,1,retrySpec).passed,false);
+  const original=structuredClone(recorded.after);
+  original.appFault=structuredClone(after.appFault);
+  assert.throws(()=>verifyAppCaseProof(original,afterSha,spec,0),/Unrequested/);
+});
+
 test('CLI accepts only explicit local source and bounded reviewed cases',()=>{
   const dir=mkdtempSync(path.join(tmpdir(),'mcp-app-case-cli-'));
   const run=(...args)=>spawnSync(process.execPath,[CLI,...args],{encoding:'utf8',timeout:15000});
