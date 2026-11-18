@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b111d">
+  <meta name="description" content="Inspect recorded AWS Emulator MCP before-and-after Python application assertions, cleanup checks, source hashes and reproducible commands.">
+  <link rel="canonical" href="https://b11-health.github.io/aws-emulator-mcp/proof-explorer.html">
+  <link rel="stylesheet" href="proof-explorer.css">
+  <script type="module" src="proof-explorer.js"></script>
+  <title>Application Proof Explorer | AWS Emulator MCP</title>
+</head>
+<body>
+<a class="skip" href="#main">Skip to proof</a>
+<header class="nav">
+  <a href="./" class="brand"><span class="mark">B11</span> AWS Emulator <strong>MCP</strong></a>
+  <nav aria-label="Page navigation"><a href="#proof">Evidence</a><a href="#reproduce">Reproduce</a><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/PROOF_WORKFLOW.md">Developer recipe</a><a href="https://github.com/B11-Health/aws-emulator-mcp">GitHub</a></nav>
+</header>
+<main id="main" class="wrap">
+<section class="hero" aria-labelledby="page-heading">
+  <p class="eyebrow">APPLICATION BEHAVIOR / RECORDED EVIDENCE</p>
+  <h1 id="page-heading">A green test is not enough.<br><em>Show what changed.</em></h1>
+  <p class="intro">Explore two project-maintained Python application bug/fix comparisons against the local AWS Emulator. The same reviewed assertion must <strong>fail before</strong> and <strong>pass after</strong>; separately observed SDK responses and cleanup are part of the evidence.</p>
+  <p class="notice"><strong>Not a live emulator.</strong> This page reads versioned, redacted JSON committed to this repository. It does not call AWS, execute Python, attest the underlying run, or establish production parity. You can inspect the originals and reproduce the tests locally.</p>
+  <div class="hero-links"><a class="primary" href="#proof">Inspect a recorded test</a><a class="secondary" href="#reproduce">Run it yourself</a></div>
+</section>
+
+<section class="section" id="proof" aria-labelledby="proof-title">
+  <div class="section-title"><div><p class="eyebrow">01 / WHAT FAILED, EXACTLY?</p><h2 id="proof-title">Follow the independent assertion.</h2></div>
+    <div class="picker"><label for="scenario">Recorded application case</label>
+      <select id="scenario"><option value="sqs">Duplicate fulfillment event (DynamoDB + SQS)</option><option value="s3">Corrupted upload length (S3)</option></select>
+    </div>
+  </div>
+  <p id="scenario-description">A repeated order submission must not send a second fulfillment event.</p>
+  <div id="loading" class="load" role="status" aria-live="polite">Loading checked-in evidence...</div>
+  <div id="record" hidden>
+    <div class="small-meta"><span id="recorded-date"></span><span id="emulator-version"></span><span>Project-maintained; no outside endorsement</span></div>
+    <div class="verdict"><span class="verdict-icon" aria-hidden="true">✓</span><div><strong>Named regression reproduced; reference fix verified</strong><p id="regression-description"></p></div></div>
+    <div class="compare-grid">
+      <article class="comparison before"><div class="card-tag">BEFORE / EXPECTED FAILURE</div><h3 id="before-count">--</h3><p>Independent assertions passed</p><dl><div><dt>Source invoked</dt><dd id="before-invoked">--</dd></div><div><dt>Declared cleanup</dt><dd id="before-cleanup">--</dd></div><div><dt>Behavior result</dt><dd id="before-result">--</dd></div></dl></article>
+      <article class="comparison after"><div class="card-tag">AFTER / VERIFIED FIX</div><h3 id="after-count">--</h3><p>Independent assertions passed</p><dl><div><dt>Source invoked</dt><dd id="after-invoked">--</dd></div><div><dt>Declared cleanup</dt><dd id="after-cleanup">--</dd></div><div><dt>Behavior result</dt><dd id="after-result">--</dd></div></dl></article>
+    </div>
+    <h3 class="subheading">Assertions from independent AWS SDK reads</h3>
+    <div class="table-wrap"><table><caption>One reviewed case, two separate local emulator runs</caption><thead><tr><th scope="col">Check / response path</th><th scope="col">Before</th><th scope="col">After</th></tr></thead><tbody id="assertions"></tbody></table></div>
+    <details class="hashes"><summary>Audit identifiers and SDK call counts</summary>
+      <p><strong>One case SHA-256 for both runs</strong><code id="case-hash"></code></p>
+      <p><strong>Before source SHA-256</strong><code id="before-source"></code></p>
+      <p><strong>After source SHA-256</strong><code id="after-source"></code></p>
+      <div class="table-wrap"><table><caption>Observed application SDK calls, not full API payloads</caption><thead><tr><th scope="col">Service / operation</th><th scope="col">Before successes</th><th scope="col">After successes</th></tr></thead><tbody id="sdk-calls"></tbody></table></div>
+    </details>
+    <div class="evidence-links"><a id="raw-evidence" href="evidence/app-case-aws-emulator-1.0.506.json">Open redacted JSON</a><a id="case-source" href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/examples/app-case/sqs-idempotency.json">Review JSON test case</a><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/APP_CASE.md">Read trust boundary</a></div>
+    <p class="fineprint">A result displayed here is not independently certified. The browser checks internal consistency of the saved proof before showing the success view. Neither the browser nor this project verifies production AWS behavior or IAM enforcement.</p>
+  </div>
+</section>
+
+<section id="reproduce" class="section" aria-labelledby="reproduce-title">
+  <p class="eyebrow">02 / NO AWS ACCOUNT REQUIRED</p><h2 id="reproduce-title">From zero Docker to your application invariant.</h2>
+  <div class="steps">
+    <article><span class="number">1</span><h3>Run the offline first check</h3><p>Node.js 20+ and Git. No Docker, cloud credentials, or AWS account. This checks generated architecture files only; it does not run AWS APIs.</p><pre><code>git clone --depth 1 --branch master https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs try --json</code></pre><p class="expect">Expect <code>passed: true</code>, <code>artifactCount: 7</code>, <code>dockerUsed: false</code> and <code>cloudCallsMade: false</code>.</p></article>
+    <article><span class="number">2</span><h3>Inspect source without executing it</h3><p>Host Python 3.10+ is also required. The inspector finds literal client calls and input keys; its suggested case is intentionally not runnable until a developer reviews and completes it.</p><pre><code id="inspect-command">node bin/aws-emulator-mcp.mjs app-case-inspect examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json</code></pre><p class="expect">Look for <code>executedSource: false</code>, <code>executedAWSCalls: false</code> and <code>caseReview</code> warnings.</p></article>
+    <article><span class="number">3</span><h3>Run the same assertion on both revisions</h3><p>Requires a local Docker Engine in Linux-container mode and enough disk for the initial signed emulator image. Execute only Python you own and trust, never untrusted PR code. Use synthetic data.</p><pre><code id="compare-command">node bin/aws-emulator-mcp.mjs app-case-compare examples/app-case/buggy.py examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json</code></pre><p class="expect">Inspect <code>bugReproduced</code>, <code>fixVerified</code>, the failed regression path, the case/source hashes, both cleanup results and <code>productionAwsValidated: false</code>.</p></article>
+  </div>
+  <p class="notice">The application comparison exists on the current development <code>master</code>, not in the older beta.15 release tag. Exact behavior may change before the next release. See the <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/PROOF_WORKFLOW.md">proof recipe</a> for a review checklist and limitations.</p>
+</section>
+<section class="section limits" aria-labelledby="limits-title"><p class="eyebrow">03 / WHERE THIS STOPS</p><h2 id="limits-title">Know what the green check cannot prove.</h2><p>This verifies one trusted local Python entrypoint and its named synthetic invariant, not an arbitrary repository, real AWS IAM, production fidelity, process-crash recovery, or source-code security. To assess an app's AWS-operation compatibility, consult the <a href="https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html">official AWS Emulator fidelity guidance</a> as well. If native AWS SDK tests meet your needs, you may not need our MCP adapter.</p></section>
+</main>
+<footer class="footer"><a href="./">Demo Studio</a> · <a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">Report a reproducible result</a> · Independent open-source adapter, not an AWS product or endorsement.</footer>
+</body>
+</html>
