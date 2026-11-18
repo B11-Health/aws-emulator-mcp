@@ -4,12 +4,12 @@
  * Actual trusted-local execution is delegated to the existing app-case runner.
  */
 import {createHash} from 'node:crypto';
-import {openSync, writeFileSync, closeSync} from 'node:fs';
+import {openSync, writeFileSync, closeSync, fstatSync, lstatSync, unlinkSync} from 'node:fs';
 
 const SHA = /^[a-f0-9]{64}$/;
 const IDENT = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const RESERVED = /REVIEW_ME|REPLACE_WITH_SYNTHETIC_VALUE/i;
-const KNOWN = new Set(['--json','--draft','--run','--approve']);
+const KNOWN = new Set(['--json','--draft','--draft-proof','--run','--approve']);
 const ALLOWED_CASE_FIELDS = [
   'schemaVersion','name','services','setup','invoke','checks','cleanup','regression'];
 
@@ -21,7 +21,7 @@ function selectedFile(value, suffix) {
 
 export function parseAppGuideArgs(args) {
   if (!Array.isArray(args)) throw Error('Invalid app guide arguments');
-  const selected = {source:null, caseFile:null, json:false, draft:null, run:false, approval:null};
+  const selected = {source:null, caseFile:null, json:false, draft:null, proofDraft:null, run:false, approval:null};
   const files=[];
   const seen=new Set();
   for(let i=0;i<args.length;i++) {
@@ -35,17 +35,20 @@ export function parseAppGuideArgs(args) {
       if(i+1>=args.length || args[i+1].startsWith('-')) throw Error('Flag requires a value');
       const next=args[++i];
       if(v==='--draft') selected.draft=next;
+      else if(v==='--draft-proof') selected.proofDraft=next;
       else selected.approval=next;
     } else files.push(v);
   }
   if(files.length<1 || files.length>2 || !selectedFile(files[0],'.py') ||
      (files[1] && !selectedFile(files[1],'.json')) ||
      (selected.draft && !selectedFile(selected.draft,'.json')) ||
+     (selected.proofDraft && !selectedFile(selected.proofDraft,'.json')) ||
      (selected.approval && !SHA.test(selected.approval)) ||
      (selected.run && (files.length!==2 || !selected.approval)) ||
      (!selected.run && selected.approval) ||
-     (selected.draft && (selected.run || files.length!==1))) {
-    throw Error('Usage: aws-emulator-mcp app-guide FILE.py [CASE.json] [--json | --draft NEW_CASE.json | --run --approve TOKEN]');
+     (selected.draft && (selected.run || files.length!==1 || selected.proofDraft)) ||
+     (selected.proofDraft && (selected.run || selected.approval || files.length!==1))) {
+    throw Error('Usage: aws-emulator-mcp app-guide FILE.py [CASE.json] [--json | --draft NEW.json | --draft-proof NEW.json | --run --approve TOKEN]');
   }
   selected.source=files[0];
   selected.caseFile=files[1]||null;
@@ -174,6 +177,118 @@ export function requiredOperationsSucceeded(proof, caseData) {
     call.successes>0 && call.successes<=call.attempts));
 }
 
+/** One reviewed literal write -> two editable, always-unexecutable case drafts.
+ *  The AST cannot establish parameter relationships or eventual behavior.
+ *  Every suggested fixture, assertion and cleanup step needs human review.
+ */
+export function buildProofDraftPair(inspection) {
+  if (!inspection?.entrypointSignatureMatches || !inspection?.entrypointFound ||
+      !Array.isArray(inspection.calls) || inspection.calls.length !== 1 ||
+      !Array.isArray(inspection.unresolvedAccesses) || inspection.unresolvedAccesses.length ||
+      !Array.isArray(inspection.inputKeys) || !inspection.starterCase?.reviewRequired)
+    throw Error('One unambiguous literal SDK write is required for a review template');
+  const [{service,operationCandidate:operation}] = inspection.calls;
+  const kind = `${service}.${operation}`;
+  const blueprints = {
+    's3.PutObject': {
+      setup:[{id:'bucket',service:'s3',operation:'CreateBucket',
+        parameters:{Bucket:{$fixture:'bucket'}}}],
+      checks:[{id:'observe',service:'s3',operation:'HeadObject',
+        parameters:{Bucket:{$fixture:'bucket'},Key:'REVIEW_ME_SYNTHETIC_OBJECT_KEY'},
+        expect:{assertions:[{path:'ContentLength',exists:true}]}}],
+      cleanup:[{id:'remove-object',service:'s3',operation:'DeleteObject',
+        parameters:{Bucket:{$fixture:'bucket'},Key:'REVIEW_ME_SYNTHETIC_OBJECT_KEY'}},
+        {id:'remove-bucket',service:'s3',operation:'DeleteBucket',
+        parameters:{Bucket:{$fixture:'bucket'}}}],
+    },
+    'sqs.SendMessage': {
+      setup:[{id:'queue',service:'sqs',operation:'CreateQueue',
+        parameters:{QueueName:{$fixture:'queue'}}}],
+      checks:[{id:'observe',service:'sqs',operation:'ReceiveMessage',
+        parameters:{QueueUrl:{$ref:'queue.QueueUrl'},MaxNumberOfMessages:10,WaitTimeSeconds:1},
+        expect:{assertions:[{path:'Messages.0.Body',exists:true}]}}],
+      cleanup:[{id:'remove-queue',service:'sqs',operation:'DeleteQueue',
+        parameters:{QueueUrl:{$ref:'queue.QueueUrl'}}}],
+    },
+    'dynamodb.PutItem': {
+      setup:[{id:'table',service:'dynamodb',operation:'CreateTable',
+        parameters:{TableName:{$fixture:'table'},
+          AttributeDefinitions:[{AttributeName:'id',AttributeType:'S'}],
+          KeySchema:[{AttributeName:'id',KeyType:'HASH'}],
+          BillingMode:'PAY_PER_REQUEST'}}],
+      checks:[{id:'observe',service:'dynamodb',operation:'GetItem',
+        parameters:{TableName:{$fixture:'table'},
+          Key:{id:{S:{$fixture:'id'}}}},
+        expect:{assertions:[{path:'Item.id.S',exists:true}]}}],
+      cleanup:[{id:'remove-table',service:'dynamodb',operation:'DeleteTable',
+        parameters:{TableName:{$fixture:'table'}}}],
+    },
+  };
+  const blueprint = blueprints[kind];
+  if (!blueprint) throw Error('No reviewable one-write state template for this SDK operation');
+  const positive = {
+    schemaVersion:1,name:'review-required-'+service+'-state',
+    services:[service], setup:blueprint.setup,
+    invoke:{entrypoint:inspection.entrypoint,times:1,
+      inputs:Object.fromEntries(inspection.inputKeys.map(key=>
+        [key,'REPLACE_WITH_SYNTHETIC_VALUE'])),
+      expectedCalls:[{service,operation,min:1,max:1}]},
+    checks:blueprint.checks,cleanup:blueprint.cleanup,
+    regression:{stepId:'observe',path:blueprint.checks[0].expect.assertions[0].path},
+    reviewRequired:true,
+  };
+  const expectedRed = structuredClone(positive);
+  expectedRed.name='review-required-'+service+'-expected-red';
+  // Flip exactly the same independently observable assertion. This must
+  // fail for a *passing* baseline after the developer fills and reviews both
+  // files; not an assertion that a particular application is already correct.
+  expectedRed.checks[0].expect.assertions[0].exists=false;
+  return {positive,expectedRed,operation:kind,
+    assertion:positive.regression.stepId+'.'+positive.regression.path};
+}
+
+/** Create a positive + expected-red pair with no overwrites.
+ *  If either create/write fails, roll back only files belonging to this call.
+ */
+export function writeProofDraftPairExclusive(filename, drafts) {
+  if (!selectedFile(filename,'.json') ||
+      !drafts?.positive?.reviewRequired || !drafts?.expectedRed?.reviewRequired)
+    throw Error('Proof drafts require a local review-required JSON filename');
+  const redFile=filename.slice(0,-5)+'.expected-red.json';
+  if (!selectedFile(redFile,'.json') || redFile===filename)
+    throw Error('Expected-red draft filename exceeds the local selection limit');
+  const selected = [filename,redFile];
+  const content=[drafts.positive,drafts.expectedRed].map(item=>JSON.stringify(item,null,2)+'\n');
+  if(content.some(raw=>Buffer.byteLength(raw)>48*1024))
+    throw Error('Review-required proof draft exceeds 48 KiB');
+  const created=[];
+  try {
+    for(let i=0;i<selected.length;i++) {
+      const fd=openSync(selected[i],'wx',0o600);
+      const stat=fstatSync(fd);
+      created.push({filename:selected[i],fd,dev:stat.dev,ino:stat.ino});
+      writeFileSync(fd,content[i],{encoding:'utf8'});
+    }
+    return {draftWritten:true,expectedRedDraftWritten:true,
+      approvalToken:null,executable:false,reviewRequired:true,
+      operation:drafts.operation,independentAssertion:drafts.assertion};
+  } catch(error) {
+    // Close first for Windows; only unlink files created by this invocation.
+    for (const item of created) {
+      try { closeSync(item.fd); item.closed=true; } catch { /* Preserve failure. */ }
+    }
+    for (const item of created) {
+      try {
+        const now=lstatSync(item.filename);
+        if(now.dev===item.dev && now.ino===item.ino) unlinkSync(item.filename);
+      } catch { /* Preserve failure. */ }
+    }
+    throw error;
+  } finally {
+    for (const item of created) if (!item.closed) closeSync(item.fd);
+  }
+}
+
 export function writeDraftExclusive(filename, starter) {
   if(!selectedFile(filename,'.json') || !starter || starter.reviewRequired!==true ||
     !Array.isArray(starter.checks) || starter.checks.length!==0 ||
@@ -192,7 +307,7 @@ export function writeDraftExclusive(filename, starter) {
   return {draftWritten:true, executable:false, reviewRequired:true};
 }
 
-export function formatAppGuide(report, {draftWritten=false}={}) {
+export function formatAppGuide(report, {draftWritten=false,proofDraftWritten=false}={}) {
   const lines=['AWS Emulator MCP / guided Python app proof (read-only inspection)',
     '  Status: '+report.status,
     '  Selected source SHA-256: '+report.sourceSha256,
@@ -201,6 +316,9 @@ export function formatAppGuide(report, {draftWritten=false}={}) {
   if(report.caseSha256) lines.push('  Selected case SHA-256: '+report.caseSha256);
   if(report.reviewGaps.length) lines.push('  Review gaps: '+report.reviewGaps.join(', '));
   if(draftWritten) lines.push('  A review-required, NON-EXECUTABLE draft case was created (no overwrite).');
+  if(proofDraftWritten) lines.push('  Two NEW review-required, NON-EXECUTABLE case drafts created (positive and expected-red).',
+    '  State assertion and setup/cleanup are suggestions, not verified app facts.',
+    '  Edit and review both files independently; remove reviewRequired only after review.');
   if(report.approvalToken) {
     lines.push('  Approval token for exactly this source + case:',
       '  '+report.approvalToken,
