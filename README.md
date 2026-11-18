@@ -81,6 +81,22 @@ Claude Desktop preview, and keyboard/screen-reader testing of the Demo Studio.
 Maintainers can assign scoped tasks without granting push or admin privileges.
 Independent user reports are distinguished from project-maintained CI.
 
+## Verify one Python application function
+
+In this draft branch, `app-guide` can inspect your trusted Python handler,
+create a **non-runnable review-required case**, and validate a completed
+case offline. Only a separate command with an approval token tied to the
+**exact source and case hashes** can execute it in a local Docker lab.
+It never turns selected code into an MCP source-execution endpoint.
+
+```sh
+node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json
+```
+
+[**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
+
+The feature is a **draft**, not the pinned beta.15 release.
+
 ## Why another MCP if AWS already supports agents?
 
 AWS Emulator already works with AWS SDKs, the CLI and coding agents. **Use it

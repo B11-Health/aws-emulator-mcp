@@ -12,8 +12,9 @@ import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compa
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
-import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge } from '../scripts/project_check.mjs';
+import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
+import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.15';
@@ -60,6 +61,8 @@ Commands:
                    recover-before-send, recover-lost-ack, partial-compare
                    (before/after a synthetic S3 receipt-upload failure)
   app-case-inspect APP.py [CASE.json] [--entrypoint NAME] [--json]  Read-only onboarding
+  app-guide APP.py [CASE.json] [--json | --draft NEW.json | --run --approve TOKEN]
+                   Scan trusted Python code, draft a NON-runnable case; require a matching hash token before any local execution
   app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
   app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
                    Explicit local-only code execution; never callable through MCP/PR Actions
@@ -554,6 +557,83 @@ function runPythonReadOnly(scriptName, args) {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'app-guide') {
+    let options;
+    try { options = parseAppGuideArgs(args); }
+    catch { fail('Usage: aws-emulator-mcp app-guide FILE.py [CASE.json] [--json | --draft NEW_CASE.json | --run --approve TOKEN]', 2); }
+    // The AST scanner never imports or executes the selected module. Its
+    // stdout is parsed only, not forwarded blindly to a remote MCP client.
+    const scan = runPythonReadOnly('app_case_inspect.py',
+      [options.source, ...(options.caseFile ? [options.caseFile] : []), '--json']);
+    if (scan.status !== 0) fail('Static Python case inspection could not verify the selected files', 2);
+    let inspected;
+    try { inspected = JSON.parse(scan.stdout); }
+    catch { fail('Python case inspection produced invalid structured output', 2); }
+    let caseData = null, schemaValidation = null;
+    if (options.caseFile) {
+      caseData = readSelectedCase(options.caseFile);
+      const formal = runPythonReadOnly('app_case_static_validate.py',[options.caseFile]);
+      if (formal.status === 0) {
+        try { schemaValidation = JSON.parse(formal.stdout); }
+        catch { schemaValidation = null; }
+      }
+    }
+    let review;
+    try { review = summarizeAppGuide(inspected,caseData,{schemaValidation}); }
+    catch { fail('Static case inspection produced unverifiable evidence', 2); }
+    if (options.draft) {
+      if (review.status !== 'draft_available')
+        fail('Selected Python source is not eligible for a non-executable starter case', 2);
+      try { writeDraftExclusive(options.draft, review.draftCase); }
+      catch { fail('Could not create a NEW bounded .json draft file; existing files are never overwritten', 2); }
+      const result = {...review, draftWritten:true};
+      stdout.write(options.json ? JSON.stringify(result,null,2)+'\n' :
+        formatAppGuide(result,{draftWritten:true}));
+      return;
+    }
+    if (!options.run) {
+      stdout.write(options.json ? JSON.stringify(review,null,2)+'\n' : formatAppGuide(review));
+      return;
+    }
+    if (!review.readyForApproval || review.approvalToken!==options.approval)
+      fail('Review gaps or approval token mismatch; re-inspect both files and explicitly approve the exact source and case', 2);
+    // Re-read the source and case after inspection and compare byte hashes.
+    // The selected in-memory source/case, not mutable host paths, reach Docker.
+    const sourceEnvelope = readSelectedHandler(options.source).envelope;
+    const validatedCase = readSelectedCase(options.caseFile);
+    let afterCaseSha;
+    try { afterCaseSha = createHash('sha256').update(readFileSync(options.caseFile)).digest('hex'); }
+    catch { fail('Selected case changed or is no longer readable', 2); }
+    if (sourceEnvelope.sourceSha256!==review.sourceSha256 ||
+        afterCaseSha!==review.caseSha256 ||
+        planSha256(validatedCase)!==planSha256(caseData)) {
+      fail('Trusted source or case changed since inspection; re-review and reapprove', 2);
+    }
+    requireDocker();
+    if (!imageExists()) fail('No matching local signed emulator image. Explicitly run the build command after reviewing Docker capacity, then reapprove and retry.', 2);
+    const {code,proof} = await runSelectedAppCase(sourceEnvelope,validatedCase);
+    let verified;
+    try { verified = verifyAppCaseProof(proof,sourceEnvelope.sourceSha256,validatedCase,code); }
+    catch { fail('Local Docker application evidence failed consistency verification', 2); }
+    const successfulExpectedOperations = requiredOperationsSucceeded(proof,validatedCase);
+    const result = {schemaVersion:1,mode:'approved_trusted_app_case',
+      passed:verified.passed && successfulExpectedOperations,
+      successfulExpectedOperations,
+      sourceSha256:sourceEnvelope.sourceSha256,
+      caseSha256:review.caseSha256, localExecutionApproved:true,
+      sourceExecution:'trusted_local_opt_in', proof:verified,
+      applicationBehaviorTested:true,productionAwsValidated:false,
+      limitations:'One trusted developer-selected local Python entrypoint, one declarative case and independent emulator assertions. A passing single case does not prove a bug fix, whole application, IAM behavior, or production AWS parity.'};
+    stdout.write(options.json ? JSON.stringify(result,null,2)+'\n' :
+      ['AWS Emulator MCP / developer-approved case',
+       '  '+(result.passed?'PASS':'FAIL')+'  Independent local AWS state checks',
+       '  Source SHA-256: '+result.sourceSha256,
+       '  Case SHA-256: '+result.caseSha256,
+       '  Cleanup: '+(verified.cleanupPassed?'PASS':'FAIL'),
+       '  No AWS production validation; review scoped JSON evidence via --json.',''].join('\n'));
+    if (!result.passed) process.exitCode=1;
+    return;
+  }
   if (command === 'app-case-inspect') {
     const jsonFlag = args.includes('--json');
     let remaining = args.filter(value => value !== '--json');
