@@ -64,10 +64,16 @@ not include source, customer data, credentials, or private paths in feedback.
 | Your goal | Command from the checked-out repository | What happens |
 | --- | --- | --- |
 | See output files | `node bin/aws-emulator-mcp.mjs architecture demo` | Saves diagrams, CloudFormation drafts and the unexecuted test plan under `reports/architecture-studio` |
-| Inspect Python application code safely | `node bin/aws-emulator-mcp.mjs app-case-inspect examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json` | Python 3.10+; static inspection, no source execution or API call |
+| Inspect Python application code safely | `node bin/aws-emulator-mcp.mjs app-case-inspect examples/app-case/fixed.py --json` | Python 3.10+; scans one trusted file and proposes a reviewed starter case; no source execution or API call |
 | Run real **local** emulator calls | `node bin/aws-emulator-mcp.mjs build`, then `node bin/aws-emulator-mcp.mjs doctor` | **Only when you intentionally opt in**; requires working local Docker Linux containers, a sizable signed package download and ample Docker storage |
+| See a bug and verified fix | `node bin/aws-emulator-mcp.mjs app-debug compare` | Once Docker is working: runs the bundled order-intake example in an isolated emulator, checks independent state and cleanup |
 | Configure AI coding assistant | `node bin/aws-emulator-mcp.mjs config copilot` | Prints a native VS Code Copilot MCP configuration; you review and install it yourself |
 | Test a Python function you own | See [APP_CASE.md](APP_CASE.md) | Trusted-local handler against a **fresh, isolated emulator** with independent state assertions and cleanup |
+
+If using the **installed CLI** from outside a checkout, the onboarding
+report correctly uses `aws-emulator-mcp` commands and asks you to supply
+just `YOUR_APP.py` for read-only source inspection instead of
+pretending you have the repository's relative sample paths.
 
 If the generated `onboard` report says `imageReusable: true`, you may
 start with `doctor` rather than rebuilding. If it says a rebuild is needed,

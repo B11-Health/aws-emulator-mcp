@@ -94,6 +94,13 @@ export function summarizeOnboarding({
         automatic: false,
       });
     }
+    nextSteps.push({
+      id: 'run-app-proof',
+      title: 'Reproduce an order-intake bug and verify its fix on the local emulator',
+      command: command('app-debug compare', fromCheckout),
+      requires: 'Local Docker; runs the bundled trusted example against a disposable emulator and checks cleanup',
+      automatic: false,
+    });
   } else {
     nextSteps.push({
       id: 'docker-help',
@@ -105,8 +112,12 @@ export function summarizeOnboarding({
   }
   if (offlinePassed) nextSteps.push({
     id: 'inspect-own-app',
-    title: 'Inspect a trusted Python AWS handler without running its source',
-    command: command('app-case-inspect examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json', fromCheckout),
+    title: fromCheckout ?
+      'Inspect the sample Python handler without executing its source' :
+      'Inspect a Python handler you own (supply your files)',
+    command: command(fromCheckout ?
+      'app-case-inspect examples/app-case/fixed.py --json' :
+      'app-case-inspect YOUR_APP.py --json', fromCheckout),
     requires: 'Python 3.10+; read-only source inspection; no AWS calls',
     automatic: false,
   }, {

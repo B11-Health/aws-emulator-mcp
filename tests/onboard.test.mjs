@@ -63,8 +63,10 @@ test('installed CLI receives executable commands without checkout-relative paths
   assert.equal(report.commandContext,'installed-cli');
   assert.equal(report.nextSteps.find(x=>x.id==='test-aws-locally').command,
     'aws-emulator-mcp doctor');
+  assert.equal(report.nextSteps.find(x=>x.id==='run-app-proof').command,
+    'aws-emulator-mcp app-debug compare');
   assert.equal(report.nextSteps.find(x=>x.id==='inspect-own-app').command,
-    'aws-emulator-mcp app-case-inspect examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json');
+    'aws-emulator-mcp app-case-inspect YOUR_APP.py --json');
   assert.ok(report.nextSteps.every(x=>!x.command.startsWith('node bin/')));
 });
 
@@ -88,6 +90,8 @@ test('a warm local image gives an explicit opt-in doctor, not a hidden launch',(
   assert.equal(report.readiness.imageBuildRequiredBeforeDoctor,false);
   assert.equal(report.nextSteps.find(x=>x.id==='test-aws-locally').command,
     'node bin/aws-emulator-mcp.mjs doctor');
+  assert.equal(report.nextSteps.find(x=>x.id==='run-app-proof').command,
+    'node bin/aws-emulator-mcp.mjs app-debug compare');
   assert.ok(report.nextSteps.every(x=>!x.automatic));
 });
 
@@ -151,6 +155,8 @@ test('CLI launched from outside checkout returns installed-style follow-up comma
   const report=JSON.parse(r.stdout);
   assert.equal(report.commandContext,'installed-cli');
   assert.equal(report.nextSteps[0].command,'aws-emulator-mcp architecture demo');
+  assert.equal(report.nextSteps.find(x=>x.id==='inspect-own-app').command,
+    'aws-emulator-mcp app-case-inspect YOUR_APP.py --json');
 });
 
 test('first run stays successful and actionable when Docker is not installed',()=>{
