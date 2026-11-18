@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-11-18",
+  "lab": "Two opt-in local trusted Python source revisions against separate network-disabled Docker instances of signed AWS Emulator 1.0.506",
+  "scope": "Project-maintained synthetic S3 before/after case, independent HeadObject.ContentLength, not production AWS parity or proof of unrelated application behavior",
+  "comparison": {
+    "schemaVersion": 1,
+    "mode": "local_application_before_after",
+    "case": "independent-s3-object-write",
+    "caseSha256": "2d2381c5c56f33a56aaa27302007ce0f97f83f1ca237014af289a4da94516403",
+    "passed": true,
+    "bugReproduced": true,
+    "fixVerified": true,
+    "accountVerified": true,
+    "emulatorVersion": "Version: 1.0.506",
+    "regression": {
+      "stepId": "head",
+      "path": "ContentLength"
+    },
+    "before": {
+      "sourceSha256": "35d9a120c5d81d4bc1e971a88f0b9b970666109e2b992d99a09a54148e45ebaa",
+      "emulatorVersion": "Version: 1.0.506",
+      "invoked": true,
+      "applicationErrors": false,
+      "passed": false,
+      "cleanupPassed": true,
+      "sdkCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "attempts": 1,
+          "successes": 1
+        }
+      ],
+      "setup": [
+        {
+          "id": "bucket",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "id": "head",
+          "passed": false,
+          "assertions": [
+            {
+              "path": "ContentLength",
+              "passed": false
+            }
+          ]
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "remove",
+          "passed": true
+        },
+        {
+          "id": "delete",
+          "passed": true
+        }
+      ],
+      "expectedCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "passed": true,
+          "observed": 1
+        }
+      ]
+    },
+    "after": {
+      "sourceSha256": "ea420737b28bc4e4cf122f81c51b7921d28b7e92d524a35952b5d62eed712269",
+      "emulatorVersion": "Version: 1.0.506",
+      "invoked": true,
+      "applicationErrors": false,
+      "passed": true,
+      "cleanupPassed": true,
+      "sdkCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "attempts": 1,
+          "successes": 1
+        }
+      ],
+      "setup": [
+        {
+          "id": "bucket",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "id": "head",
+          "passed": true,
+          "assertions": [
+            {
+              "path": "ContentLength",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "remove",
+          "passed": true
+        },
+        {
+          "id": "delete",
+          "passed": true
+        }
+      ],
+      "expectedCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "passed": true,
+          "observed": 1
+        }
+      ]
+    },
+    "applicationBehaviorTested": true,
+    "productionAwsValidated": false,
+    "dataExposure": "Source, application inputs, private file paths, API parameters, API bodies, logs and exception messages omitted",
+    "limitations": "One selected trusted Python entrypoint, bounded synthetic case, independent local SDK checks and observed SDK call counts. Not hostile-code security, full codebase coverage, process-crash proof, AWS IAM or production fidelity."
+  }
+}

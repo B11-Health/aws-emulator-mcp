@@ -11,6 +11,43 @@ This is a first bounded app-level scenario runner, **not** a general
 repository/pytest runner, hostile-code sandbox, AWS IAM test or production AWS
 fidelity check. It does not read or import arbitrary project files for you.
 
+## Inspect a proposed case before running code (new, read-only)
+
+If you have a selected Python `handle(clients, inputs)` module, begin with
+**static inspection**, not with Docker or source execution:
+
+```sh
+# Requires host Python 3.10+; does not import or run the selected app.
+node bin/aws-emulator-mcp.mjs app-case-inspect \
+  examples/app-case/s3-upload.py --json
+
+# Cross-check a separately authored behavior case's entrypoint, inputs and
+# expected call counters. This still does not run AWS APIs or the app.
+node bin/aws-emulator-mcp.mjs app-case-inspect \
+  examples/app-case/s3-upload.py \
+  examples/app-case/s3-object-write.json --json
+```
+
+The inspector reports a source SHA-256, the *literal* SDK calls it can see,
+the named input keys, unrecognized access patterns, optional expected-counter
+gaps and related examples. Its `starterCase` is an **intentionally invalid,
+unexecutable sketch**: it has `reviewRequired: true`, empty `setup`, `checks`
+and `cleanup`, plus `REVIEW_ME` fields. Inspect the original app, replace
+synthetic inputs, write meaningful independent assertions and cleanup, remove
+`reviewRequired`, and review the entire contract before selecting the trusted
+source for `app-case`. No auto-drafted test is marked passing.
+
+This first-pass AST matcher recognizes only direct
+`clients["service"].sdk_method(...)` expressions inside one selected
+public `function_name(clients, inputs)` function. The default name is `handle`;
+if you provide a case, its `invoke.entrypoint` selects the function, or use
+`--entrypoint NAME` to inspect a named function without a case and literal `inputs["name"]` or
+`inputs.get("name")` keys. It cannot infer aliases, dynamic client
+identifiers, nested function execution, real control-flow reachability,
+actual AWS operation-model support, or full project runtime dependencies.
+`project-plan` separately recognizes selected direct Boto3 client calls
+in a Python project. Neither static analysis feature executes source.
+
 ## A real failing/passing application scenario
 
 Requirements: Node.js 20+, local Docker (Linux containers), enough storage for
@@ -51,6 +88,25 @@ and table. No developer-controlled return flag can override the result.
 [Recorded signed-emulator 1.0.506 evidence](evidence/app-case-aws-emulator-1.0.506.json)
 shows the before/after calls, independent checks, source hashes and emulator
 version. The source and raw payloads are not included in the report.
+
+## Independent S3 example: corrupted object length
+
+The second sample exercises a different AWS service and a different invariant.
+`examples/app-case/s3-upload-bug.py` writes 13 bytes where the reviewed case
+expects 12. `examples/app-case/s3-upload.py` writes the expected 12 bytes.
+Both run through the **same local runner**, with independent `HeadObject`
+response assertions and scoped object/bucket cleanup:
+
+```sh
+node bin/aws-emulator-mcp.mjs app-case-compare \
+  examples/app-case/s3-upload-bug.py examples/app-case/s3-upload.py \
+  examples/app-case/s3-object-write.json --json
+```
+
+The actual local test on signed AWS Emulator **1.0.506** reproduced the
+`head.ContentLength` failure before the fix and verified it afterward.
+[Inspect the sanitized S3 evidence](evidence/app-case-s3-aws-emulator-1.0.506.json).
+This is an assertion on one synthetic object; not a complete S3 test suite.
 
 ## Bring your own module and case
 

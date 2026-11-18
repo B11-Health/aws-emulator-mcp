@@ -197,6 +197,27 @@ def verify():
     assert result["after"]["sdkCalls"][1]["attempts"] == 1
     print("APP_CASE_COMPARE_PASS", "DynamoDB conditional write: SQS 2 -> 1", flush=True)
 
+    # A second developer-authored scenario must use the *same* runner, not a
+    # special-cased order handler. Prove a malformed S3 object body changes
+    # HeadObject.ContentLength (13 vs expected 12), then the corrected source
+    # passes independent SDK read-back and both cleanup phases.
+    upload_bug = ROOT / "examples/app-case/s3-upload-bug.py"
+    upload_fix = ROOT / "examples/app-case/s3-upload.py"
+    s3_case = ROOT / "examples/app-case/s3-object-write.json"
+    s3_run = run("app-case-compare", extra=[str(upload_bug), str(upload_fix), str(s3_case)],
+                 json_mode=True, timeout=360)
+    assert s3_run.returncode == 0, s3_run.stderr[-900:]
+    s3_report = json.loads(s3_run.stdout)
+    assert s3_report["passed"] and s3_report["bugReproduced"] and s3_report["fixVerified"]
+    assert s3_report["regression"] == {"stepId": "head", "path": "ContentLength"}
+    assert s3_report["before"]["cleanupPassed"] and s3_report["after"]["cleanupPassed"]
+    assert s3_report["before"]["sourceSha256"] == sha256(upload_bug.read_bytes()).hexdigest()
+    assert s3_report["after"]["sourceSha256"] == sha256(upload_fix.read_bytes()).hexdigest()
+    assert s3_report["before"]["sdkCalls"][0]["operation"] == "PutObject"
+    assert s3_report["after"]["sdkCalls"][0]["attempts"] == 1
+    assert "synthetic-v1" not in s3_run.stdout
+    print("APP_CASE_S3_INDEPENDENT_INVARIANT_PASS", "13 -> 12 bytes", "cleanups green", flush=True)
+
     partial = run("failure-lab", extra=["partial-compare"], json_mode=True, timeout=180)
     assert partial.returncode == 0, partial.stderr[-1000:]
     partial_report = json.loads(partial.stdout)
