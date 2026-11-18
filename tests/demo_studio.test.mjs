@@ -122,3 +122,29 @@ test('client install guide has three keyboard-accessible paths with correct limi
  assert.match(css,/\[hidden\]\{display:none!important\}/);
  assert.doesNotMatch(js,/fetch\(/);
 });
+
+
+test('public FAQ answers real adoption questions without suggesting AWS or IAM parity',()=>{
+ const html=read('index.html');
+ const section=html.split('<section class="section wrap" id="faq">')[1];
+ assert.ok(section, 'FAQ missing');
+ const faq=section.split('</section>')[0];
+ assert.equal((faq.match(/<details>/g)||[]).length,4);
+ assert.equal((faq.match(/<summary>/g)||[]).length,4);
+ for(const fragment of [
+  'Does this replace AWS or validate IAM permissions?',
+  'Can Claude Code, Copilot, or other coding agents use it?',
+  'Will this run on a normal laptop?',
+  'Why use an MCP adapter instead of the native AWS SDK?',
+  'not yet been verified',
+  'not Docker Desktop VM capacity measurements',
+  'immutable beta.15 tag',
+  'not enough',
+  'Use the native SDK/CLI when it is simpler',
+ ])assert.ok(faq.includes(fragment),'Missing caveat or question: '+fragment);
+ assert.match(faq,/independent 18-service report/);
+ assert.match(faq,/1\.0\.322/);
+ assert.match(faq,/href="#connect"/);
+ assert.match(faq,/href="#install"/);
+ assert.match(html,/href="#faq">FAQ/);
+});
