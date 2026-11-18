@@ -136,6 +136,46 @@ class AppCaseTests(unittest.TestCase):
         self.assertNotIn('https://localhost.test',payload)
         self.assertNotIn(buggy[:40],payload)
 
+    def test_caught_failed_sdk_attempt_never_verifies_application(self):
+        # The independent read finds an empty queue and passes, but a handler
+        # that caught SendMessage's exception cannot claim its AWS write worked.
+        spec=json.loads(json.dumps(SPEC))
+        spec['invoke']['times']=1
+        spec['invoke']['expectedCalls']=[
+            {'service':'sqs','operation':'SendMessage','min':1,'max':1}]
+        spec['checks']=[{
+            'id':'empty_queue','service':'sqs','operation':'ReceiveMessage',
+            'parameters':{'QueueUrl':{'$ref':'queue.QueueUrl'},
+                          'MaxNumberOfMessages':10,'WaitTimeSeconds':1},
+            'expect':{'assertions':[{'path':'Messages.0','exists':False}]}}]
+        spec['regression']={'stepId':'empty_queue','path':'Messages.0'}
+        app_case.validate_case(spec)
+        sqs,ddb=FakeSQS(),FakeDynamoDB()
+        def broken_send(**kwargs):
+            raise RuntimeError('synthetic SDK failure')
+        sqs.send_message=broken_send
+        def sdk_client(name):
+            return (None,None,{'sqs':sqs,'dynamodb':ddb}[name],None,None)
+        source='''def handle(clients, inputs):
+    try:
+        clients['sqs'].send_message(QueueUrl=inputs['queueUrl'],MessageBody=inputs['body'])
+    except RuntimeError:
+        pass
+'''
+        with patch.dict(os.environ,{'AWS_EMULATOR_MCP_ISOLATED_LAB':'1'}), \
+             patch.object(aws,'doctor',return_value={'ready':True,'emulator_version':'test-1'}), \
+             patch.object(aws,'identity',return_value={'Account':'000000000000'}), \
+             patch('aws_emulator_mcp.aws_sdk._client',side_effect=sdk_client), \
+             patch('aws_emulator_mcp.contract_case._wait_created_table_active',return_value=1):
+            report=app_case.execute(envelope(source,spec))
+        self.assertEqual(report['sdkCalls'],[
+            {'service':'sqs','operation':'SendMessage','attempts':1,'successes':0}])
+        self.assertTrue(report['checks'][0]['passed'])
+        self.assertTrue(report['cleanupPassed'])
+        self.assertFalse(report['expectedCalls'][0]['passed'])
+        self.assertFalse(report['applicationInvariantPassed'])
+        self.assertFalse(report['passed'])
+
     def test_no_source_execution_when_emulator_identity_is_unverified(self):
         source='''raise RuntimeError('NEVER_EXECUTE_THIS_APP')'''
         with patch.dict(os.environ,{'AWS_EMULATOR_MCP_ISOLATED_LAB':'1'}), \
