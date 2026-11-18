@@ -15,7 +15,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from aws_emulator_mcp import official_session_identity as target
 
-ACCOUNT = {"Account": "000000000000", "Arn": "arn:aws:iam::000000000000:user/emulator"}
+ACCOUNT = {"Account": "000000000000", "Arn": "arn:aws:iam::000000000000:user/emulator",
+           "UserId": "AIDACKCEVSQ6C2EXAMPLE"}
 
 
 class OfficialSessionIdentityTests(unittest.TestCase):
@@ -25,6 +26,11 @@ class OfficialSessionIdentityTests(unittest.TestCase):
         self.port = 19497
         self.root = Path(self.temp.name) / ".aws" / "emulator" / str(self.port)
         self.root.mkdir(parents=True)
+        # Do not depend on the host's umask; each synthetic official parent
+        # must be owner-controlled before file-level tests can proceed.
+        if os.name != "nt":
+            for directory in (self.root.parent.parent, self.root.parent, self.root):
+                directory.chmod(0o700)
         self.put("ca.pem", b"TEST_SYNTHETIC_CA_ONLY")
         self.put("config", f"[default]\nregion = us-east-1\nendpoint_url = https://127.0.0.1:{self.port}\n"
              "ca_bundle = /inside/container/ca.pem\n")
@@ -60,6 +66,50 @@ class OfficialSessionIdentityTests(unittest.TestCase):
                     target.RejectedSession, "unexpected_account"):
                 self.run_probe(lambda: value)
 
+    def test_userid_must_be_nonempty_bounded_and_visible(self):
+        for uid in (None, "", " ", "\t", "A" * 129, 42, ["AIDA"],
+                    "user\ncontrol", "user id"):
+            with self.subTest(user_id=repr(uid)), self.assertRaisesRegex(
+                    target.RejectedSession, "unexpected_account"):
+                self.run_probe(lambda: {**ACCOUNT, "UserId": uid})
+        with self.assertRaisesRegex(target.RejectedSession, "unexpected_account"):
+            self.run_probe(lambda: {key: val for key, val in ACCOUNT.items()
+                                    if key != "UserId"})
+        # Accepted forms include the usual IAM-style ID, an emulator-specific
+        # ID, and a role/session suffix; do not assume one SDK response prefix.
+        for uid in ("AIDACKCEVSQ6C2EXAMPLE", "EMULATOR", "AROAEXAMPLE:local-session",
+                    "U" * 128):
+            with self.subTest(user_id=uid):
+                self.assertTrue(self.run_probe(lambda: {**ACCOUNT, "UserId": uid})[
+                    "accountVerified"])
+
+    def test_owner_controlled_session_parents_required_on_posix(self):
+        if os.name == "nt":
+            self.skipTest("Windows directory ACLs are not represented by POSIX mode bits")
+        directories = (self.root.parent.parent, self.root.parent, self.root)
+        # Legitimately owner-controlled 0700/0750/0755 directories remain valid.
+        for directory in directories:
+            original = directory.stat().st_mode & 0o7777
+            try:
+                for mode in (0o700, 0o750, 0o755):
+                    directory.chmod(mode)
+                    with self.subTest(directory=directory.name, mode=oct(mode)):
+                        self.assertTrue(self.run_probe()["accountVerified"])
+                for mode in (0o770, 0o775, 0o777):
+                    directory.chmod(mode)
+                    called = []
+                    with self.subTest(directory=directory.name, mode=oct(mode)):
+                        with self.assertRaisesRegex(target.RejectedSession,
+                                                    "session_directory_untrusted"):
+                            self.run_probe(lambda: called.append("sdk_invoked"))
+                        self.assertEqual(called, [])
+            finally:
+                directory.chmod(original)
+        with patch.object(target.os, "geteuid", return_value=os.geteuid() + 1):
+            with self.assertRaisesRegex(target.RejectedSession,
+                                        "session_directory_untrusted"):
+                self.run_probe()
+
     def test_real_aws_style_key_is_rejected_without_invoking_sdk(self):
         self.put("emulator_credentials", "[default]\naws_access_key_id = AKIAAAAAAAAAAAAAAAA\n"
                  + "aws_secret_access_key = " + "Z" * 40 + "\n")
@@ -75,9 +125,8 @@ class OfficialSessionIdentityTests(unittest.TestCase):
         self.put("emulator_credentials", "[default]\naws_access_key_id = EMULATOR123456ABCDEF\n"
                  + "aws_secret_access_key = " + "A" * 40 + "\n")
         if os.name != "nt":
-            with patch.object(target.os, "geteuid", return_value=os.geteuid() + 1):
-                with self.assertRaisesRegex(target.RejectedSession, "session_file_untrusted"):
-                    self.run_probe()
+            # Directory owner mismatch is covered independently above; this
+            # branch isolates the file-level mode and symlink defenses.
             file = self.root / "emulator_credentials"
             file.chmod(0o644)
             with self.assertRaisesRegex(target.RejectedSession, "session_file_untrusted"):

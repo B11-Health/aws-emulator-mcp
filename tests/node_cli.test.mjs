@@ -33,6 +33,16 @@ test('VS Code config is valid stdio', () => {
   assert.equal(JSON.parse(result.stdout).servers['aws-emulator-local'].type, 'stdio');
   assert.match(result.stderr, /deprecated editor-managed/);
 });
+test('round-two Claude instructions select a branch that actually includes config claude', () => {
+  const readme = readFileSync(new URL('../README.md',import.meta.url),'utf8');
+  const firstRun = readFileSync(new URL('../docs/FIRST_RUN.md',import.meta.url),'utf8');
+  const command = 'git clone --depth 1 --branch release/agent-team-preview-r2-20261118';
+  assert.ok(readme.includes(command));
+  assert.ok(firstRun.includes(command));
+  assert.match(readme,/not.*earlier.*release\/agent-team-preview-20261118/);
+  assert.match(firstRun,/earlier PR #74 branch and \*\*does not have\*\* `config claude`/);
+});
+
 test('Claude Desktop config is a paste-ready stdio entry with the real executable and package path', () => {
   const result = cli('config', 'claude');
   assert.equal(result.status, 0, result.stderr);

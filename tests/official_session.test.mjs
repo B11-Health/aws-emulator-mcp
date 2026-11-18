@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -18,6 +18,14 @@ function fixture(fn) {
   writeFileSync(path.join(dir,'emulator_credentials'),'SENTINEL_NEVER_READ_PRIVATE_KEY');
   return Promise.resolve().then(()=>fn({home,dir})).finally(()=>rmSync(home,{recursive:true,force:true}));
 }
+
+test('companion docs distinguish health-only from opt-in credential identity',()=>{
+  const guide=readFileSync(path.join(ROOT,'docs/AWS_COMPANION.md'),'utf8');
+  assert.match(guide,/In the \*\*default health-only mode\*\*/);
+  assert.match(guide,/--identity.*may report `credentialFilesRead: true`/);
+  assert.match(guide,/`accountIdentityVerified: true` only after/);
+  assert.match(guide,/does not use real AWS credentials/);
+});
 
 test('the official session check is read-only and never loads credentials', async()=>{
   await fixture(async({home})=>{
@@ -124,6 +132,31 @@ test('explicit identity opt-in follows verified health and reports only bounded 
     assert.equal(report.applicationBehaviorTested,false);
     assert.equal(report.cloudCallsMade,false);
     assert.doesNotMatch(JSON.stringify(report),/SENTINEL_NEVER_READ_PRIVATE_KEY|TEST_ONLY_CERTIFICATE/);
+  });
+});
+
+test('verified worker claims are rejected when SDK attempt or credential read evidence is missing',async()=>{
+  await fixture(async({home})=>{
+    for(const evidence of [
+      {sdkCallAttempted:false,credentialFilesRead:true},
+      {sdkCallAttempted:true,credentialFilesRead:false},
+      {sdkCallAttempted:false,credentialFilesRead:false},
+      {sdkCallAttempted:true},
+      {credentialFilesRead:true},
+    ]) {
+      const forged={status:'verified',accountVerified:true,...evidence};
+      const report=await inspectOfficialSession({home,identity:true,
+        probe:async()=>({statusCode:200,body:'ok'}),
+        identityRunner:async()=>forged});
+      assert.equal(report.localHealthPassed,true);
+      assert.equal(report.status,'identity_unverified');
+      assert.equal(report.accountIdentityVerified,false);
+      assert.equal(report.sdkProbe.passed,false);
+      assert.equal(report.sdkProbe.reason,'probe_unverified');
+      assert.equal(report.sdkProbe.attempted,evidence.sdkCallAttempted===true);
+      assert.equal(report.credentialFilesRead,evidence.credentialFilesRead===true);
+      assert.equal(report.cloudCallsMade,false);
+    }
   });
 });
 

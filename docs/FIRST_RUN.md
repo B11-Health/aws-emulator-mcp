@@ -83,13 +83,15 @@ create an AWS account.
 
 ### Connect Claude Desktop without an unsigned extension
 
-The preview's CLI can print a **Claude Desktop-specific** stdio entry. From a
-checkout containing the new command (or from a locally installed preview
-package, replacing `node bin/aws-emulator-mcp.mjs` with `aws-emulator-mcp`):
+**This command is only in the [round-two preview PR #80](https://github.com/B11-Health/aws-emulator-mcp/pull/80)**. The initial first-run checkout above uses the earlier PR #74 branch and **does not have** `config claude`. From a separate clean directory, use the newer branch:
 
 ```sh
+git clone --depth 1 --branch release/agent-team-preview-r2-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r2
+cd aws-emulator-mcp-r2
 node bin/aws-emulator-mcp.mjs config claude
 ```
+
+Or use `aws-emulator-mcp config claude` from a locally installed preview package that includes this feature. It generates a **Claude Desktop-specific** stdio entry; neither route changes settings automatically.
 
 Unlike `config copilot`, this output uses Claude Desktop's `mcpServers`
 `command`/`args` shape **without** Copilot's `type: "stdio"` field. The values

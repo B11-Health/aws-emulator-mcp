@@ -87,6 +87,16 @@ or AWS fidelity certification.
 
 **VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client, since the MCP launcher can build an image if one is missing. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
 
+**Draft branch detail:** `config claude` exists in [round-two preview PR #80](https://github.com/B11-Health/aws-emulator-mcp/pull/80), **not** the earlier `release/agent-team-preview-20261118` branch used by the offline-first example above, the default `master`, or the pinned beta.15 release. To try the Claude config from a fresh checkout:
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r2-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r2
+cd aws-emulator-mcp-r2
+node bin/aws-emulator-mcp.mjs config claude
+```
+
+This only prints configuration; it does not prove a live Claude Desktop MCP connection.
+
 [**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
 
 ## Help build and test it
