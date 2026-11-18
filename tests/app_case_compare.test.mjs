@@ -97,6 +97,34 @@ const retryRecorded=JSON.parse(readFileSync(path.join(ROOT,
   'docs/evidence/app-case-sqs-retry-aws-emulator-1.0.506.json'),'utf8'));
 const retryBugSha=digest('sqs-retry-bug.py'), retryFixSha=digest('sqs-retry-fixed.py');
 
+const latestRetryRecorded=JSON.parse(readFileSync(path.join(ROOT,
+  'docs/evidence/app-case-sqs-retry-aws-emulator-1.0.508.json'),'utf8'));
+
+test('signed local emulator 1.0.508 recorded retry and lost-ack checks remain verifiable',()=>{
+  const c=latestRetryRecorded.comparison;
+  assert.equal(c.emulatorVersion,'Version: 1.0.508');
+  assert.equal(c.caseSha256,planSha256(retrySpec));
+  assert.equal(c.before.sourceSha256,retryBugSha);
+  assert.equal(c.after.sourceSha256,retryFixSha);
+  assert.equal(c.passed,true);
+  assert.equal(c.bugReproduced,true);
+  assert.equal(c.fixVerified,true);
+  assert.equal(c.productionAwsValidated,false);
+  assert.equal(c.before.cleanupPassed,true);
+  assert.equal(c.after.cleanupPassed,true);
+  assert.equal(c.before.sdkCalls[0].successes,0);
+  assert.equal(c.after.sdkCalls[0].successes,1);
+  const expected=structuredClone(retrySpec);
+  expected.invoke.fault.mode='after-success';
+  const negative=latestRetryRecorded.afterSuccessNegativeControl;
+  assert.equal(negative.appFault.injected,true);
+  assert.equal(negative.appFault.sentToEmulator,true);
+  assert.equal(negative.cleanupPassed,true);
+  assert.equal(negative.sdkCalls[0].successes,2);
+  assert.equal(negative.checks[0].assertions[1].passed,false);
+  assert.equal(verifyAppCaseProof(negative,retryFixSha,expected,1).passed,false);
+});
+
 test('app fault evidence proves a Python recovery path, not a standalone SDK probe',()=>{
   const before=structuredClone(retryRecorded.before), after=structuredClone(retryRecorded.after);
   assert.equal(before.emulatorVersion,'Version: 1.0.506');

@@ -117,6 +117,14 @@ client**, then independently checks emulated AWS state. This is a simulated
 exception, **not** a real network outage or evidence of production retry
 semantics. The [sanitized signed-emulator 1.0.506 test evidence](evidence/app-case-sqs-retry-aws-emulator-1.0.506.json)
 is project-maintained and identifies the exact two selected source hashes.
+A separate [November 18, 2026 local rerun on signed AWS Emulator 1.0.508](evidence/app-case-sqs-retry-aws-emulator-1.0.508.json)
+verified the combined retry and fail-closed implementation: the injected
+`before-call` timeout yielded zero successful sends and one named failing
+state assertion for the broken handler, while the corrected handler retried
+and produced exactly one successful send. Both scenarios passed declared
+cleanup. A separately executed `after-success` negative control sent two
+messages and correctly failed the `Messages.1` assertion. This is bounded
+local emulator evidence, not production AWS or genuine network-outage proof.
 
 ```sh
 # The same SQS state invariant must fail for the broken app and pass for the
