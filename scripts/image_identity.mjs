@@ -11,7 +11,7 @@ const SINGLE_FILES = [
   'docker/Dockerfile', 'docker/entrypoint.sh', 'scripts/install_wsl.sh'
 ];
 const COPIED_DIRS = [
-  'src/aws_emulator_mcp', 'examples/order-intake', 'examples/reliability-lab'
+  'src/aws_emulator_mcp', 'examples/order-intake', 'examples/contracts', 'examples/reliability-lab'
 ];
 const SKIP_DIR = new Set(['__pycache__']);
 const SKIP_SUFFIX = /(?:\.pyc|\.pyo|\.log|\.mp4)$/i;

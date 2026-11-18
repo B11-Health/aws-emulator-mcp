@@ -38,6 +38,7 @@ Usage: aws-emulator-mcp <command>
 
 Commands:
   try [--json]     Verify 7 architecture artifacts offline in a temporary workspace
+  project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
   preflight [--json]  Check Node and local Docker without building an image
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -469,6 +470,26 @@ async function runSelectedHandler(envelope) {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'project-plan') {
+    const [file, ...options] = args;
+    if (!file || file.startsWith('-') ||
+        !(options.length === 0 || (options.length === 1 && options[0] === '--json') ||
+          (options.length === 2 && options[0] === '--contract' && /^[a-z][a-z0-9-]*$/.test(options[1])))) {
+      fail('Usage: aws-emulator-mcp project-plan MODULE.py|GIT_DIRECTORY [--json | --contract SERVICE]', 2);
+    }
+    const script = path.join(ROOT, 'src', 'aws_emulator_mcp', 'project_plan.py');
+    const python = process.platform === 'win32' ? [['py', '-3'], ['python']] : [['python3']];
+    for (const [exe, ...prefix] of python) {
+      const run = spawnSync(exe, [...prefix, '-I', '-B', script, file, ...options], {
+        stdio: ['ignore', 'inherit', 'inherit'], timeout: 30000, windowsHide: true
+      });
+      if (run.error?.code === 'ENOENT') continue;
+      if (run.error || run.status === null) fail('Local Python analysis did not finish', 2);
+      process.exitCode = run.status;
+      return;
+    }
+    fail('project-plan requires Python 3.10 or newer on the host', 2);
+  }
   if (command === 'try') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
       fail('Usage: aws-emulator-mcp try [--json]', 2);

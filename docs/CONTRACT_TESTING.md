@@ -32,6 +32,47 @@ then `contract_run({"plan": ...})`. Each MCP run starts a **separate emulator
 process on a random loopback port with its own temporary HOME and keys**.
 It does not share state with the MCP session's long-lived emulator.
 
+## Start with an existing Python app
+
+From the MCP development checkout, select your app's Git directory, a tracked
+subdirectory, or a single Python module. The planner reads the working copy.
+It parses Python syntax locally. Your app stays unexecuted and Docker is
+needed only when you decide to run a contract.
+
+```sh
+node bin/aws-emulator-mcp.mjs project-plan /path/to/app
+node bin/aws-emulator-mcp.mjs project-plan /path/to/app --json
+node bin/aws-emulator-mcp.mjs project-plan /path/to/app --contract sqs > queue-contract.json
+node bin/aws-emulator-mcp.mjs contract queue-contract.json --json
+```
+
+Planning needs Python 3.10+ on PATH. Directory mode also needs Git and
+considers up to 256 tracked Python files, 128 KiB per file and 4 MiB total.
+Single-file mode also works on an untracked module. The JSON lists every
+analyzed or skipped file, call sites, unmatched methods, additional probe
+operations and keyword arguments absent from each draft. Source payloads,
+environment values and application resource names stay out of the generated
+contract. Review the synthetic inputs and assertions before running it.
+
+Discovery recognizes direct low-level `boto3.client("service")` calls, import
+aliases, and receivers assigned once in a straight-line module or function
+body. Static discovery can include dead branches and miss injected clients,
+wrappers, dynamic factories and Boto3 resources. Matching a keyword name
+also leaves its actual value and application logic untested.
+
+A connected assistant can pass just method identifiers to `contract_guide`:
+
+```json
+{"clientMethods":["sqs.get_queue_url","sqs.send_message","lambda.invoke"]}
+```
+
+The result includes an SQS contract with queue lookup, send, receive,
+acknowledgement and cleanup. It lists `lambda.invoke` as unmatched. Review
+a returned `drafts[].plan` and pass that object to `contract_run` to get
+per-step emulator evidence. Bundled drafts cover selected S3, SQS, DynamoDB
+and EC2 operations. Calling `contract_guide` without arguments still returns
+the original authoring guide.
+
 ## Example missions
 
 - [S3 object round trip](../examples/contracts/s3-write-read.json) — create, write,

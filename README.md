@@ -176,6 +176,15 @@ requires local Docker. No command here deploys to a real AWS account.
 
 The [application walkthrough](docs/APP_DEBUGGING.md) includes the Python source, exact patch, run-by-run assertions, and a [saved test result](docs/evidence/app-debug-aws-emulator-1.0.365.json). This demo runs the bundled reference fix; the MCP tool does not execute code supplied by an agent.
 
+## Find a test for an existing Python app
+
+On the development branch, run `node bin/aws-emulator-mcp.mjs project-plan /path/to/app`
+from the MCP checkout. The command lists direct Boto3 calls with their source
+locations, matches them to local SDK tests, and flags calls and arguments that
+need their own tests. Directory mode reads tracked Python files. You can also
+select a single module. Planning requires Python 3.10+ and works offline.
+[Generate and run a contract for your app](docs/CONTRACT_TESTING.md#start-with-an-existing-python-app).
+
 ## Test your own Python handler, not just our bundled files
 
 A first, intentionally limited **Bring Your Own App pilot** lets you

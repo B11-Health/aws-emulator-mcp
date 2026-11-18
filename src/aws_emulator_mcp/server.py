@@ -712,7 +712,8 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
     from aws_emulator_mcp import contract_case
     TOOLS.extend([
         spec("contract_guide",
-             "Get bounded agent-authored AWS contract schema and synthetic SDK timeout templates. No cloud calls."),
+             "Get the contract schema, or pass low-level clientMethods from your app (such as sqs.send_message) to get reviewable synthetic test plans and unmatched methods.",
+             {"clientMethods": {"type": "array", "items": {"type": "string"}, "maxItems": 80}}),
         spec("contract_run",
              "Execute 1-16 agent-authored AWS SDK steps and assertions, optionally injecting one SDK-boundary RequestTimeout on approved writes, in a fresh isolated emulator. No user code, cloud credentials or real outages.",
              {"plan": {"type": "object", "additionalProperties": True}}, ("plan",)),
@@ -774,6 +775,8 @@ def _tool_arguments_ok(name,args):
         from aws_emulator_mcp import failure_lab
         if args.get("scenario", "compare") not in failure_lab.SCENARIOS:
             return False
+    if name == "contract_guide" and "clientMethods" in args and not isinstance(args["clientMethods"], list):
+        return False
     if name == "contract_run":
         from aws_emulator_mcp import contract_case
         try:

@@ -13,7 +13,7 @@ const BIN = path.join(ROOT, 'bin/aws-emulator-mcp.mjs');
 function fixture() {
   const root = mkdtempSync(path.join(tmpdir(), 'aws-image-identity-'));
   for (const dir of ['docker','scripts','src/aws_emulator_mcp',
-                     'examples/order-intake','examples/reliability-lab'])
+                     'examples/order-intake', 'examples/contracts','examples/reliability-lab'])
     mkdirSync(path.join(root,dir),{recursive:true});
   for (const [name,contents] of [
     ['docker/Dockerfile','FROM scratch\n'],
@@ -71,7 +71,7 @@ test('all Dockerfile COPY sources are represented in the fingerprint contract', 
   const copied=source.split('\n').filter(line=>/^COPY\s/.test(line))
     .map(line=>line.trim().split(/\s+/).filter(part=>!part.startsWith('--'))[1]);
   assert.deepEqual(copied.sort(), [
-    'src/aws_emulator_mcp','examples/order-intake','examples/reliability-lab',
+    'src/aws_emulator_mcp','examples/order-intake', 'examples/contracts','examples/reliability-lab',
     'scripts/install_wsl.sh','docker/entrypoint.sh'
   ].sort());
 });

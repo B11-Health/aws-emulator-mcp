@@ -257,7 +257,10 @@ def validate(plan):
     return plan
 
 
-def guide():
+def guide(clientMethods=None):
+    if clientMethods is not None:
+        from aws_emulator_mcp.project_plan import plan_for_methods
+        return plan_for_methods(clientMethods)
     return {
         "schemaVersion": 1, "tool": "contract_run", "maxSteps": MAX_STEPS,
         "fixtures": list(FIXTURES), "example": EXAMPLE,
