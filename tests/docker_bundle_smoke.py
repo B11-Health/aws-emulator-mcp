@@ -169,6 +169,34 @@ def verify():
     assert comparison["after"]["sourceSha256"] == sha256(corrected.read_bytes()).hexdigest()
     print("BYO_HANDLER_COMPARE_PASS", "duplicate 2 -> 1", "cleanups green", flush=True)
 
+    # Independent application scenario: the developer's real Python function
+    # runs in local Docker; separate SDK reads prove the corrected invariant.
+    spec = ROOT / "examples/app-case/sqs-idempotency.json"
+    original = ROOT / "examples/app-case/buggy.py"
+    corrected = ROOT / "examples/app-case/fixed.py"
+    for source, code, expected in ((original, 1, False), (corrected, 0, True)):
+        trial = run("app-case", extra=[str(source), str(spec)],
+                    json_mode=True, timeout=180)
+        assert trial.returncode == code, trial.stderr[-900:]
+        proof = json.loads(trial.stdout)
+        assert proof["passed"] is expected and proof["sourceInvoked"]
+        assert proof["accountVerified"] and proof["cleanupPassed"]
+        assert proof["productionAwsValidated"] is False
+        assert proof["checks"][1]["assertions"][1]["passed"] is expected
+        assert proof["sourceSha256"] == sha256(source.read_bytes()).hexdigest()
+        assert "synthetic-order-event" not in trial.stdout
+        print("APP_CASE_TRUSTED_SOURCE_PASS", "fixed" if expected else "bug-reproduced", flush=True)
+    paired = run("app-case-compare", extra=[str(original), str(corrected), str(spec)],
+                 json_mode=True, timeout=360)
+    assert paired.returncode == 0, paired.stderr[-900:]
+    result = json.loads(paired.stdout)
+    assert result["passed"] and result["bugReproduced"] and result["fixVerified"]
+    assert result["regression"] == {"stepId": "receive", "path": "Messages.1"}
+    assert result["before"]["cleanupPassed"] and result["after"]["cleanupPassed"]
+    assert result["before"]["sdkCalls"][1]["attempts"] == 2
+    assert result["after"]["sdkCalls"][1]["attempts"] == 1
+    print("APP_CASE_COMPARE_PASS", "DynamoDB conditional write: SQS 2 -> 1", flush=True)
+
     partial = run("failure-lab", extra=["partial-compare"], json_mode=True, timeout=180)
     assert partial.returncode == 0, partial.stderr[-1000:]
     partial_report = json.loads(partial.stdout)

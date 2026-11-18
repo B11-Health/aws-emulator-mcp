@@ -13,6 +13,7 @@ import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge } from '../scripts/project_check.mjs';
+import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.15';
@@ -58,6 +59,9 @@ Commands:
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack, partial-compare
                    (before/after a synthetic S3 receipt-upload failure)
+  app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
+  app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
+                   Explicit local-only code execution; never callable through MCP/PR Actions
   app-verify <file> Verify YOUR trusted Python order handler in local Docker
   app-compare <before.py> <after.py>  Reproduce a bug and verify your own fix
                    JSON or PR-ready Markdown evidence; trusted local files only
@@ -186,6 +190,25 @@ function renderReport(command, result) {
       '  Duration: ' + (result.duration_ms / 1000).toFixed(2) + ' seconds',
       '  ' + (result.passed ? 'All checks passed; lab resources removed.' :
         'Failure: ' + (result.error || 'inspect JSON evidence')));
+  } else if (command === 'app-case') {
+    lines.push('  ' + mark(result.passed) + '  Developer-approved local application scenario',
+      '  Case: ' + result.case,
+      '  Emulator: ' + result.emulatorVersion,
+      '  Actual entrypoint invoked: ' + String(result.sourceInvoked),
+      '  Independent SDK checks: ' + result.checks.flatMap(c=>c.assertions).filter(x=>x.passed).length +
+        '/' + result.checks.flatMap(c=>c.assertions).length,
+      '  Observed SDK calls: ' + result.sdkCalls.map(x=>x.service+'.'+x.operation+':'+x.attempts).join(', '),
+      '  Cleanup: ' + mark(result.cleanupPassed),
+      '  Source SHA-256: ' + result.sourceSha256,
+      '  App code was executed ONLY after explicit local CLI selection; never via MCP.');
+  } else if (command === 'app-case-compare') {
+    lines.push('  ' + mark(result.passed) + '  Developer-approved application regression comparison',
+      '  Named regression: ' + result.regression.stepId + '.' + result.regression.path,
+      '  Before: ' + mark(result.bugReproduced) + ' expected bug reproduced',
+      '  After:  ' + mark(result.fixVerified) + ' corrected invariant verified',
+      '  Emulator: ' + result.emulatorVersion,
+      '  Both cleanups: ' + mark(result.before.cleanupPassed && result.after.cleanupPassed),
+      '  Not full application coverage or AWS production parity.');
   } else if (command === 'app-verify') {
     lines.push('  ' + mark(result.passed) + '  Local Python order-handler verification',
       '  Source SHA-256: ' + String(result.sourceSha256 || 'unverified').slice(0,20) + '…',
@@ -458,6 +481,37 @@ function readSelectedHandler(file) {
     schemaVersion: 1, source,
     sourceSha256: createHash('sha256').update(raw).digest('hex')
   } };
+}
+
+function readSelectedCase(file) {
+  if (typeof file !== 'string' || file.length > 260 || file.startsWith('-') ||
+      /^(https?:|file:)/i.test(file) || !file.endsWith('.json')) {
+    fail('Select a regular local JSON case file (max 48 KiB), never a URL', 2);
+  }
+  let value;
+  try {
+    const stat = lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > 48 * 1024)
+      throw Error('not a small regular file');
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
+    value = JSON.parse(decoded);
+    if (!value || value.schemaVersion !== 1 || typeof value.name !== 'string' ||
+        !Array.isArray(value.setup) || !Array.isArray(value.checks) ||
+        !Array.isArray(value.cleanup) || !value.invoke || !value.regression)
+      throw Error('not a supported application case');
+  } catch {
+    fail('Select a valid, bounded local application case .json file (max 48 KiB, no symlinks)', 2);
+  }
+  return value;
+}
+
+async function runSelectedAppCase(sourceEnvelope, reviewedCase) {
+  const envelope = { ...sourceEnvelope, case: reviewedCase };
+  const response = await runCaptured(dockerArgs('app-case'), JSON.stringify(envelope));
+  let proof;
+  try { proof = JSON.parse(response.raw); }
+  catch { fail('Application case produced no structured sanitized evidence', 2); }
+  return { code: response.code, proof };
 }
 
 async function runSelectedHandler(envelope) {
@@ -733,6 +787,46 @@ async function main() {
     else if (format === '--markdown') stdout.write(comparisonMarkdown(report));
     else renderReport('app-compare', report);
     if (!report.passed) fail('Could not reproduce expected duplicate and verify fix', 1);
+    return;
+  }
+  if (command === 'app-case' || command === 'app-case-compare') {
+    const wantsCompare = command === 'app-case-compare';
+    const wantsJson = args.includes('--json');
+    const wantsMarkdown = args.includes('--markdown');
+    const files = args.filter(x => x !== '--json' && x !== '--markdown');
+    const expectedCount = wantsCompare ? 3 : 2;
+    if (files.length !== expectedCount || args.length > expectedCount + 1 ||
+        (wantsJson && wantsMarkdown) || (wantsMarkdown && !wantsCompare) ||
+        args.filter(x=>x==='--json').length > 1 ||
+        args.filter(x=>x==='--markdown').length > 1) {
+      fail('Usage: aws-emulator-mcp app-case APP.py CASE.json [--json] | app-case-compare BEFORE.py AFTER.py CASE.json [--json|--markdown]', 2);
+    }
+    const reviewed = readSelectedCase(files[expectedCount-1]);
+    const left = readSelectedHandler(files[0]).envelope;
+    const right = wantsCompare ? readSelectedHandler(files[1]).envelope : null;
+    if (wantsCompare && left.sourceSha256 === right.sourceSha256)
+      fail('Before and after must be distinct source revisions', 2);
+    requireDocker();
+    if (!imageExists()) await buildImage();
+    const before = await runSelectedAppCase(left, reviewed);
+    if (!wantsCompare) {
+      try { verifyAppCaseProof(before.proof,left.sourceSha256,reviewed,before.code); }
+      catch { fail('Application case returned unverifiable or incomplete evidence', 2); }
+      if (wantsJson) stdout.write(JSON.stringify(before.proof,null,2)+'\n');
+      else renderReport('app-case',before.proof);
+      if (!before.proof.passed) fail('Application invariant or cleanup failed', 1);
+      return;
+    }
+    const after = await runSelectedAppCase(right, reviewed);
+    let result;
+    try {
+      result = compareAppCaseEvidence(before.proof,left.sourceSha256,before.code,
+                                      after.proof,right.sourceSha256,after.code,reviewed);
+    } catch { fail('Before/after evidence could not be verified or compared', 2); }
+    if (wantsJson) stdout.write(JSON.stringify(result,null,2)+'\n');
+    else if (wantsMarkdown) stdout.write(appCaseMarkdown(result));
+    else renderReport('app-case-compare',result);
+    if (!result.passed) fail('Expected regression not reproduced or app fix not verified', 1);
     return;
   }
   if (command === 'app-verify') {

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "name": "sqs-idempotent-retry",
+  "services": ["dynamodb", "sqs"],
+  "setup": [
+    {"id": "queue", "service": "sqs", "operation": "CreateQueue",
+     "parameters": {"QueueName": {"$fixture": "queue"}},
+     "expect": {"assertions": [{"path": "QueueUrl", "exists": true}]}},
+    {"id": "table", "service": "dynamodb", "operation": "CreateTable",
+     "parameters": {
+       "TableName": {"$fixture": "table"},
+       "AttributeDefinitions": [{"AttributeName": "id", "AttributeType": "S"}],
+       "KeySchema": [{"AttributeName": "id", "KeyType": "HASH"}],
+       "BillingMode": "PAY_PER_REQUEST"
+     }}
+  ],
+  "invoke": {
+    "entrypoint": "handle", "times": 2,
+    "inputs": {
+      "queueUrl": {"$ref": "queue.QueueUrl"},
+      "table": {"$fixture": "table"},
+      "id": {"$fixture": "id"},
+      "body": "synthetic-order-event"
+    },
+    "expectedCalls": [
+      {"service": "dynamodb", "operation": "PutItem", "min": 2, "max": 2},
+      {"service": "sqs", "operation": "SendMessage", "min": 1, "max": 2}
+    ]
+  },
+  "checks": [
+    {"id": "inspect", "service": "dynamodb", "operation": "GetItem",
+     "parameters": {"TableName": {"$fixture": "table"},
+                    "Key": {"id": {"S": {"$fixture": "id"}}}},
+     "expect": {"assertions": [
+       {"path": "Item.id.S", "equals": {"$fixture": "id"}},
+       {"path": "Item.state.S", "equals": "queued"}
+     ]}},
+    {"id": "receive", "service": "sqs", "operation": "ReceiveMessage",
+     "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                    "MaxNumberOfMessages": 10, "WaitTimeSeconds": 1},
+     "expect": {"assertions": [
+       {"path": "Messages.0.Body", "equals": "synthetic-order-event"},
+       {"path": "Messages.1", "exists": false}
+     ]}}
+  ],
+  "cleanup": [
+    {"id": "delete", "service": "sqs", "operation": "DeleteQueue",
+     "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"}}},
+    {"id": "remove", "service": "dynamodb", "operation": "DeleteTable",
+     "parameters": {"TableName": {"$fixture": "table"}}}
+  ],
+  "regression": {"stepId": "receive", "path": "Messages.1"}
+}
