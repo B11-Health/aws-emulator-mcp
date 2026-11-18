@@ -226,6 +226,23 @@ resource cleanup verified. This proves that **one trusted function and its
 named invariant** passed locally; not that the whole project or AWS
 production behavior was verified.
 
+**Less hand-authoring on day one:** a read-only static inspector now finds
+literal `clients["service"].sdk_method` calls, reports recognizable input
+names, suggests reviewable example cases and flags obvious gaps between
+observed call syntax and the case's expected call counters—without importing
+or executing the application or building Docker. Host Python 3.10+ is required
+for this optional command:
+
+```sh
+node bin/aws-emulator-mcp.mjs app-case-inspect \
+  examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json
+```
+
+It returns a **deliberately incomplete, non-runnable** starter case; a human
+must supply actual assertions, synthetic fixtures and cleanup. A second
+[S3 object-length before/after example](docs/APP_CASE.md#independent-s3-example-corrupted-object-length)
+shows a separate application invariant, tested on signed AWS Emulator 1.0.506.
+
 [Full workflow, trust boundary and case schema](docs/APP_CASE.md) ·
 [Recorded local evidence](docs/evidence/app-case-aws-emulator-1.0.506.json).
 

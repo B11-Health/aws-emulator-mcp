@@ -59,6 +59,7 @@ Commands:
                    Modes: compare (default), fragile-before-send,
                    recover-before-send, recover-lost-ack, partial-compare
                    (before/after a synthetic S3 receipt-upload failure)
+  app-case-inspect APP.py [CASE.json] [--entrypoint NAME] [--json]  Read-only onboarding
   app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
   app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
                    Explicit local-only code execution; never callable through MCP/PR Actions
@@ -74,7 +75,7 @@ Commands:
   help             Show this help
 
 Docker is required to run experiments and MCP tools; listing experiments or printing config needs only Node.
-No AWS account or Python is required on the host.
+No AWS account is required. Optional project/app source inspection needs host Python 3.10+.
 Use --json with doctor, demo, self-test, catalog, coverage, experiments, or experiment for machine-readable results.\nFirst build downloads and verifies the official AWS Emulator.
 Source: ${SOURCE}
 `);
@@ -525,14 +526,18 @@ async function runSelectedHandler(envelope) {
 }
 
 function runPythonProject(file, options) {
+  return runPythonReadOnly('project_plan.py', [file, ...options]);
+}
+
+function runPythonReadOnly(scriptName, args) {
   // Source is parsed with AST, never imported. Prefer supported host Python;
   // do not silently pick a system Python 3.9 when 3.10+ is installed.
-  const script = path.join(ROOT, 'src', 'aws_emulator_mcp', 'project_plan.py');
+  const script = path.join(ROOT, 'src', 'aws_emulator_mcp', scriptName);
   const interpreters = process.platform === 'win32'
     ? [['py', '-3'], ['python']]
     : [['python3.12'], ['python3.11'], ['python3.10'], ['python3']];
   for (const [exe, ...prefix] of interpreters) {
-    const result = spawnSync(exe, [...prefix, '-I', '-B', script, file, ...options], {
+    const result = spawnSync(exe, [...prefix, '-I', '-B', script, ...args], {
       stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 3 * 1024 * 1024,
       timeout: 30000, windowsHide: true, shell: false,
     });
@@ -543,12 +548,39 @@ function runPythonProject(file, options) {
       fail('Local Python analysis did not finish', 2);
     return result;
   }
-  fail('Project scanning requires Python 3.10 or newer on the host', 2);
+  fail('Read-only Python scanning requires Python 3.10 or newer on the host', 2);
 }
 
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'app-case-inspect') {
+    const jsonFlag = args.includes('--json');
+    let remaining = args.filter(value => value !== '--json');
+    const index = remaining.indexOf('--entrypoint');
+    let selectedName;
+    if (index >= 0) {
+      selectedName = remaining[index+1];
+      remaining = remaining.filter((value, i) => i !== index && i !== index+1);
+    }
+    const files = remaining;
+    if (files.length < 1 || files.length > 2 ||
+        args.length !== files.length + Number(jsonFlag) + (index >= 0 ? 2 : 0) ||
+        args.filter(value => value === '--json').length > 1 ||
+        (index >= 0 && (typeof selectedName !== 'string' ||
+          !/^[A-Za-z][A-Za-z_0-9]{0,63}$/.test(selectedName))) ||
+        files.some(value => value.startsWith('-') || /^(https?:|file:)/i.test(value))) {
+      fail('Usage: aws-emulator-mcp app-case-inspect FILE.py [CASE.json] [--entrypoint NAME] [--json]', 2);
+    }
+    // Host-only AST inspection: no Docker image, imports, AWS credentials,
+    // application code execution or case submission to remote MCP clients.
+    const report = runPythonReadOnly('app_case_inspect.py',
+      [...files, ...(selectedName ? ['--entrypoint', selectedName] : []), ...(jsonFlag ? ['--json'] : [])]);
+    if (report.stdout) stdout.write(report.stdout);
+    if (report.stderr) stderr.write(report.stderr);
+    process.exitCode = report.status;
+    return;
+  }
   if (command === 'project-plan') {
     const [file, ...options] = args;
     if (!file || file.startsWith('-') ||
