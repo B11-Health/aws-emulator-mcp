@@ -8,6 +8,10 @@ const LOCAL_DOCKER = /^(?:unix|npipe):\/\//;
 const VERSION_TEXT = /^[A-Za-z0-9][A-Za-z0-9 .+_\-]{0,99}$/;
 
 const HOST_SPACE_ADVISORY_GIB = 10;
+// A conservative warning threshold, NOT a verified capacity requirement.
+// The signed emulator package itself is large, and Docker needs extra
+// temporary/layer space to unpack it. Never delete user data automatically.
+const CRITICAL_IMAGE_BUILD_GIB = 3;
 const GIB = 1024 ** 3;
 const FINGERPRINT = /^[a-f0-9]{64}$/;
 
@@ -34,6 +38,36 @@ export function inspectWorkspaceDisk(statfs = () => statfsSync(process.cwd(), {b
   return report;
 }
 
+
+/** App source changes require a *new* image even if an old tag exists.
+ * Assess host-visible storage conservatively: this is only an advisory,
+ * especially when the Docker daemon uses a separate filesystem namespace.
+ */
+export function assessPendingBuildSpace({ imageCached = null, imageReusable = null,
+                                          hostVisibleDockerRootDisk = null } = {}) {
+  const buildExpected = imageReusable === true ? false :
+    imageReusable === false || imageCached === false ? true : null;
+  const free = hostVisibleDockerRootDisk?.freeGiB;
+  const measurable = typeof free === 'number' && Number.isFinite(free) && free >= 0;
+  const status = buildExpected === false ? 'not_needed' :
+    buildExpected === null || !measurable ? 'unknown' :
+    free < CRITICAL_IMAGE_BUILD_GIB ? 'critical' :
+    free < HOST_SPACE_ADVISORY_GIB ? 'low' : 'normal';
+  return {buildExpected, status, minRecommendedGiB: CRITICAL_IMAGE_BUILD_GIB,
+    hostVisibleDockerRootFreeGiB: measurable ? free : null,
+    capacityVerifiedForDaemonNamespace: false, automaticCleanup: false,
+    note: 'Advisory host-visible Docker data-root measurement only. No Docker Desktop VM or daemon namespace capacity guarantee; no images or volumes were removed.'};
+}
+
+export function buildSpaceWarning(report) {
+  const risk = report?.imageBuildSpace;
+  if (risk?.status !== 'critical') return null;
+  const available = risk.hostVisibleDockerRootFreeGiB;
+  return `Potential image-build failure: only ${available.toFixed(1)} GiB free on the host-visible Docker data-root volume, ` +
+    `below the conservative ${risk.minRecommendedGiB} GiB warning threshold. ` +
+    'Run `docker system df` and review unused assets before retrying. ' +
+    'No automatic pruning or deletion. Host-visible space is not an authoritative Docker VM capacity reading.';
+}
 
 function result(ok, reason = '') {
   return { passed: Boolean(ok), reason };
@@ -74,6 +108,7 @@ export function inspectPreflight({
     imageReusable: null,
     hostWorkspaceDisk: inspectWorkspaceDisk(() => statfs(process.cwd())),
     hostVisibleDockerRootDisk: null,
+    imageBuildSpace: assessPendingBuildSpace(),
     dockerVersion: null,
     checks,
     nextCommand: nodeOk ? 'aws-emulator-mcp architecture demo' : 'Install Node.js 20+',
@@ -159,9 +194,22 @@ export function inspectPreflight({
     }
   }
   output.emulatorReady = nodeOk && checks.docker.passed;
+  output.imageBuildSpace = assessPendingBuildSpace({
+    imageCached: output.imageCached, imageReusable: output.imageReusable,
+    hostVisibleDockerRootDisk: output.hostVisibleDockerRootDisk
+  });
   if (output.emulatorReady) {
-    output.nextCommand = 'aws-emulator-mcp doctor';
-    output.sourceCheckoutCommand = 'node bin/aws-emulator-mcp.mjs doctor';
+    if (output.imageBuildSpace.status === 'critical') {
+      // Do not recommend starting a potentially huge build as the very next
+      // step. Keep this non-mutating and advisory: the daemon's own filesystem
+      // namespace is not independently verified by host statfs.
+      output.nextCommand = 'docker system df';
+      output.sourceCheckoutCommand = 'docker system df';
+      output.guidance = 'Review low host-visible Docker data-root free space before an image rebuild. No automatic cleanup.';
+    } else {
+      output.nextCommand = 'aws-emulator-mcp doctor';
+      output.sourceCheckoutCommand = 'node bin/aws-emulator-mcp.mjs doctor';
+    }
   }
   return output;
 }
@@ -188,6 +236,10 @@ export function printPreflight(report) {
     } else out.push('  Host-visible Docker data-root volume space: unavailable');
   }
 
+  const buildWarning = buildSpaceWarning(report);
+  if (buildWarning) out.push('  BUILD RISK: ' + buildWarning);
+  else if (report.imageBuildSpace?.status === 'low')
+    out.push('  Build-space advisory: host-visible Docker data-root is below 10 GiB and a new image is needed; no cleanup performed.');
   if (report.imageCached !== null) out.push(`  Versioned Docker image tag present: ${report.imageCached ? 'yes' : 'no'} (not a source verification)`);
   if (report.checks.docker?.reason) out.push(`  Blocker: ${report.checks.docker.reason}`);
   if (report.imageSourceStatus === 'matched') out.push('  Cached image Docker-copy source fingerprint: matches current checkout');
