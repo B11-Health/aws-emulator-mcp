@@ -52,7 +52,7 @@ a sanitized first-run report. This command was introduced in
 
 [**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
 
-**Inspect the actual app-level evidence:** [Application Proof Explorer](https://b11-health.github.io/aws-emulator-mcp/proof-explorer.html) lets you examine two recorded Python before/after comparisons, their independent assertions, source hashes and cleanup. [Reproduce the trusted-local workflow](docs/PROOF_WORKFLOW.md). The website is a static evidence reader, **not** a live emulator or AWS compatibility certification.
+**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification.
 
 ## See the proof in 90 seconds
 

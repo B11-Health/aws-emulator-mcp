@@ -2,9 +2,19 @@
 
 **Goal:** show what your application did before a change, which independent assertion failed, and whether the same assertion passed after the fix.
 
-[Application Proof Explorer](https://b11-health.github.io/aws-emulator-mcp/proof-explorer.html) reads two **project-maintained**, redacted November 18, 2026 comparisons. It is a static evidence viewer, not an AWS-connected simulator. [SQS record](evidence/app-case-aws-emulator-1.0.506.json) · [S3 record](evidence/app-case-s3-aws-emulator-1.0.506.json).
+The draft [Application Proof Explorer](proof-explorer.html) reads two **project-maintained**, redacted November 18, 2026 comparisons. **This new page is not available on GitHub Pages until its source is merged and the site deploys.** Preview it locally using the instructions below. It is a static evidence viewer, not an AWS-connected simulator. [SQS record](evidence/app-case-aws-emulator-1.0.506.json) · [S3 record](evidence/app-case-s3-aws-emulator-1.0.506.json).
 
-This is an experimental local Python `handle(clients, inputs)` proof workflow in the development `master` checkout. It is **not in v0.4.0-beta.15**, an arbitrary application runner, or an MCP tool for executing source. Only run source you own and trust; Docker does **not** make hostile code safe.
+## Preview the Proof Explorer before GitHub Pages publishes it
+
+From a checkout containing the draft Proof Explorer source:
+
+```sh
+python3 -m http.server 8788 --bind 127.0.0.1 --directory docs
+```
+
+Open `http://127.0.0.1:8788/proof-explorer.html` in your browser. This serves only local, checked-in static files and the project-maintained evidence JSON. It does **not** start Docker, contact AWS, run an application, or verify production behavior. Stop the local server with Ctrl+C. On a system where `python3` is named `python`, substitute that executable. After the page is deployed to GitHub Pages, its expected public address is `https://b11-health.github.io/aws-emulator-mcp/proof-explorer.html`; do not treat that address as live before deployment.
+
+This is an experimental local Python `handle(clients, inputs)` proof workflow available in a development checkout **containing these features**, including the integrated preview. It is **not in v0.4.0-beta.15**, an arbitrary application runner, or an MCP tool for executing source. Only run source you own and trust; Docker does **not** make hostile code safe.
 
 ## One workflow, three levels of evidence
 
