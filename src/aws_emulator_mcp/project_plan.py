@@ -77,9 +77,11 @@ def _source_calls(source):
                 kind = None
                 if direct and isinstance(node, ast.Import) and alias.name == "boto3":
                     kind = "module"
-                if (direct and isinstance(node, ast.ImportFrom) and not node.level
-                        and node.module == "boto3" and alias.name == "client"):
-                    kind = "factory"
+                if direct and isinstance(node, ast.ImportFrom) and not node.level:
+                    if node.module == "boto3" and alias.name == "client":
+                        kind = "factory"
+                    if node.module in ("boto3", "boto3.session") and alias.name == "Session":
+                        kind = "session_factory"
                 bind(node, alias.asname or alias.name.split(".")[0], kind)
         elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
             stmt = parents[node]
@@ -122,12 +124,25 @@ def _source_calls(source):
                 return None, None
             frame = scope(frame)
 
+    def session_constructor(value):
+        if not isinstance(value, ast.Call):
+            return False
+        func = value.func
+        if isinstance(func, ast.Attribute) and func.attr == "Session":
+            return lookup(func.value)[0] == "module"
+        return lookup(func)[0] == "session_factory"
+
     def client_service(factory):
         if not isinstance(factory, ast.Call):
             return None
         func = factory.func
         if isinstance(func, ast.Attribute) and func.attr == "client":
-            recognized = lookup(func.value)[0] == "module"
+            # Support explicit Boto3 sessions without importing application
+            # modules. Do not infer injected, dynamic or reassigned clients.
+            receiver = func.value
+            kind, assigned = lookup(receiver)
+            recognized = (kind == "module" or session_constructor(receiver) or
+                          (kind == "assignment" and session_constructor(assigned)))
         else:
             recognized = lookup(func)[0] == "factory"
         if not recognized:
