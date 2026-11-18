@@ -32,14 +32,15 @@
 
 ## One command to get your first result
 
-In a **development checkout containing the new `onboard` command** (not
-the immutable v0.4.0-beta.15 release), beginners can verify a real local
-result and see their next steps **without an AWS account or Docker build**:
+The new `onboard` command is available for review in
+[the unmerged integration preview](https://github.com/B11-Health/aws-emulator-mcp/pull/74),
+**not** in the published v0.4.0-beta.15 release or the current default
+`master` checkout. To try it without an AWS account or Docker build:
 
 ```sh
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch release/agent-team-preview-20261118 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
-node bin/aws-emulator-mcp.mjs onboard
+node bin/aws-emulator-mcp.mjs onboard --offline --json
 ```
 
 It validates **seven generated architecture artifacts** (not an AWS API
@@ -84,7 +85,7 @@ or AWS fidelity certification.
 
 ## Connect to an AI assistant
 
-**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** to print a native mcpServers definition. **Claude Desktop:** an optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) reduces JSON setup, but you still need to install and run local Docker. Neither route is a hosted public MCP endpoint or a production AWS deployment.
+**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client, since the MCP launcher can build an image if one is missing. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
 
 [**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
 
@@ -143,6 +144,8 @@ with sanitized evidence. It is **not** an AWS compatibility layer, IAM tester,
 general-purpose application runner or cloud deployment tool.
 
 [**Compare native AWS Emulator vs this adapter: concrete tasks, commands and tradeoffs.**](docs/WHY_MCP.md)
+
+**Five-minute hands-on (draft):** [official AWS skill to independent application proof](docs/OFFICIAL_SKILL_TO_APP_PROOF_5MIN.md) combines AWS-native setup/fidelity checks with a separate, bounded red/green Python application test. Requires prerequisites and a ready local Docker image; not in beta.15.
 
 **Prefer the AWS-native path.** The official agent skill owns installation and
 SDK setup; our complementary [AWS session check and application-proof workflow](docs/AWS_COMPANION.md)
@@ -204,7 +207,7 @@ Docker-backed commands in the current source checkout verify a build-input
 fingerprint before image reuse and rebuild stale cached bundles. This prevents
 same-tag checkout collisions; it is not a security signature.
 
-**New on master (not beta.15):** when a rebuild is needed and the Linux
+**New in the unmerged integration preview ([PR #74](https://github.com/B11-Health/aws-emulator-mcp/pull/74)), not in the published beta.15 or current `master`:** when a rebuild is needed and the Linux
 host-visible Docker data root reports less than 3 GiB free, `preflight`
 flags an advisory `imageBuildSpace.status="critical"` and recommends the
 read-only `docker system df` command **before** the signed image build.
