@@ -30,6 +30,8 @@
   <a href="SUPPORT.md">Get help</a>
 </p>
 
+**Inspect the actual app-level evidence:** [Application Proof Explorer](https://b11-health.github.io/aws-emulator-mcp/proof-explorer.html) lets you examine two recorded Python before/after comparisons, their independent assertions, source hashes and cleanup. [Reproduce the trusted-local workflow](docs/PROOF_WORKFLOW.md). The website is a static evidence reader, **not** a live emulator or AWS compatibility certification.
+
 ## See the proof in 90 seconds
 
 [![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
