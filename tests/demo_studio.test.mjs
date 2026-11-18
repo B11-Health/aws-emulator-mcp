@@ -148,3 +148,27 @@ test('public FAQ answers real adoption questions without suggesting AWS or IAM p
  assert.match(faq,/href="#install"/);
  assert.match(html,/href="#faq">FAQ/);
 });
+
+
+test('newcomer contribution paths are public, scoped, and require no push or AWS keys',()=>{
+ const guide=readFileSync(path.join(ROOT,'CONTRIBUTING.md'),'utf8');
+ const readme=readFileSync(path.join(ROOT,'README.md'),'utf8');
+ const form=readFileSync(path.join(ROOT,'.github','ISSUE_TEMPLATE','independent_first_run.yml'),'utf8');
+ const html=read('index.html');
+ for(const n of [7,8,50,51,52])
+   assert.ok(guide.includes('/issues/'+n),'missing newcomer issue #'+n);
+ assert.match(guide,/do not need a collaborator invitation/i);
+ assert.match(guide,/Fork/);
+ assert.match(guide,/npm test/);
+ assert.match(guide,/PYTHONPATH=src/);
+ assert.match(guide,/not.*AWS APIs/i);
+ assert.match(readme,/CONTRIBUTING\.md/);
+ assert.match(readme,/independent_first_run\.yml/);
+ assert.match(html,/blob\/master\/CONTRIBUTING\.md/);
+ assert.match(form,/operating-system/);
+ assert.match(form,/test-path/);
+ assert.match(form,/Commands and observed outcomes/);
+ assert.match(form,/credentials, private paths, account identifiers/);
+ assert.match(form,/configuration-only results separately from actual MCP tool calls/);
+ assert.doesNotMatch(form,/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|personal access token input/i);
+});
