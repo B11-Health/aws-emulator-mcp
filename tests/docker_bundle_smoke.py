@@ -354,6 +354,19 @@ def verify():
     project_proof = content(json.loads(proof.stdout))
     assert project_proof["passed"] and project_proof["passedSteps"] == 6
     print("PROJECT_PLAN_MCP_PASS", project_proof["emulatorVersion"], "six SQS steps", flush=True)
+    # The MCP itself—not just the Node CLI—should detect an expectation-only
+    # negative control and refuse unrelated failures as proof.
+    challenge = run("mcp", json.dumps(msg(1, "contract_run", {
+        "plan": project_plan, "negativeControl": True})) + "\n", timeout=110)
+    assert challenge.returncode == 0, challenge.stderr[-800:]
+    response = json.loads(challenge.stdout)
+    assert response["result"].get("isError") is False
+    control = content(response)
+    assert control["passed"] and control["mode"] == "assertion_challenge"
+    assert control["baseline"]["passed"] and control["baseline"]["accountVerified"]
+    assert control["assertionChallenge"]["status"] == "detected"
+    assert not control["applicationFixVerified"]
+    print("CONTRACT_ASSERTION_CHALLENGE_MCP_PASS", control["baseline"]["emulatorVersion"], flush=True)
     assert len(tools) == 38
     assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage",
             "emulator_order_demo", "lab_catalog", "lab_run",

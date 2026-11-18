@@ -190,7 +190,13 @@ To inspect without running your application, use
 execute matched **synthetic SDK** tests in isolated Docker and see which call
 sites have passing probes, failing probes or no test. No application code is
 executed, and passing API probes are **not** evidence that the application's
-fix is verified. [Project check details](docs/CONTRACT_TESTING.md#one-command-project-check-opt-in-api-tests).
+fix is verified. Use `--run --challenge` for an opt-in negative control
+that confirms one intentionally wrong test expectation gets caught by the
+isolated emulator. Developer-authored JSON contracts can also use
+`aws-emulator-mcp contract ./my-contract.json --challenge`; MCP clients can
+set `contract_run`'s `negativeControl: true` option. Both are opt-in and
+retain the distinction between API tests and actual application verification.
+[Project check details](docs/CONTRACT_TESTING.md#one-command-project-check-opt-in-api-tests).
 
 ## Test your own Python handler, not just our bundled files
 

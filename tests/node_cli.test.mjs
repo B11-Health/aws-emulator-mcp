@@ -207,6 +207,22 @@ test('opt-in local app-verify refuses unsafe source input before Docker', () => 
   assert.doesNotMatch(src,/docker cp |--volume/);
 });
 
+test('contract assertion challenge is opt-in, rejects invalid flags before Docker', () => {
+  const help = cli('help');
+  assert.match(help.stdout, /Add --challenge/);
+  for (const args of [
+    ['contract', 'demo', '--challenge', '--challenge'],
+    ['contract', 'demo', '--json', '--json', '--challenge'],
+    ['contract', 'demo', '--challenge', '--json', '--unsafe'],
+    ['contract', 'https://example.com/contract.json', '--challenge'],
+    ['contract', 'file:///etc/passwd', '--challenge'],
+  ]) {
+    const result = cli(...args);
+    assert.equal(result.status, 2, args.join(' '));
+    assert.equal(result.stdout, '');
+  }
+});
+
 test('contract CLI refuses remote paths, bad files and bad shapes before Docker', () => {
   assert.equal(cli('contract').status, 2);
   assert.equal(cli('contract', 'https://example.org/plan.json').status, 2);

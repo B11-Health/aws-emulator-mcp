@@ -83,19 +83,94 @@ function readEvidence(draft, run) {
   };
 }
 
-export function summarizeProjectProbes(inventory, runs = []) {
+/** One deterministic, expectation-only negative control per synthetic plan.
+ * Never modifies AWS parameters or application source. The runtime validates
+ * the mutated data through the same existing contract worker.
+ */
+export function buildAssertionChallenge(plan) {
+  if (!plan || !Array.isArray(plan.steps) || plan.steps.length < 1 || plan.steps.length > 16)
+    return null;
+  for (let stepIndex = 0; stepIndex < plan.steps.length; stepIndex++) {
+    const assertions = plan.steps[stepIndex]?.expect?.assertions;
+    if (!Array.isArray(assertions)) continue;
+    for (let assertionIndex = 0; assertionIndex < assertions.length; assertionIndex++) {
+      const assertion = assertions[assertionIndex];
+      if (!assertion || !Object.hasOwn(assertion, 'equals')) continue;
+      // Bounded test fixture: never use arbitrary source values or AWS responses.
+      const mutated = structuredClone(plan);
+      const expected = assertion.equals;
+      const marker = '__mcp_negative_control__';
+      const different = typeof expected === 'number' && Number.isSafeInteger(expected) &&
+          expected < Number.MAX_SAFE_INTEGER
+        ? expected + 1 : typeof expected === 'boolean' ? !expected
+          : typeof expected === 'string' && Buffer.byteLength(expected, 'utf8') + marker.length <= 8192
+            ? expected + marker : marker;
+      mutated.steps[stepIndex].expect.assertions[assertionIndex].equals = different;
+      return { plan: mutated, stepIndex, assertionIndex,
+        stepId: mutated.steps[stepIndex].id, path: assertion.path };
+    }
+  }
+  return null;
+}
+
+/** Verify the challenge failed on the chosen assertion—not due to a startup,
+ * operation, cleanup, or other unrelated failure. SHA checks bind to the
+ * mutated plan, while the baseline must also pass in its own fresh run.
+ */
+function summarizeChallenge(draft, baselineRun, controlRun) {
+  const baseline = readEvidence(draft, baselineRun);
+  const challenge = buildAssertionChallenge(draft.plan);
+  if (baseline.status !== 'passed') return { status: 'baseline_not_passed' };
+  if (!challenge) return { status: 'no_equality_assertion' };
+  const details = { stepId: challenge.stepId, path: challenge.path,
+    planSha256: planSha256(challenge.plan) };
+  if (!controlRun) return { ...details, status: 'not_run' };
+  const checked = readEvidence({ plan: challenge.plan }, controlRun);
+  if (checked.status === 'invalid_evidence') return { ...details, status: 'invalid_evidence' };
+  if (checked.status === 'passed') return { ...details, status: 'not_detected' };
+  if (checked.status !== 'failed') return { ...details, status: 'inconclusive' };
+  const steps = controlRun.proof.steps;
+  const observed = steps[challenge.stepIndex];
+  const assertions = observed?.assertions;
+  const detected = steps.length === challenge.stepIndex + 1 &&
+    steps.slice(0, -1).every(step => step.passed) &&
+    observed?.id === challenge.stepId && observed?.observed === 'success' &&
+    observed.passed === false && Array.isArray(assertions) &&
+    assertions.length === draft.plan.steps[challenge.stepIndex].expect.assertions.length &&
+    assertions[challenge.assertionIndex]?.path === challenge.path &&
+    assertions.every((a, i) => a.passed === (i !== challenge.assertionIndex));
+  if (!detected) return { ...details, status: 'inconclusive' };
+  // Prevent comparing observations from different emulator releases.
+  if (baseline.emulatorVersion !== checked.emulatorVersion)
+    return { ...details, status: 'inconclusive' };
+  return { ...details, status: 'detected' };
+}
+
+/** Standalone user-authored contract negative control. An emitted result is
+ * never proof that application code was executed; only local SDK assertions.
+ */
+export function assessContractChallenge(plan, baselineRun, controlRun) {
+  return summarizeChallenge({plan}, baselineRun, controlRun);
+}
+
+export function summarizeProjectProbes(inventory, runs = [], controlRuns = undefined) {
   if (!inventory || inventory.schemaVersion !== 1 || inventory.executed !== false ||
       !Array.isArray(inventory.calls) || inventory.calls.length > 256 ||
       !Array.isArray(inventory.drafts) || inventory.drafts.length > 4 ||
       !Array.isArray(inventory.skippedFiles) || !Array.isArray(inventory.analyzedFiles) ||
       !Array.isArray(inventory.unmatchedMethods) || !Array.isArray(runs) ||
-      runs.length > inventory.drafts.length) {
+      runs.length > inventory.drafts.length ||
+      (controlRuns !== undefined && (!Array.isArray(controlRuns) ||
+        controlRuns.length > inventory.drafts.length))) {
     throw new Error('Invalid or oversized project inventory');
   }
   const probes = inventory.drafts.map((draft, i) => {
     const evidence = readEvidence(draft, runs[i]);
     return {
       service: draft.service,
+      ...(controlRuns !== undefined ? {
+        assertionChallenge: summarizeChallenge(draft, runs[i], controlRuns[i]),
+      } : {}),
       status: evidence.status,
       name: draft.plan.name,
       planSha256: planSha256(draft.plan),
@@ -141,10 +216,15 @@ export function summarizeProjectProbes(inventory, runs = []) {
     skippedFiles: inventory.skippedFiles.length,
     successfulContracts: probes.filter(p => p.status === 'passed').length,
     failedContracts: probes.filter(p => p.status === 'failed' || p.status === 'invalid_evidence').length,
+    ...(controlRuns !== undefined ? {
+      challengesDetected: probes.filter(p => p.assertionChallenge.status === 'detected').length,
+      challengesUnverified: probes.filter(p => p.assertionChallenge.status !== 'detected').length,
+    } : {}),
   };
   return {
     schemaVersion: 1,
-    mode: runs.length ? 'synthetic_probes' : 'static_inventory',
+    mode: controlRuns !== undefined ? 'assertion_challenge' :
+      runs.length ? 'synthetic_probes' : 'static_inventory',
     sourceExecution: false,
     applicationFixVerified: false,
     productionAwsValidated: false,
@@ -153,10 +233,15 @@ export function summarizeProjectProbes(inventory, runs = []) {
     unmatchedMethods: inventory.unmatchedMethods,
     summary, probes, callSites,
     status: summary.apiProbeFailed || summary.failedContracts ? 'api_probe_failed'
-      : summary.callSites === 0 || summary.untested || summary.skippedFiles || summary.argumentReviewNeeded
-        ? 'incomplete' : 'api_probes_passed',
+      : controlRuns !== undefined && probes.some(p =>
+        ['not_detected', 'invalid_evidence'].includes(p.assertionChallenge.status))
+        ? 'challenge_failed'
+        : summary.callSites === 0 || summary.untested || summary.skippedFiles ||
+          summary.argumentReviewNeeded || (controlRuns !== undefined && summary.challengesUnverified)
+          ? 'incomplete' : controlRuns !== undefined ? 'assertion_challenges_passed' : 'api_probes_passed',
     limitations: 'Only direct statically recognized Python Boto3 client calls; synthetic AWS Emulator SDK probes. '
       + 'Application code, branches, values, business assertions, IAM and production AWS were NOT tested. '
+      + 'One negative control per generated plan only; a detected mismatch does not prove application behavior. '
       + 'SHA-256 links local plans and evidence but does not authenticate saved artifacts.',
   };
 }
@@ -177,9 +262,15 @@ export function formatProjectCheck(report) {
   }
   for (const probe of report.probes) {
     lines.push(`  ${probe.service} plan: ${probe.status} (${probe.name})`);
+    if (probe.assertionChallenge) {
+      const control = probe.assertionChallenge;
+      lines.push(`    Assertion challenge: ${control.status}` +
+        (control.stepId ? ` at ${control.stepId}.${control.path}` : ''));
+    }
   }
   lines.push('', 'APP FIX NOT VERIFIED — tests use synthetic input, not the application.',
     'Review missing operations and arguments; use your own runtime/business assertions.',
+    'A detected negative control proves one synthetic assertion is sensitive to a mismatch, not the app.',
     'No real AWS calls or production credentials.');
   return lines.join('\n') + '\n';
 }

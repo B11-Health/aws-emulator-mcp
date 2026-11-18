@@ -6,7 +6,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { planSha256, summarizeProjectProbes, formatProjectCheck } from '../scripts/project_check.mjs';
+import { planSha256, summarizeProjectProbes, formatProjectCheck,
+  buildAssertionChallenge } from '../scripts/project_check.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = path.join(ROOT, 'bin', 'aws-emulator-mcp.mjs');
@@ -147,4 +148,110 @@ test('no false green for no direct calls or missing operations', () => {
   const bad = spawnSync(process.execPath, [CLI, 'project-check', '--run'], {encoding:'utf8'});
   assert.equal(bad.status, 2);
   assert.equal(bad.stdout, '');
+});
+
+function assertedFailure(plan, target) {
+  const last = target.stepIndex;
+  const sample = proof(plan, -1);
+  sample.steps = sample.steps.slice(0, last + 1);
+  const failed = sample.steps[last];
+  failed.passed = false;
+  failed.assertions[target.assertionIndex].passed = false;
+  sample.passedSteps = last;
+  sample.passed = false;
+  return { code: 1, proof: sample };
+}
+
+test('challenge changes one expectation, never an operation or request argument', () => {
+  for (const filename of ['s3-write-read.json', 'sqs-consume.json',
+    'dynamodb-put-get.json', 'ec2-vpc.json']) {
+    const before = JSON.parse(readFileSync(path.join(ROOT, 'examples/contracts', filename)));
+    const unchanged = structuredClone(before);
+    const generated = buildAssertionChallenge(before);
+    assert.ok(generated, filename);
+    assert.deepEqual(before, unchanged);
+    assert.notEqual(planSha256(before), planSha256(generated.plan));
+    const restored = structuredClone(generated.plan);
+    restored.steps[generated.stepIndex].expect.assertions[generated.assertionIndex].equals =
+      before.steps[generated.stepIndex].expect.assertions[generated.assertionIndex].equals;
+    assert.deepEqual(restored, before, `${filename}: mutation must be expectation-only`);
+  }
+  assert.equal(buildAssertionChallenge({steps:[{id:'a', expect:{assertions:[{path:'A', exists:true}]}}]}), null);
+});
+
+test('challenge reports detected on exact failed assertion in fresh emulator evidence', () => {
+  const inv = fixture();
+  const baseline = {code:0,proof:proof(sqs)};
+  const mutation = buildAssertionChallenge(sqs);
+  const negative = assertedFailure(mutation.plan, mutation);
+  const report = summarizeProjectProbes(inv,[baseline],[negative]);
+  assert.equal(report.mode,'assertion_challenge');
+  assert.equal(report.summary.challengesDetected,1);
+  assert.equal(report.summary.challengesUnverified,0);
+  assert.equal(report.probes[0].assertionChallenge.status,'detected');
+  assert.equal(report.probes[0].assertionChallenge.stepId,mutation.stepId);
+  assert.equal(report.applicationFixVerified,false);
+  assert.equal(report.status,'incomplete'); // unmatched SDK method and argument gaps
+  assert.match(formatProjectCheck(report),/Assertion challenge: detected/);
+});
+
+test('challenge rejects mismatched versions, failures at wrong steps and forged results', () => {
+  const baseline = {code:0,proof:proof(sqs)};
+  const mutation = buildAssertionChallenge(sqs);
+  const valid = assertedFailure(mutation.plan,mutation);
+  const invalid = [];
+  const wrongVersion = structuredClone(valid);
+  wrongVersion.proof.emulatorVersion = 'Version: 0.0.0';
+  invalid.push(wrongVersion);
+  const corruptedHash = structuredClone(valid);
+  corruptedHash.proof.planSha256 = 'f'.repeat(64);
+  invalid.push(corruptedHash);
+  const unrelated = structuredClone(valid);
+  unrelated.proof.steps[mutation.stepIndex].observed='local_error';
+  unrelated.proof.steps[mutation.stepIndex].assertions=[];
+  invalid.push(unrelated);
+  const errorEarlier = {code:1,proof:proof(mutation.plan,0)};
+  invalid.push(errorEarlier);
+  const wrongAssert = structuredClone(valid);
+  wrongAssert.proof.steps[mutation.stepIndex].assertions[mutation.assertionIndex].passed = true;
+  invalid.push(wrongAssert);
+  for (const bad of invalid) {
+    const report=summarizeProjectProbes(fixture(),[baseline],[bad]);
+    assert.notEqual(report.probes[0].assertionChallenge.status,'detected');
+    assert.notEqual(report.status,'assertion_challenges_passed');
+  }
+  const notRun = summarizeProjectProbes(fixture(),[baseline],[]);
+  assert.equal(notRun.probes[0].assertionChallenge.status,'not_run');
+  const noBaseline = summarizeProjectProbes(fixture(),[],[valid]);
+  assert.equal(noBaseline.probes[0].assertionChallenge.status,'baseline_not_passed');
+});
+
+test('challenge can yield fully confirmed API probe status without claiming app behavior', () => {
+  const inv = fixture();
+  inv.calls = [inv.calls[0]];
+  inv.calls[0].keywordNames = ['QueueUrl','MessageBody'];
+  inv.drafts[0].argumentGaps=[];
+  inv.unmatchedMethods=[];
+  const mutation = buildAssertionChallenge(sqs);
+  const report = summarizeProjectProbes(inv,[{code:0,proof:proof(sqs)}],[assertedFailure(mutation.plan,mutation)]);
+  assert.equal(report.status,'assertion_challenges_passed');
+  assert.equal(report.applicationFixVerified,false);
+  assert.equal(report.probes[0].assertionChallenge.status,'detected');
+  const noChallenge = summarizeProjectProbes(inv,[{code:0,proof:proof(sqs)}],[{code:0,proof:proof(mutation.plan)}]);
+  assert.notEqual(noChallenge.status,'assertion_challenges_passed');
+});
+
+test('challenge opt-in requires --run and rejects duplicate flags before Docker', () => {
+  for (const args of [
+    ['project-check','file.py','--challenge'],
+    ['project-check','file.py','--challenge','--json'],
+    ['project-check','file.py','--run','--challenge','--challenge'],
+    ['project-check','file.py','--run','--shell'],
+  ]) {
+    const outcome=spawnSync(process.execPath,[CLI,...args],{encoding:'utf8',timeout:10000});
+    assert.equal(outcome.status,2,args.join(' '));
+    assert.equal(outcome.stdout,'');
+  }
+  const help=spawnSync(process.execPath,[CLI,'help'],{encoding:'utf8'});
+  assert.match(help.stdout,/--challenge/);
 });
