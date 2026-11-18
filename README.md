@@ -92,6 +92,13 @@ general-purpose application runner or cloud deployment tool.
 
 [**Compare native AWS Emulator vs this adapter: concrete tasks, commands and tradeoffs.**](docs/WHY_MCP.md)
 
+**Prefer the AWS-native path.** The official agent skill owns installation and
+SDK setup; our complementary [AWS session check and application-proof workflow](docs/AWS_COMPANION.md)
+recognize a running local emulator without reading AWS credentials. The
+application proof still uses its own independent Docker labs; this is not a
+shared backend or an official AWS integration.
+
+
 ## Explore the actual outputs first
 
 **No AWS account, website or Docker required to inspect the artifacts.**
