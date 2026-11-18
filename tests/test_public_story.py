@@ -208,5 +208,40 @@ class ProductStoryTests(unittest.TestCase):
         self.assertIn('prefers-reduced-motion',
                       (ROOT/"docs/onboarding/style.css").read_text(encoding="utf-8"))
 
+    def test_demo_studio_app_proof_is_reproducible_and_not_mislabeled_released(self):
+        import hashlib
+        import json
+        from html.parser import HTMLParser
+        page=(ROOT/"docs/index.html").read_text(encoding="utf-8")
+        evidence_path=ROOT/"docs/evidence/app-case-aws-emulator-1.0.506.json"
+        evidence=json.loads(evidence_path.read_text(encoding="utf-8"))
+        expected=evidence["comparison"]
+        self.assertTrue(expected["passed"] and expected["bugReproduced"] and expected["fixVerified"])
+        self.assertEqual(expected["regression"],{"stepId":"receive","path":"Messages.1"})
+        self.assertEqual(expected["before"]["sdkCalls"][1]["attempts"],2)
+        self.assertEqual(expected["after"]["sdkCalls"][1]["attempts"],1)
+        self.assertEqual(expected["emulatorVersion"],"Version: 1.0.506")
+        self.assertIn("NEW ON MASTER",page)
+        self.assertIn("NOT IN THE BETA.15 TAG",page)
+        self.assertIn('id="app-proof"',page)
+        self.assertIn('id="app-proof-command"',page)
+        self.assertIn("app-case-compare",page)
+        self.assertIn("docs/APP_CASE.md",page)
+        self.assertIn("docs/evidence/app-case-aws-emulator-1.0.506.json",page)
+        for f in ("examples/app-case/buggy.py","examples/app-case/fixed.py",
+                  "examples/app-case/sqs-idempotency.json"):
+            self.assertIn(f,page)
+            self.assertTrue((ROOT/f).is_file())
+        for variant in ("buggy","fixed"):
+            expected_sha=hashlib.sha256((ROOT/f"examples/app-case/{variant}.py").read_bytes()).hexdigest()
+            self.assertEqual(evidence["before" if variant=="buggy" else "after"]["sourceSha256"], expected_sha)
+        class Ids(HTMLParser):
+            def __init__(self): super().__init__(); self.ids=[]
+            def handle_starttag(self, tag, attrs):
+                fields=dict(attrs)
+                if "id" in fields: self.ids.append(fields["id"])
+        parser=Ids();parser.feed(page)
+        self.assertEqual(len(parser.ids),len(set(parser.ids)))
+
 if __name__=="__main__":
     unittest.main()
