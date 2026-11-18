@@ -233,7 +233,11 @@ class ProductStoryTests(unittest.TestCase):
             self.assertIn(f,page)
             self.assertTrue((ROOT/f).is_file())
         for variant in ("buggy","fixed"):
-            expected_sha=hashlib.sha256((ROOT/f"examples/app-case/{variant}.py").read_bytes()).hexdigest()
+            # Evidence was captured from LF source on Linux. Windows Git may
+            # check out text files as CRLF, changing their raw SHA-256 without
+            # changing the reviewed Python code. Compare canonical LF source.
+            raw=(ROOT/f"examples/app-case/{variant}.py").read_bytes().replace(b"\r\n", b"\n")
+            expected_sha=hashlib.sha256(raw).hexdigest()
             self.assertEqual(evidence["before" if variant=="buggy" else "after"]["sourceSha256"], expected_sha)
         class Ids(HTMLParser):
             def __init__(self): super().__init__(); self.ids=[]
