@@ -12,6 +12,7 @@ import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compa
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
+import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge } from '../scripts/project_check.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.15';
@@ -38,6 +39,8 @@ Usage: aws-emulator-mcp <command>
 
 Commands:
   try [--json]     Verify 7 architecture artifacts offline in a temporary workspace
+  project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
+  project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -48,6 +51,7 @@ Commands:
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
+                   Add --challenge to test that a wrong expectation is detected
   gate [directory] Run 1-6 checked-in JSON contracts and write sanitized CI evidence
   architecture demo|build|review  Generate diagrams, CloudFormation and PR change reviews offline
   failure-lab      Reproduce missing events, timeout recovery and deduplication
@@ -466,9 +470,101 @@ async function runSelectedHandler(envelope) {
   return { code: result.code, proof };
 }
 
+function runPythonProject(file, options) {
+  // Source is parsed with AST, never imported. Prefer supported host Python;
+  // do not silently pick a system Python 3.9 when 3.10+ is installed.
+  const script = path.join(ROOT, 'src', 'aws_emulator_mcp', 'project_plan.py');
+  const interpreters = process.platform === 'win32'
+    ? [['py', '-3'], ['python']]
+    : [['python3.12'], ['python3.11'], ['python3.10'], ['python3']];
+  for (const [exe, ...prefix] of interpreters) {
+    const result = spawnSync(exe, [...prefix, '-I', '-B', script, file, ...options], {
+      stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 3 * 1024 * 1024,
+      timeout: 30000, windowsHide: true, shell: false,
+    });
+    if (result.error?.code === 'ENOENT' ||
+        (result.status !== 0 && result.stderr?.includes('requires Python 3.10 or newer')))
+      continue;
+    if (result.error || result.status === null)
+      fail('Local Python analysis did not finish', 2);
+    return result;
+  }
+  fail('Project scanning requires Python 3.10 or newer on the host', 2);
+}
+
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'project-plan') {
+    const [file, ...options] = args;
+    if (!file || file.startsWith('-') ||
+        !(options.length === 0 || (options.length === 1 && options[0] === '--json') ||
+          (options.length === 2 && options[0] === '--contract' && /^[a-z][a-z0-9-]*$/.test(options[1])))) {
+      fail('Usage: aws-emulator-mcp project-plan MODULE.py|GIT_DIRECTORY [--json | --contract SERVICE]', 2);
+    }
+    const result = runPythonProject(file, options);
+    if (result.stdout) stdout.write(result.stdout);
+    if (result.stderr) stderr.write(result.stderr);
+    process.exitCode = result.status;
+    return;
+  }
+  if (command === 'project-check') {
+    const [file, ...options] = args;
+    if (!file || file.startsWith('-') || options.length > 3 ||
+        options.some(option => !['--json', '--run', '--challenge'].includes(option)) ||
+        new Set(options).size !== options.length ||
+        (options.includes('--challenge') && !options.includes('--run'))) {
+      fail('Usage: aws-emulator-mcp project-check MODULE.py|GIT_DIRECTORY [--run] [--challenge] [--json]', 2);
+    }
+    const scan = runPythonProject(file, ['--json']);
+    if (scan.status !== 0) {
+      if (scan.stderr) stderr.write(scan.stderr);
+      fail('Could not inspect the selected local Python source', 2);
+    }
+    let inventory;
+    try { inventory = JSON.parse(scan.stdout); }
+    catch { fail('Project scan returned invalid JSON', 2); }
+    const runs = [];
+    if (options.includes('--run') && inventory.drafts?.length) {
+      // Explicit opt-in. Use only the existing, validated contract worker.
+      // No application source or host mounts enter Docker.
+      requireDocker();
+      if (!imageExists()) await buildImage();
+      for (const draft of inventory.drafts) {
+        const result = await runCaptured(dockerArgs('contract'), JSON.stringify(draft.plan));
+        let proof;
+        try { proof = JSON.parse(result.raw); } catch { proof = null; }
+        runs.push({ code: result.code, proof });
+      }
+    }
+    // Challenge is opt-in and runs only for passing baseline contracts. The
+    // only mutation is a synthetic assertion's expected value. Both executions
+    // use independent, network-disabled local emulator containers.
+    let controlRuns;
+    if (options.includes('--challenge')) {
+      const firstPass = summarizeProjectProbes(inventory, runs);
+      controlRuns = [];
+      for (const [index, draft] of inventory.drafts.entries()) {
+        const challenge = firstPass.probes[index].status === 'passed'
+          ? buildAssertionChallenge(draft.plan) : null;
+        if (!challenge) { controlRuns.push(null); continue; }
+        const result = await runCaptured(dockerArgs('contract'), JSON.stringify(challenge.plan));
+        let proof;
+        try { proof = JSON.parse(result.raw); } catch { proof = null; }
+        controlRuns.push({ code: result.code, proof });
+      }
+    }
+    let report;
+    try { report = summarizeProjectProbes(inventory, runs, controlRuns); }
+    catch { fail('Project check could not verify the scan or probe evidence', 2); }
+    stdout.write(options.includes('--json') ? JSON.stringify(report, null, 2) + '\n'
+      : formatProjectCheck(report));
+    // A successfully completed synthetic probe is not a passing app test.
+    // Exit nonzero for untested calls, failed probes or review gaps after --run.
+    if (options.includes('--run') && !['api_probes_passed', 'assertion_challenges_passed'].includes(report.status))
+      process.exitCode = 1;
+    return;
+  }
   if (command === 'try') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
       fail('Usage: aws-emulator-mcp try [--json]', 2);
@@ -518,11 +614,13 @@ async function main() {
   }
   if (command === 'contract') {
     const wantsJson = args.includes('--json');
-    const rest = args.filter(x => x !== '--json');
-    if (rest.length !== 1 || args.length > 2 ||
-        args.filter(x => x === '--json').length > 1 || rest[0].startsWith('-') ||
+    const challengeRequested = args.includes('--challenge');
+    const rest = args.filter(x => x !== '--json' && x !== '--challenge');
+    if (rest.length !== 1 || args.length > 3 ||
+        args.filter(x => x === '--json').length > 1 ||
+        args.filter(x => x === '--challenge').length > 1 || rest[0].startsWith('-') ||
         /^(https?:|file:)/i.test(rest[0])) {
-      fail('Usage: aws-emulator-mcp contract demo|fault-demo|<local-plan.json> [--json]', 2);
+      fail('Usage: aws-emulator-mcp contract demo|fault-demo|<local-plan.json> [--json] [--challenge]', 2);
     }
     let plan;
     try {
@@ -549,6 +647,35 @@ async function main() {
     let proof;
     try { proof = JSON.parse(result.raw); }
     catch { fail('Contract worker returned invalid evidence', result.code || 1); }
+    if (challengeRequested) {
+      const original = { code: result.code, proof };
+      const candidate = buildAssertionChallenge(plan);
+      // No second Docker run after failed/invalid baseline evidence or when
+      // the contract contains no equality assertion to mutate.
+      const preliminary = assessContractChallenge(plan, original, null);
+      let control = null;
+      if (candidate && preliminary.status === 'not_run') {
+        const attempted = await runCaptured(dockerArgs('contract'), JSON.stringify(candidate.plan));
+        let observed;
+        try { observed = JSON.parse(attempted.raw); } catch { observed = null; }
+        control = { code: attempted.code, proof: observed };
+      }
+      const assessment = assessContractChallenge(plan, original, control);
+      const verified = assessment.status === 'detected';
+      const report = { schemaVersion: 1, mode: 'assertion_challenge',
+        baseline: proof, assertionChallenge: assessment, passed: verified,
+        applicationFixVerified: false, productionAwsValidated: false,
+        scope: 'One equality assertion negative control of an isolated local AWS SDK contract; no application execution or AWS parity.' };
+      if (wantsJson) stdout.write(JSON.stringify(report, null, 2) + '\n');
+      else {
+        renderReport('contract', proof);
+        stdout.write('  Assertion negative control: ' + assessment.status.toUpperCase() +
+          (assessment.stepId ? ' at ' + assessment.stepId + '.' + assessment.path : '') + '\n' +
+          '  This does not verify application source or AWS parity.\n');
+      }
+      if (!verified) fail('Assertion challenge did not establish expected mismatch detection', 1);
+      return;
+    }
     if (wantsJson) stdout.write(JSON.stringify(proof, null, 2) + '\n');
     else renderReport('contract', proof);
     if (result.code !== 0 || !proof.passed)

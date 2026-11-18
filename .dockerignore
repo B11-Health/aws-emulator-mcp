@@ -14,6 +14,8 @@ remote_connector
 tests
 docs
 examples/*
+!examples/contracts/
+!examples/contracts/**
 !examples/order-intake/
 !examples/order-intake/**
 !examples/reliability-lab/

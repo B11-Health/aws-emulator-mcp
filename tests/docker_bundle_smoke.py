@@ -231,12 +231,12 @@ def verify():
     assert not any("hello emulator" in str(row) for row in checked["steps"])
     print("CONTRACT_CLI_PASS", checked["passedSteps"], "isolated steps", flush=True)
 
-    for case_id in ("sqs-consume", "ec2-vpc"):
+    for case_id in ("sqs-consume", "ec2-vpc", "dynamodb-put-get"):
         planfile = ROOT / "examples/contracts" / (case_id + ".json")
         checked_run = run("contract", extra=[str(planfile)], json_mode=True, timeout=150)
         assert checked_run.returncode == 0, checked_run.stderr[-1000:]
         verified = json.loads(checked_run.stdout)
-        assert verified["passed"] and verified["passedSteps"] == verified["totalSteps"] == 5
+        assert verified["passed"] and verified["passedSteps"] == verified["totalSteps"] == len(json.loads(planfile.read_text())["steps"])
         assert all(row["passed"] for row in verified["steps"])
         print("CONTRACT_LIVE_PASS", case_id, verified["passedSteps"], flush=True)
     architecture_file = ROOT / "examples/architecture/reference/contract.json"
@@ -337,6 +337,7 @@ def verify():
             }]
         }}),
         msg(28, "failure_lab_run", {"scenario": "partial-compare"}),
+        msg(40, "contract_guide", {"clientMethods": ["sqs.get_queue_url", "sqs.send_message", "lambda.invoke"]}),
         msg(29, "aws_sdk_preview", {"service": "s3", "operation": "CreateBucket",
                                     "parameters": {"Bucket": bucket}}),
         msg(30, "aws_sdk_invoke", {"service": "s3", "operation": "ListBuckets"}),
@@ -357,6 +358,26 @@ def verify():
     assert len(rows) == len(calls), (rows.keys(), r.stderr[:200])
     tools = rows[1]["result"]["tools"]
     names = {x["name"] for x in tools}
+    project = content(rows[40])
+    assert project["unmatchedMethods"] == ["lambda.invoke"] and not project["executed"]
+    project_plan = project["drafts"][0]["plan"]
+    proof = run("mcp", json.dumps(msg(1, "contract_run", {"plan": project_plan})) + "\n", timeout=90)
+    project_proof = content(json.loads(proof.stdout))
+    assert project_proof["passed"] and project_proof["passedSteps"] == 6
+    print("PROJECT_PLAN_MCP_PASS", project_proof["emulatorVersion"], "six SQS steps", flush=True)
+    # The MCP itself—not just the Node CLI—should detect an expectation-only
+    # negative control and refuse unrelated failures as proof.
+    challenge = run("mcp", json.dumps(msg(1, "contract_run", {
+        "plan": project_plan, "negativeControl": True})) + "\n", timeout=110)
+    assert challenge.returncode == 0, challenge.stderr[-800:]
+    response = json.loads(challenge.stdout)
+    assert response["result"].get("isError") is False
+    control = content(response)
+    assert control["passed"] and control["mode"] == "assertion_challenge"
+    assert control["baseline"]["passed"] and control["baseline"]["accountVerified"]
+    assert control["assertionChallenge"]["status"] == "detected"
+    assert not control["applicationFixVerified"]
+    print("CONTRACT_ASSERTION_CHALLENGE_MCP_PASS", control["baseline"]["emulatorVersion"], flush=True)
     assert len(tools) == 39
     assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage",
             "emulator_order_demo", "lab_catalog", "lab_run",

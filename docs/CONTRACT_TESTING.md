@@ -32,6 +32,167 @@ then `contract_run({"plan": ...})`. Each MCP run starts a **separate emulator
 process on a random loopback port with its own temporary HOME and keys**.
 It does not share state with the MCP session's long-lived emulator.
 
+## Challenge a developer-authored contract
+
+A contract you wrote yourself deserves the same false-positive check as a
+generated one. With `--challenge`, the normal plan runs first. Only after a
+verified passing baseline does a fresh, separate emulator run an
+**expectation-only** mutation of one equality assertion.
+
+```sh
+aws-emulator-mcp contract ./my-contract.json --json
+aws-emulator-mcp contract ./my-contract.json --challenge --json
+```
+
+The JSON report retains the normal `baseline` result plus
+`assertionChallenge.status` and its exact assertion path. It exits 0 only
+when the baseline passed **and** the test demonstrably rejected a deliberately
+wrong expected value at the intended step. If the baseline fails, the
+challenge is not run. A plan with only `exists` or `errorCode` assertions
+cannot be challenged by this first equality-only implementation; the
+result is `no_equality_assertion` and nonzero exit. There is no change to
+non-challenge `contract` output or behavior.
+
+No application code is executed. No real AWS account is accessed, and
+passing this check does not establish production AWS fidelity, strong
+fault coverage, or that application behavior was tested.
+
+The **Docker MCP** has the same opt-in control without adding another tool:
+
+```json
+{
+  "plan": {
+    "schemaVersion": 1, "name": "sqs-lookup-challenge",
+    "steps": [
+      {"id": "queue", "service": "sqs", "operation": "CreateQueue",
+       "parameters": {"QueueName": {"$fixture": "queue"}}},
+      {"id": "lookup", "service": "sqs", "operation": "GetQueueUrl",
+       "parameters": {"QueueName": {"$fixture": "queue"}},
+       "expect": {"assertions": [{"path": "QueueUrl",
+         "equals": {"$ref": "queue.QueueUrl"}}]}},
+      {"id": "remove", "service": "sqs", "operation": "DeleteQueue",
+       "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"}}}
+    ]
+  },
+  "negativeControl": true
+}
+```
+
+Pass a reviewable plan to `contract_run` and set `negativeControl: true` to
+run a passing baseline plus one deliberately changed **equality** expectation
+in separate local emulators. The above example checks the queue URL before
+its negative control deliberately expects the wrong URL. By default
+`contract_run` is unchanged. Because a negative control deliberately fails,
+its plan stops before subsequent cleanup steps; each challenge run uses a new
+ephemeral emulator whose entire state is discarded at the end. No real AWS
+resources are touched.
+
+## Start with an existing Python app
+
+From the MCP development checkout, select your app's Git directory, a tracked
+subdirectory, or a single Python module. The planner reads the working copy.
+It parses Python syntax locally. Your app stays unexecuted and Docker is
+needed only when you decide to run a contract.
+
+```sh
+node bin/aws-emulator-mcp.mjs project-plan /path/to/app
+node bin/aws-emulator-mcp.mjs project-plan /path/to/app --json
+node bin/aws-emulator-mcp.mjs project-plan /path/to/app --contract sqs > queue-contract.json
+node bin/aws-emulator-mcp.mjs contract queue-contract.json --json
+```
+
+### One-command project check (opt-in API tests)
+
+The `project-check` command joins discovery with the existing, isolated
+contract executor. Without `--run` it only parses Python syntax. With `--run`
+it executes up to four **synthetic API probes** in disposable, network-disabled
+Docker labs and correlates the results back to the recognized call sites.
+
+```sh
+# Safe static inventory: no Docker, no application execution
+node bin/aws-emulator-mcp.mjs project-check /path/to/app
+
+# Explicitly run generated S3/SQS/DynamoDB/EC2 SDK probes
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --json > project-check.json
+```
+
+### Challenge your own green test (negative control)
+
+```sh
+# Explicitly opt in to a second, independent test run per passing plan.
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --challenge
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --challenge --json
+```
+
+The challenge chooses **one equality assertion per generated synthetic plan**
+(S3, SQS, DynamoDB or EC2) and deliberately changes only the *expected*
+value. It does not mutate the AWS requests, the source code or the emulator.
+The original plan must first pass. Then a fresh network-disabled Docker lab
+runs the expectation-only mutant. The negative control succeeds **only if**
+the original observation still succeeds and the modified equality fails at
+the expected operation and response path—not due to an unrelated SDK error.
+An emulator-version mismatch, malformed evidence, skipped assertion or a
+failure at a different step produces a non-passing status (`inconclusive`,
+`invalid_evidence`, `not_detected`, or `not_run`).
+
+This answers *whether a specific synthetic test would detect one deliberate
+assertion mismatch*, **not** whether a bug in your application's behavior
+would be caught. `applicationFixVerified` remains `false`. One mutant per
+plan is not mutation coverage. It uses extra local containers only when
+`--challenge` is explicitly supplied, and `--challenge` requires `--run`.
+
+Every call site is classified as `api_probe_passed`, `api_probe_failed`,
+`not_reached`, `not_run`, `not_covered` or `invalid_evidence`.
+The summary also counts arguments the generated probe does not exercise,
+source files skipped during discovery, and unmatched SDK methods. A failing
+probe stops only its own test plan; other plans still run in fresh labs.
+Failed, missing, inconsistent or mismatched plan-hash evidence can never
+produce a passing result. `--run` exits nonzero when probes fail, source was
+skipped, no direct calls were found or relevant behavior remains untested.
+
+**The boundary is important:** `api_probe_passed` proves that the *synthetic*
+AWS SDK operation and its declared assertions worked against that emulator
+version. It does **not** prove that the developer's application function,
+branch, IAM permissions, input values or business invariant worked. The
+report always includes `applicationFixVerified: false`. SHA-256 binds the
+returned contract evidence to the generated plan; it is not a cryptographic
+signature or third-party attestation.
+
+For a real, narrow application-level before/after assertion, see
+[`app-compare`](../docs/BYO_HANDLER.md): it executes a user-selected Python
+order handler after explicit local opt-in. General application execution,
+custom business assertions, and unrelated languages are not supported by
+`project-check`.
+
+Planning needs Python 3.10+ on PATH. Directory mode also needs Git and
+considers up to 256 tracked Python files, 128 KiB per file and 4 MiB total.
+Single-file mode also works on an untracked module. The JSON lists every
+analyzed or skipped file, call sites, unmatched methods, additional probe
+operations and keyword arguments absent from each draft. Source payloads,
+environment values and application resource names stay out of the generated
+contract. Review the synthetic inputs and assertions before running it.
+
+Discovery recognizes direct low-level `boto3.client("service")` calls,
+`boto3.Session().client("service")`, explicit session variables, import
+aliases, and receivers assigned once in a straight-line module or function
+body. Static discovery can include dead branches and miss injected clients,
+wrappers, dynamic factories and Boto3 resources. Matching a keyword name
+also leaves its actual value and application logic untested.
+
+A connected assistant can pass just method identifiers to `contract_guide`:
+
+```json
+{"clientMethods":["sqs.get_queue_url","sqs.send_message","lambda.invoke"]}
+```
+
+The result includes an SQS contract with queue lookup, send, receive,
+acknowledgement and cleanup. It lists `lambda.invoke` as unmatched. Review
+a returned `drafts[].plan` and pass that object to `contract_run` to get
+per-step emulator evidence. Bundled drafts cover selected S3, SQS, DynamoDB
+and EC2 operations. Calling `contract_guide` without arguments still returns
+the original authoring guide.
+
 ## Example missions
 
 - [S3 object round trip](../examples/contracts/s3-write-read.json) — create, write,

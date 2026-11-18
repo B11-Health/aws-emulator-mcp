@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "dynamodb-put-get",
+  "steps": [
+    {"id": "create", "service": "dynamodb", "operation": "CreateTable",
+     "parameters": {"TableName": {"$fixture": "table"}, "BillingMode": "PAY_PER_REQUEST",
+       "KeySchema": [{"AttributeName": "id", "KeyType": "HASH"}],
+       "AttributeDefinitions": [{"AttributeName": "id", "AttributeType": "S"}]}},
+    {"id": "put", "service": "dynamodb", "operation": "PutItem",
+     "parameters": {"TableName": {"$fixture": "table"},
+       "Item": {"id": {"S": {"$fixture": "id"}}, "state": {"S": "received"}}}},
+    {"id": "read", "service": "dynamodb", "operation": "GetItem",
+     "parameters": {"TableName": {"$fixture": "table"}, "ConsistentRead": true, "Key": {"id": {"S": {"$fixture": "id"}}}},
+     "expect": {"assertions": [{"path": "Item.id.S", "equals": {"$fixture": "id"}}, {"path": "Item.state.S", "equals": "received"}]}},
+    {"id": "delete", "service": "dynamodb", "operation": "DeleteTable", "parameters": {"TableName": {"$fixture": "table"}}}
+  ]
+}
