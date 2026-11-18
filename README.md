@@ -203,6 +203,32 @@ set `contract_run`'s `negativeControl: true` option. Both are opt-in and
 retain the distinction between API tests and actual application verification.
 [Project check details](docs/CONTRACT_TESTING.md#one-command-project-check-opt-in-api-tests).
 
+## Verify your application's actual behavior (experimental, local-only)
+
+Synthetic SDK checks tell you that AWS operations work in isolation. They
+can't establish whether your Python function does the right thing. In a
+**development checkout** containing this feature, you can now select a
+trusted Python `handle(clients, inputs)` function and a separate JSON test
+case with setup, independent AWS state assertions, SDK call counters and
+cleanup. No source is executed through remote MCP or untrusted GitHub PRs.
+
+```sh
+node bin/aws-emulator-mcp.mjs app-case-compare \
+  examples/app-case/buggy.py examples/app-case/fixed.py \
+  examples/app-case/sqs-idempotency.json --json
+```
+
+In the sample, two identical application requests initially cause **two SQS
+messages**. A conditional DynamoDB write changes the observed result to
+**one message**. Both sides run against separate isolated emulators. The
+same independent regression assertion fails before and passes after, with
+resource cleanup verified. This proves that **one trusted function and its
+named invariant** passed locally; not that the whole project or AWS
+production behavior was verified.
+
+[Full workflow, trust boundary and case schema](docs/APP_CASE.md) ·
+[Recorded local evidence](docs/evidence/app-case-aws-emulator-1.0.506.json).
+
 ## Test your own Python handler, not just our bundled files
 
 A first, intentionally limited **Bring Your Own App pilot** lets you

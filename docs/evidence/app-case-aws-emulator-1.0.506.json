@@ -1,0 +1,461 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-11-18",
+  "lab": "Local, network-disabled Docker; signed official AWS Emulator 1.0.506",
+  "scope": "Project-maintained evidence for one synthetic trusted local Python application scenario, not AWS production parity",
+  "before": {
+    "schemaVersion": 1,
+    "case": "sqs-idempotent-retry",
+    "sourceSha256": "191df45bd88c2dcc686f51f0f15a673852e0c0e21f72d80beba9bdd4a19f0248",
+    "caseSha256": "307dd02c38f54358bad9c73be6bfdbaa24306584afc65060ef40255b51a2dec0",
+    "emulatorVersion": "Version: 1.0.506",
+    "accountVerified": true,
+    "sourceInvoked": true,
+    "applicationErrors": false,
+    "sourceExecution": "trusted_local_opt_in",
+    "productionAwsValidated": false,
+    "setup": [
+      {
+        "id": "queue",
+        "service": "sqs",
+        "operation": "CreateQueue",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "da6fcd8a7029650b9a26919aebd1bb162d6ddd7cbc83a18c6e9d17c23cd13998"
+      },
+      {
+        "id": "table",
+        "service": "dynamodb",
+        "operation": "CreateTable",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "6814b888f49ec80e36e8034cb131434e5a984d8080f281c96bda901601358369"
+      }
+    ],
+    "checks": [
+      {
+        "id": "inspect",
+        "service": "dynamodb",
+        "operation": "GetItem",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "Item.id.S",
+            "passed": true
+          },
+          {
+            "path": "Item.state.S",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "fc14adae24e440530056b78bdbb7958d01af66222ea25480a8dff62b3e8cc4a3"
+      },
+      {
+        "id": "receive",
+        "service": "sqs",
+        "operation": "ReceiveMessage",
+        "passed": false,
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "passed": true
+          },
+          {
+            "path": "Messages.1",
+            "passed": false
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "ba8c9cb438db159be4e379b3c297c02de21c11d08ffb5ac4c3ae7ec956a48706"
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "delete",
+        "service": "sqs",
+        "operation": "DeleteQueue",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      },
+      {
+        "id": "remove",
+        "service": "dynamodb",
+        "operation": "DeleteTable",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "088403bf3ebe7a9ef122b50a87c7f859ae3373687ed8bc9bb0a23721689dfa43"
+      }
+    ],
+    "sdkCalls": [
+      {
+        "service": "dynamodb",
+        "operation": "PutItem",
+        "attempts": 2,
+        "successes": 2
+      },
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "attempts": 2,
+        "successes": 2
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "dynamodb",
+        "operation": "PutItem",
+        "min": 2,
+        "max": 2,
+        "observed": 2,
+        "passed": true
+      },
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "min": 1,
+        "max": 2,
+        "observed": 2,
+        "passed": true
+      }
+    ],
+    "passed": false,
+    "applicationInvariantPassed": false,
+    "cleanupPassed": true,
+    "dataExposure": "Source, app inputs, SDK request/response bodies, local paths, exception text and logs omitted",
+    "scope": "One explicitly selected trusted Python function and independently authored SDK state assertions. Not hostile-code isolation, full project test coverage, IAM or AWS production fidelity."
+  },
+  "after": {
+    "schemaVersion": 1,
+    "case": "sqs-idempotent-retry",
+    "sourceSha256": "dfc5ac396b90d92a1c74c451f7f9c9eace87d17b7e217e55150c8ddd841156af",
+    "caseSha256": "307dd02c38f54358bad9c73be6bfdbaa24306584afc65060ef40255b51a2dec0",
+    "emulatorVersion": "Version: 1.0.506",
+    "accountVerified": true,
+    "sourceInvoked": true,
+    "applicationErrors": false,
+    "sourceExecution": "trusted_local_opt_in",
+    "productionAwsValidated": false,
+    "setup": [
+      {
+        "id": "queue",
+        "service": "sqs",
+        "operation": "CreateQueue",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "4df899ed8bcf1e05b29a00895f71c38594141b4283ca2a9041e39eb15dadf9d4"
+      },
+      {
+        "id": "table",
+        "service": "dynamodb",
+        "operation": "CreateTable",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "cfbffad8b09524386c132f1c2f39bef31a488bf2b7ceb73f97bb84a05dec4a5d"
+      }
+    ],
+    "checks": [
+      {
+        "id": "inspect",
+        "service": "dynamodb",
+        "operation": "GetItem",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "Item.id.S",
+            "passed": true
+          },
+          {
+            "path": "Item.state.S",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "8a2afae02bac6c0611c1f9d47b71748ac4bffc4e0c0b57a644f473a8a819b29d"
+      },
+      {
+        "id": "receive",
+        "service": "sqs",
+        "operation": "ReceiveMessage",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "passed": true
+          },
+          {
+            "path": "Messages.1",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "be26096a072566d079cff3a9f9654159c5c493d20e19c45f4f4b9b2b82c315f3"
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "delete",
+        "service": "sqs",
+        "operation": "DeleteQueue",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      },
+      {
+        "id": "remove",
+        "service": "dynamodb",
+        "operation": "DeleteTable",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "e0f8e0748141c3de7b7f1de93342619ae4290f3316be4172c7d8f382e1043d36"
+      }
+    ],
+    "sdkCalls": [
+      {
+        "service": "dynamodb",
+        "operation": "PutItem",
+        "attempts": 2,
+        "successes": 1
+      },
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "attempts": 1,
+        "successes": 1
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "dynamodb",
+        "operation": "PutItem",
+        "min": 2,
+        "max": 2,
+        "observed": 2,
+        "passed": true
+      },
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "min": 1,
+        "max": 2,
+        "observed": 1,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "applicationInvariantPassed": true,
+    "cleanupPassed": true,
+    "dataExposure": "Source, app inputs, SDK request/response bodies, local paths, exception text and logs omitted",
+    "scope": "One explicitly selected trusted Python function and independently authored SDK state assertions. Not hostile-code isolation, full project test coverage, IAM or AWS production fidelity."
+  },
+  "comparison": {
+    "schemaVersion": 1,
+    "mode": "local_application_before_after",
+    "case": "sqs-idempotent-retry",
+    "caseSha256": "307dd02c38f54358bad9c73be6bfdbaa24306584afc65060ef40255b51a2dec0",
+    "passed": true,
+    "bugReproduced": true,
+    "fixVerified": true,
+    "accountVerified": true,
+    "emulatorVersion": "Version: 1.0.506",
+    "regression": {
+      "stepId": "receive",
+      "path": "Messages.1"
+    },
+    "before": {
+      "sourceSha256": "191df45bd88c2dcc686f51f0f15a673852e0c0e21f72d80beba9bdd4a19f0248",
+      "emulatorVersion": "Version: 1.0.506",
+      "invoked": true,
+      "applicationErrors": false,
+      "passed": false,
+      "cleanupPassed": true,
+      "sdkCalls": [
+        {
+          "service": "dynamodb",
+          "operation": "PutItem",
+          "attempts": 2,
+          "successes": 2
+        },
+        {
+          "service": "sqs",
+          "operation": "SendMessage",
+          "attempts": 2,
+          "successes": 2
+        }
+      ],
+      "setup": [
+        {
+          "id": "queue",
+          "passed": true
+        },
+        {
+          "id": "table",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "id": "inspect",
+          "passed": true,
+          "assertions": [
+            {
+              "path": "Item.id.S",
+              "passed": true
+            },
+            {
+              "path": "Item.state.S",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "id": "receive",
+          "passed": false,
+          "assertions": [
+            {
+              "path": "Messages.0.Body",
+              "passed": true
+            },
+            {
+              "path": "Messages.1",
+              "passed": false
+            }
+          ]
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "delete",
+          "passed": true
+        },
+        {
+          "id": "remove",
+          "passed": true
+        }
+      ],
+      "expectedCalls": [
+        {
+          "service": "dynamodb",
+          "operation": "PutItem",
+          "passed": true,
+          "observed": 2
+        },
+        {
+          "service": "sqs",
+          "operation": "SendMessage",
+          "passed": true,
+          "observed": 2
+        }
+      ]
+    },
+    "after": {
+      "sourceSha256": "dfc5ac396b90d92a1c74c451f7f9c9eace87d17b7e217e55150c8ddd841156af",
+      "emulatorVersion": "Version: 1.0.506",
+      "invoked": true,
+      "applicationErrors": false,
+      "passed": true,
+      "cleanupPassed": true,
+      "sdkCalls": [
+        {
+          "service": "dynamodb",
+          "operation": "PutItem",
+          "attempts": 2,
+          "successes": 1
+        },
+        {
+          "service": "sqs",
+          "operation": "SendMessage",
+          "attempts": 1,
+          "successes": 1
+        }
+      ],
+      "setup": [
+        {
+          "id": "queue",
+          "passed": true
+        },
+        {
+          "id": "table",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "id": "inspect",
+          "passed": true,
+          "assertions": [
+            {
+              "path": "Item.id.S",
+              "passed": true
+            },
+            {
+              "path": "Item.state.S",
+              "passed": true
+            }
+          ]
+        },
+        {
+          "id": "receive",
+          "passed": true,
+          "assertions": [
+            {
+              "path": "Messages.0.Body",
+              "passed": true
+            },
+            {
+              "path": "Messages.1",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "delete",
+          "passed": true
+        },
+        {
+          "id": "remove",
+          "passed": true
+        }
+      ],
+      "expectedCalls": [
+        {
+          "service": "dynamodb",
+          "operation": "PutItem",
+          "passed": true,
+          "observed": 2
+        },
+        {
+          "service": "sqs",
+          "operation": "SendMessage",
+          "passed": true,
+          "observed": 1
+        }
+      ]
+    },
+    "applicationBehaviorTested": true,
+    "productionAwsValidated": false,
+    "dataExposure": "Source, application inputs, private file paths, API parameters, API bodies, logs and exception messages omitted",
+    "limitations": "One selected trusted Python entrypoint, bounded synthetic case, independent local SDK checks and observed SDK call counts. Not hostile-code security, full codebase coverage, process-crash proof, AWS IAM or production fidelity."
+  }
+}
