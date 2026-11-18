@@ -70,6 +70,7 @@ or AWS fidelity certification.
 or an AWS account to help. A real first-run failure report, accessibility
 fix or reproducible API gap is more useful than an unverified claim.
 
+[**Join the community**](https://b11-health.github.io/aws-emulator-mcp/#community) ·
 [**Start contributing**](CONTRIBUTING.md) ·
 [**Get support**](SUPPORT.md) ·
 [**Browse good first issues**](https://github.com/B11-Health/aws-emulator-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) ·
