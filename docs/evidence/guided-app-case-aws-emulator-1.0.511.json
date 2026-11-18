@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-11-18",
+  "emulatorVersion": "Version: 1.0.511",
+  "packageSource": "Official AWS Emulator 1.0.511-1, GPG detached signature checked during local image build; vendor trust rooted in repository-pinned key",
+  "scope": "Project-maintained real local Docker run of one bundled trusted Python S3 handler and one deliberately corrupted variant, each separately reviewed and approved with exact source+case digests; independent HeadObject ContentLength assertion and declared cleanup. No real AWS account, production validation, IAM parity, external developer adoption or hostile-code sandbox claim.",
+  "negativeControl": {
+    "schemaVersion": 1,
+    "mode": "approved_trusted_app_case",
+    "passed": false,
+    "successfulExpectedOperations": true,
+    "sourceSha256": "35d9a120c5d81d4bc1e971a88f0b9b970666109e2b992d99a09a54148e45ebaa",
+    "caseSha256": "5f16b76a7aa2ab660873bb261c92925b619b5be1ffad8ec1ac83a4731fccb99f",
+    "localExecutionApproved": true,
+    "sourceExecution": "trusted_local_opt_in",
+    "proof": {
+      "sourceSha256": "35d9a120c5d81d4bc1e971a88f0b9b970666109e2b992d99a09a54148e45ebaa",
+      "emulatorVersion": "Version: 1.0.511",
+      "invoked": true,
+      "applicationErrors": false,
+      "passed": false,
+      "cleanupPassed": true,
+      "sdkCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "attempts": 1,
+          "successes": 1
+        }
+      ],
+      "setup": [
+        {
+          "id": "bucket",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "id": "head",
+          "passed": false,
+          "assertions": [
+            {
+              "path": "ContentLength",
+              "passed": false
+            }
+          ]
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "remove",
+          "passed": true
+        },
+        {
+          "id": "delete",
+          "passed": true
+        }
+      ],
+      "expectedCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "passed": true,
+          "observed": 1
+        }
+      ]
+    },
+    "applicationBehaviorTested": true,
+    "productionAwsValidated": false,
+    "limitations": "One trusted developer-selected local Python entrypoint, one declarative case and independent emulator assertions. A passing single case does not prove a bug fix, whole application, IAM behavior, or production AWS parity."
+  },
+  "positiveControl": {
+    "schemaVersion": 1,
+    "mode": "approved_trusted_app_case",
+    "passed": true,
+    "successfulExpectedOperations": true,
+    "sourceSha256": "ea420737b28bc4e4cf122f81c51b7921d28b7e92d524a35952b5d62eed712269",
+    "caseSha256": "5f16b76a7aa2ab660873bb261c92925b619b5be1ffad8ec1ac83a4731fccb99f",
+    "localExecutionApproved": true,
+    "sourceExecution": "trusted_local_opt_in",
+    "proof": {
+      "sourceSha256": "ea420737b28bc4e4cf122f81c51b7921d28b7e92d524a35952b5d62eed712269",
+      "emulatorVersion": "Version: 1.0.511",
+      "invoked": true,
+      "applicationErrors": false,
+      "passed": true,
+      "cleanupPassed": true,
+      "sdkCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "attempts": 1,
+          "successes": 1
+        }
+      ],
+      "setup": [
+        {
+          "id": "bucket",
+          "passed": true
+        }
+      ],
+      "checks": [
+        {
+          "id": "head",
+          "passed": true,
+          "assertions": [
+            {
+              "path": "ContentLength",
+              "passed": true
+            }
+          ]
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "remove",
+          "passed": true
+        },
+        {
+          "id": "delete",
+          "passed": true
+        }
+      ],
+      "expectedCalls": [
+        {
+          "service": "s3",
+          "operation": "PutObject",
+          "passed": true,
+          "observed": 1
+        }
+      ]
+    },
+    "applicationBehaviorTested": true,
+    "productionAwsValidated": false,
+    "limitations": "One trusted developer-selected local Python entrypoint, one declarative case and independent emulator assertions. A passing single case does not prove a bug fix, whole application, IAM behavior, or production AWS parity."
+  }
+}

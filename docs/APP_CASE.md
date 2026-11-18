@@ -48,6 +48,15 @@ actual AWS operation-model support, or full project runtime dependencies.
 `project-plan` separately recognizes selected direct Boto3 client calls
 in a Python project. Neither static analysis feature executes source.
 
+## Guided review before local source execution (draft)
+
+[Follow the app-guide onboarding walkthrough](GUIDED_APP_PROOF.md): inspect
+one selected Python source file without importing it, generate an
+**unexecutable** case sketch, author independent assertions and cleanup,
+validate against the existing case schema, and opt in with an exact
+source/case digest-bound approval token. This local command is **not** an MCP
+source-execution tool, and passing a single case is not proof of a bug fix.
+
 ## A real failing/passing application scenario
 
 Requirements: Node.js 20+, local Docker (Linux containers), enough storage for
