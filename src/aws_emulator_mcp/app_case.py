@@ -64,9 +64,10 @@ def validate_case(case):
     if not any(step.get("expect", {}).get("assertions") for step in case["checks"]):
         _reject("At least one independent post-invocation SDK assertion is required")
     invoke = case["invoke"]
-    if not isinstance(invoke, dict) or set(invoke) != {
-            "entrypoint", "times", "inputs", "expectedCalls"}:
-        _reject("invoke requires entrypoint, times, inputs and expectedCalls")
+    required_invoke = {"entrypoint", "times", "inputs", "expectedCalls"}
+    if not isinstance(invoke, dict) or set(invoke) not in (required_invoke,
+                                                          required_invoke | {"fault"}):
+        _reject("invoke requires entrypoint, times, inputs and expectedCalls; optional fault")
     if (not isinstance(invoke["entrypoint"], str) or not FUNC.fullmatch(invoke["entrypoint"]) or
             invoke["entrypoint"].startswith("_")):
         _reject("Select a named public Python function")
@@ -91,6 +92,23 @@ def validate_case(case):
         if identity in seen:
             _reject("Duplicate SDK call expectation")
         seen.add(identity)
+    if "fault" in invoke:
+        fault = invoke["fault"]
+        if (not isinstance(fault, dict) or
+                set(fault) != {"service", "operation", "mode", "occurrence"} or
+                not isinstance(fault.get("service"), str) or
+                not isinstance(fault.get("operation"), str) or
+                not isinstance(fault.get("mode"), str) or
+                (fault["service"], fault["operation"]) not in
+                contract_case.FAULTABLE_OPERATIONS or
+                fault.get("service") not in services or
+                fault.get("mode") not in contract_case.FAULT_MODES or
+                type(fault.get("occurrence")) is not int or
+                not 1 <= fault["occurrence"] <= 12 or
+                not any(x["service"] == fault["service"] and
+                        x["operation"] == fault["operation"] and
+                        x["max"] >= fault["occurrence"] for x in expected)):
+            _reject("One reviewed SDK-boundary fault must target a counted allowlisted write")
     regression = case["regression"]
     if (not isinstance(regression, dict) or set(regression) != {"stepId", "path"} or
             not isinstance(regression["stepId"], str) or
@@ -127,12 +145,47 @@ def read_envelope():
     return validate_envelope(value)
 
 
+class AppBoundaryFault:
+    """One reviewed, synthetic SDK-boundary timeout; never a network outage."""
+    def __init__(self, spec):
+        self.spec = spec
+        self.attempts_seen = 0
+        self.injected = False
+        self.sent_to_emulator = False
+
+    def matches(self, service, operation):
+        if (service, operation) != (self.spec["service"], self.spec["operation"]):
+            return False
+        self.attempts_seen += 1
+        return self.attempts_seen == self.spec["occurrence"]
+
+    @staticmethod
+    def timeout():
+        # A botocore transport-style exception *at our wrapper boundary*.
+        # The SDK itself did not time out or retry. This tests only the app's
+        # explicit exception/recovery branch, not real socket behavior.
+        from botocore.exceptions import ReadTimeoutError
+        return ReadTimeoutError(endpoint_url="http://127.0.0.1:9297")
+
+    def evidence(self):
+        return {"service": self.spec["service"],
+                "operation": self.spec["operation"],
+                "occurrence": self.spec["occurrence"],
+                "mode": self.spec["mode"],
+                "attemptsSeen": self.attempts_seen,
+                "injected": self.injected,
+                "sentToEmulator": self.sent_to_emulator,
+                "exceptionType": "ReadTimeoutError",
+                "source": "local_sdk_wrapper"}
+
+
 class ObservedClient:
     """Counts actual calls through injected clients, never stores input data."""
-    def __init__(self, service, client, counts):
+    def __init__(self, service, client, counts, fault=None):
         self._service = service
         self._client = client
         self._counts = counts
+        self._fault = fault
         self._methods = client.meta.method_to_api_mapping
 
     def __getattr__(self, name):
@@ -144,6 +197,18 @@ class ObservedClient:
 
         def observed(*args, **kwargs):
             self._counts[key][0] += 1
+            if self._fault and self._fault.matches(*key):
+                if self._fault.spec["mode"] == "before-call":
+                    self._fault.injected = True
+                    raise self._fault.timeout()
+                # The emulator accepted the write but the application does
+                # not receive its success response. Never pretend it wrote if
+                # the actual SDK call raised first.
+                attr(*args, **kwargs)
+                self._counts[key][1] += 1
+                self._fault.sent_to_emulator = True
+                self._fault.injected = True
+                raise self._fault.timeout()
             output = attr(*args, **kwargs)
             self._counts[key][1] += 1
             return output
@@ -231,6 +296,7 @@ def execute(envelope):
                  "Not hostile-code isolation, full project test coverage, IAM or AWS production fidelity.",
     }
     counters = defaultdict(lambda: [0, 0])
+    fault = AppBoundaryFault(spec["invoke"]["fault"]) if "fault" in spec["invoke"] else None
     # Developer code and all related exceptions stay out of stdout and the
     # machine-readable evidence, even when the selected handler prints logs.
     with open(os.devnull, "w", encoding="utf-8") as sink:
@@ -245,7 +311,7 @@ def execute(envelope):
                 try:
                     fn = _load_app(envelope["source"], spec["invoke"]["entrypoint"])
                     resolved = contract_case._resolve(spec["invoke"]["inputs"], responses, fixtures)
-                    wrapped = {service: ObservedClient(service, client, counters)
+                    wrapped = {service: ObservedClient(service, client, counters, fault)
                                for service, client in clients.items()}
                     for _ in range(spec["invoke"]["times"]):
                         result["sourceInvoked"] = True
@@ -263,6 +329,8 @@ def execute(envelope):
             for step in spec["cleanup"]:
                 record = _step(step, responses, fixtures, clients)
                 result["cleanup"].append(record)
+    if fault is not None:
+        result["appFault"] = fault.evidence()
     result["sdkCalls"] = [
         {"service": service, "operation": operation,
          "attempts": count[0], "successes": count[1]}
@@ -281,7 +349,10 @@ def execute(envelope):
         all(step["passed"] for step in result["setup"]) and
         len(result["checks"]) == len(spec["checks"]) and
         all(step["passed"] for step in result["checks"]) and
-        all(item["passed"] for item in result["expectedCalls"]))
+        all(item["passed"] for item in result["expectedCalls"]) and
+        all(counters.get((item["service"], item["operation"]), [0, 0])[1] > 0
+            for item in spec["invoke"]["expectedCalls"]) and
+        (fault is None or fault.injected))
     result["passed"] = result["applicationInvariantPassed"] and result["cleanupPassed"]
     return result
 

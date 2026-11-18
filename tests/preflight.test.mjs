@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { inspectPreflight, inspectWorkspaceDisk, printPreflight } from '../scripts/preflight.mjs';
+import { inspectPreflight, inspectWorkspaceDisk, printPreflight,
+  assessPendingBuildSpace, buildSpaceWarning } from '../scripts/preflight.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bin = path.join(root, 'bin/aws-emulator-mcp.mjs');
@@ -257,4 +258,70 @@ test('unsafe daemon root output is not opened or exposed', () => {
     assert.doesNotMatch(JSON.stringify(r),/PRIVATE_PATH|secrets/);
     assert.equal(probed,true); // The unrelated host-working-volume probe still ran.
   }
+});
+
+
+test('pending emulator rebuild with 0.5 GiB on host-visible Docker data root is a critical advisory', () => {
+  const statfs=()=>({bsize:1024n, bavail:512n*1024n});
+  const {run,calls}=fakeRun({image:true,label:'b'.repeat(64)});
+  const r=inspectPreflight({nodeVersion:'22.0.0',platform:'linux',dockerHost:'',run,
+    statfs,expectedImageDigest:()=> 'a'.repeat(64)});
+  assert.equal(r.emulatorReady,true); // Docker daemon works, but the image cannot be reused.
+  assert.equal(r.imageSourceStatus,'mismatched');
+  assert.deepEqual({buildExpected:r.imageBuildSpace.buildExpected,status:r.imageBuildSpace.status},
+    {buildExpected:true,status:'critical'});
+  assert.equal(r.imageBuildSpace.hostVisibleDockerRootFreeGiB,0.5);
+  assert.equal(r.nextCommand,'docker system df');
+  assert.equal(r.sourceCheckoutCommand,'docker system df');
+  assert.equal(r.imageBuildSpace.automaticCleanup,false);
+  assert.equal(r.imageBuildSpace.capacityVerifiedForDaemonNamespace,false);
+  assert.match(printPreflight(r),/BUILD RISK: Potential image-build failure/);
+  assert.match(buildSpaceWarning(r),/only 0\.5 GiB/);
+  assert.doesNotMatch(JSON.stringify(r),/\/var\/lib\/docker|passphrase|secret/i);
+  assert.ok(calls.every(x=>!/^build|^pull|^run|^prune|^image rm|^system prune/.test(x)));
+});
+
+test('source-matched image does not report a new-build emergency even with low host free space',()=>{
+  const {run}=fakeRun({image:true,label:'a'.repeat(64)});
+  const r=inspectPreflight({nodeVersion:'22.0.0',platform:'linux',dockerHost:'',run,
+    statfs:()=>({bsize:1024n,bavail:500n*1024n}),
+    expectedImageDigest:()=> 'a'.repeat(64)});
+  assert.equal(r.imageReusable,true);
+  assert.equal(r.imageBuildSpace.buildExpected,false);
+  assert.equal(r.imageBuildSpace.status,'not_needed');
+  assert.equal(r.nextCommand,'aws-emulator-mcp doctor');
+  assert.equal(buildSpaceWarning(r),null);
+});
+
+test('uncached image and scarce local storage require a read-only storage check first',()=>{
+  const {run}=fakeRun({image:false});
+  const r=inspectPreflight({nodeVersion:'22.0.0',platform:'linux',dockerHost:'',run,
+    statfs:()=>({bsize:1024n,bavail:2n*1024n*1024n})});
+  assert.equal(r.imageBuildSpace.status,'critical');
+  assert.equal(r.imageBuildSpace.buildExpected,true);
+  assert.equal(r.nextCommand,'docker system df');
+  assert.equal(r.imageCached,false);
+});
+
+test('capacity unknown on Docker Desktop or inaccessible root never becomes an invented critical result',()=>{
+  for (const platform of ['win32','darwin','linux']) {
+    const {run}=fakeRun({image:false});
+    const r=inspectPreflight({nodeVersion:'22.0.0',platform,dockerHost:'',run,
+      statfs:()=>{throw Error('private host filesystem path');}});
+    assert.equal(r.imageBuildSpace.status,'unknown');
+    assert.equal(r.imageBuildSpace.buildExpected,true);
+    assert.equal(r.nextCommand,'aws-emulator-mcp doctor');
+    assert.equal(buildSpaceWarning(r),null);
+    assert.doesNotMatch(JSON.stringify(r),/private host filesystem/);
+  }
+});
+
+test('build-space risk math refuses arbitrary free-space strings and does not count already-reusable images',()=>{
+  const d=free=>({freeGiB:free});
+  assert.equal(assessPendingBuildSpace({imageCached:false,hostVisibleDockerRootDisk:d(2.9)}).status,'critical');
+  assert.equal(assessPendingBuildSpace({imageCached:false,hostVisibleDockerRootDisk:d(3)}).status,'low');
+  assert.equal(assessPendingBuildSpace({imageCached:false,hostVisibleDockerRootDisk:d(10)}).status,'normal');
+  assert.equal(assessPendingBuildSpace({imageCached:false,hostVisibleDockerRootDisk:d('0.1')}).status,'unknown');
+  assert.equal(assessPendingBuildSpace({imageCached:true,imageReusable:null,hostVisibleDockerRootDisk:d(0.1)}).status,'unknown');
+  assert.equal(assessPendingBuildSpace({imageCached:true,imageReusable:true,hostVisibleDockerRootDisk:d(0.1)}).status,'not_needed');
 });

@@ -67,7 +67,7 @@ node bin/aws-emulator-mcp.mjs app-case-compare \
   examples/app-case/buggy.py \
   examples/app-case/fixed.py \
   examples/app-case/sqs-idempotency.json --json</code></pre><button class="copy-button" type="button" data-copy="app-proof-command">Copy commands</button></div>
-   <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/APP_CASE.md" target="_blank" rel="noopener noreferrer">How it works, limitations and safety ↗</a>
+   <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/APP_CASE.md" target="_blank" rel="noopener noreferrer">How it works, limitations and safety ↗</a> <a class="proof-link" href="proof-explorer.html">Explore the recorded assertions and hashes ↗</a>
   </div>
  </div>
  <div class="note"><strong>Trust boundary:</strong> this intentionally executes a developer-selected, trusted Python file <em>locally</em> after explicit opt-in. Docker is not a sandbox for hostile code. This tests one selected entrypoint and invariant; it does <strong>not</strong> establish whole-project coverage, AWS production parity, IAM enforcement or crash safety. The offline beta.15 tour below remains unchanged.</div>

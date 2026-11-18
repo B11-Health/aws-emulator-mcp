@@ -30,6 +30,30 @@
   <a href="SUPPORT.md">Get help</a>
 </p>
 
+## One command to get your first result
+
+In a **development checkout containing the new `onboard` command** (not
+the immutable v0.4.0-beta.15 release), beginners can verify a real local
+result and see their next steps **without an AWS account or Docker build**:
+
+```sh
+git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs onboard
+```
+
+It validates **seven generated architecture artifacts** (not an AWS API
+test), checks Docker readiness read-only where available, and **never**
+starts a container, installs software or executes application source.
+Use `onboard --offline` to skip Docker probes or `onboard --json` to capture
+a sanitized first-run report. This command was introduced in
+[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71) and is
+**not in the pinned beta.15 release**.
+
+[**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
+
+**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification.
+
 ## See the proof in 90 seconds
 
 [![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
@@ -81,6 +105,34 @@ Claude Desktop preview, and keyboard/screen-reader testing of the Demo Studio.
 Maintainers can assign scoped tasks without granting push or admin privileges.
 Independent user reports are distinguished from project-maintained CI.
 
+## Verify one Python application function
+
+In this draft branch, `app-guide` can inspect your trusted Python handler,
+create a **non-runnable review-required case**, and validate a completed
+case offline. Only a separate command with an approval token tied to the
+**exact source and case hashes** can execute it in a local Docker lab.
+It never turns selected code into an MCP source-execution endpoint.
+
+```sh
+node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json
+```
+
+[**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
+
+The feature is a **draft**, not the pinned beta.15 release.
+## Share bounded app-proof evidence with independent agent evaluators
+
+For developers researching AWS agent benchmarks, the recorded SQS/DynamoDB
+before-and-after example exports a [framework-neutral evaluation handoff](docs/AGENT_EVALUATION.md):
+
+```sh
+npm run agent-eval:recorded
+```
+
+This **reads existing, project-maintained evidence** without Docker, source
+execution or AWS calls. It is **not AWS-Bench compatibility**, an AWS-endorsed
+score or a substitute for independent agent evaluation.
+
 ## Why another MCP if AWS already supports agents?
 
 AWS Emulator already works with AWS SDKs, the CLI and coding agents. **Use it
@@ -91,6 +143,13 @@ with sanitized evidence. It is **not** an AWS compatibility layer, IAM tester,
 general-purpose application runner or cloud deployment tool.
 
 [**Compare native AWS Emulator vs this adapter: concrete tasks, commands and tradeoffs.**](docs/WHY_MCP.md)
+
+**Prefer the AWS-native path.** The official agent skill owns installation and
+SDK setup; our complementary [AWS session check and application-proof workflow](docs/AWS_COMPANION.md)
+recognize a running local emulator without reading AWS credentials. The
+application proof still uses its own independent Docker labs; this is not a
+shared backend or an official AWS integration.
+
 
 ## Explore the actual outputs first
 
@@ -139,11 +198,20 @@ node bin/aws-emulator-mcp.mjs architecture demo
 
 `preflight` checks Node.js, local Docker context, **Linux-container mode** and daemon, and whether the
 versioned image is cached. **It never builds or launches Docker containers.**
-Without Docker, Architecture Studio still works. A successful preflight is
-not a disk-capacity check, image-source verification or proof of emulator API coverage.
+Without Docker, Architecture Studio still works. A successful preflight does
+**not** prove emulator API coverage or actual Docker Desktop/VM disk capacity.
 Docker-backed commands in the current source checkout verify a build-input
 fingerprint before image reuse and rebuild stale cached bundles. This prevents
-same-tag checkout collisions; it is not a security signature. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
+same-tag checkout collisions; it is not a security signature.
+
+**New on master (not beta.15):** when a rebuild is needed and the Linux
+host-visible Docker data root reports less than 3 GiB free, `preflight`
+flags an advisory `imageBuildSpace.status="critical"` and recommends the
+read-only `docker system df` command **before** the signed image build.
+The launcher displays the same warning when it actually starts a build.
+It never automatically prunes images or deletes Docker volumes. This is a
+conservative host-side warning, not a verified Docker daemon capacity test.
+[Setup and disk limits](docs/DOCKER_NPM_BETA.md#when-a-new-signed-docker-image-needs-more-disk-space).
 
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):

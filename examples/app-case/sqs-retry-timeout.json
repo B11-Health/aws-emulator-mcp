@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "application-sqs-before-send-retry",
+  "services": ["sqs"],
+  "setup": [
+    {"id": "queue", "service": "sqs", "operation": "CreateQueue",
+     "parameters": {"QueueName": {"$fixture": "queue"}},
+     "expect": {"assertions": [{"path": "QueueUrl", "exists": true}]}}
+  ],
+  "invoke": {
+    "entrypoint": "handle", "times": 1,
+    "inputs": {"queueUrl": {"$ref": "queue.QueueUrl"}, "body": "synthetic-retry-event"},
+    "expectedCalls": [
+      {"service": "sqs", "operation": "SendMessage", "min": 1, "max": 2}
+    ],
+    "fault": {"service": "sqs", "operation": "SendMessage",
+              "occurrence": 1, "mode": "before-call"}
+  },
+  "checks": [
+    {"id": "receive", "service": "sqs", "operation": "ReceiveMessage",
+     "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"},
+                    "MaxNumberOfMessages": 10, "WaitTimeSeconds": 1},
+     "expect": {"assertions": [
+       {"path": "Messages.0.Body", "equals": "synthetic-retry-event"},
+       {"path": "Messages.1", "exists": false}
+     ]}}
+  ],
+  "cleanup": [
+    {"id": "remove", "service": "sqs", "operation": "DeleteQueue",
+     "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"}}}
+  ],
+  "regression": {"stepId": "receive", "path": "Messages.0.Body"}
+}

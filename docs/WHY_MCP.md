@@ -4,6 +4,10 @@
 
 [**AWS Emulator MCP**](https://github.com/B11-Health/aws-emulator-mcp) is an **independent open-source integration**, not an AWS service or an AWS-endorsed project. It adds a deliberately bounded set of MCP tools and repeatable application/CI workflows on top of the upstream emulator. Our claim is **reproducibility and inspectable evidence for specific reviewed scenarios**, not expanded AWS service coverage.
 
+**AWS-native coexistence:** use the official skill first and see the [read-only
+existing-session check and collaboration boundaries](AWS_COMPANION.md). No
+official partnership or automatic reuse of its emulator process is claimed.
+
 ## What the extra layer actually changes
 
 | Developer's job | Native AWS Emulator | This independent MCP adapter |
