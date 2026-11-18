@@ -4,6 +4,8 @@
 
 The draft [Application Proof Explorer](proof-explorer.html) reads two **project-maintained**, redacted November 18, 2026 comparisons. **This new page is not available on GitHub Pages until its source is merged and the site deploys.** Preview it locally using the instructions below. It is a static evidence viewer, not an AWS-connected simulator. [SQS record](evidence/app-case-aws-emulator-1.0.506.json) · [S3 record](evidence/app-case-s3-aws-emulator-1.0.506.json).
 
+Before advertising the public URL, follow the [Pages prelaunch and post-deploy integrity gate](PAGES_LAUNCH_GATE.md). The public Explorer is not yet deployed.
+
 ## Preview the Proof Explorer before GitHub Pages publishes it
 
 From a checkout containing the draft Proof Explorer source:

@@ -53,7 +53,7 @@ a sanitized first-run report. This command was introduced in
 
 [**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
 
-**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification.
+**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification. The [Pages release gate](docs/PAGES_LAUNCH_GATE.md) validates draft links and evidence before merge and requires separate public verification after a reviewed Pages deployment.
 
 ## See the proof in 90 seconds
 

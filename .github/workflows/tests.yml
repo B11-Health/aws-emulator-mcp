@@ -163,6 +163,8 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
+      - name: Gate draft GitHub Pages links and recorded proof assets (no deploy)
+        run: node scripts/pages_launch_gate.mjs --local
       - name: Test Node CLI and pack without publishing
         run: |
           npm test
