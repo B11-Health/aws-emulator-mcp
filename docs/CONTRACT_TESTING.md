@@ -32,6 +32,61 @@ then `contract_run({"plan": ...})`. Each MCP run starts a **separate emulator
 process on a random loopback port with its own temporary HOME and keys**.
 It does not share state with the MCP session's long-lived emulator.
 
+## Challenge a developer-authored contract
+
+A contract you wrote yourself deserves the same false-positive check as a
+generated one. With `--challenge`, the normal plan runs first. Only after a
+verified passing baseline does a fresh, separate emulator run an
+**expectation-only** mutation of one equality assertion.
+
+```sh
+aws-emulator-mcp contract ./my-contract.json --json
+aws-emulator-mcp contract ./my-contract.json --challenge --json
+```
+
+The JSON report retains the normal `baseline` result plus
+`assertionChallenge.status` and its exact assertion path. It exits 0 only
+when the baseline passed **and** the test demonstrably rejected a deliberately
+wrong expected value at the intended step. If the baseline fails, the
+challenge is not run. A plan with only `exists` or `errorCode` assertions
+cannot be challenged by this first equality-only implementation; the
+result is `no_equality_assertion` and nonzero exit. There is no change to
+non-challenge `contract` output or behavior.
+
+No application code is executed. No real AWS account is accessed, and
+passing this check does not establish production AWS fidelity, strong
+fault coverage, or that application behavior was tested.
+
+The **Docker MCP** has the same opt-in control without adding another tool:
+
+```json
+{
+  "plan": {
+    "schemaVersion": 1, "name": "sqs-lookup-challenge",
+    "steps": [
+      {"id": "queue", "service": "sqs", "operation": "CreateQueue",
+       "parameters": {"QueueName": {"$fixture": "queue"}}},
+      {"id": "lookup", "service": "sqs", "operation": "GetQueueUrl",
+       "parameters": {"QueueName": {"$fixture": "queue"}},
+       "expect": {"assertions": [{"path": "QueueUrl",
+         "equals": {"$ref": "queue.QueueUrl"}}]}},
+      {"id": "remove", "service": "sqs", "operation": "DeleteQueue",
+       "parameters": {"QueueUrl": {"$ref": "queue.QueueUrl"}}}
+    ]
+  },
+  "negativeControl": true
+}
+```
+
+Pass a reviewable plan to `contract_run` and set `negativeControl: true` to
+run a passing baseline plus one deliberately changed **equality** expectation
+in separate local emulators. The above example checks the queue URL before
+its negative control deliberately expects the wrong URL. By default
+`contract_run` is unchanged. Because a negative control deliberately fails,
+its plan stops before subsequent cleanup steps; each challenge run uses a new
+ephemeral emulator whose entire state is discarded at the end. No real AWS
+resources are touched.
+
 ## Start with an existing Python app
 
 From the MCP development checkout, select your app's Git directory, a tracked
@@ -61,6 +116,31 @@ node bin/aws-emulator-mcp.mjs project-check /path/to/app
 node bin/aws-emulator-mcp.mjs project-check /path/to/app --run
 node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --json > project-check.json
 ```
+
+### Challenge your own green test (negative control)
+
+```sh
+# Explicitly opt in to a second, independent test run per passing plan.
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --challenge
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --challenge --json
+```
+
+The challenge chooses **one equality assertion per generated synthetic plan**
+(S3, SQS, DynamoDB or EC2) and deliberately changes only the *expected*
+value. It does not mutate the AWS requests, the source code or the emulator.
+The original plan must first pass. Then a fresh network-disabled Docker lab
+runs the expectation-only mutant. The negative control succeeds **only if**
+the original observation still succeeds and the modified equality fails at
+the expected operation and response path—not due to an unrelated SDK error.
+An emulator-version mismatch, malformed evidence, skipped assertion or a
+failure at a different step produces a non-passing status (`inconclusive`,
+`invalid_evidence`, `not_detected`, or `not_run`).
+
+This answers *whether a specific synthetic test would detect one deliberate
+assertion mismatch*, **not** whether a bug in your application's behavior
+would be caught. `applicationFixVerified` remains `false`. One mutant per
+plan is not mutation coverage. It uses extra local containers only when
+`--challenge` is explicitly supplied, and `--challenge` requires `--run`.
 
 Every call site is classified as `api_probe_passed`, `api_probe_failed`,
 `not_reached`, `not_run`, `not_covered` or `invalid_evidence`.

@@ -491,6 +491,98 @@ def _child_execute():
         return 2
 
 
+def _negative_control_plan(plan):
+    """Change exactly one equality expectation in a reviewed data contract.
+
+    The call's parameters, operation, faults and application source are never
+    changed. The returned test will run in a separate ephemeral emulator.
+    """
+    validate(plan)
+    for step_index, step in enumerate(plan["steps"]):
+        for assertion_index, item in enumerate(step.get("expect", {}).get("assertions", [])):
+            if "equals" not in item:
+                continue
+            # Deep-copy as JSON only. No eval, import, shell or caller code.
+            mutated = json.loads(_json_bytes(plan))
+            original = item["equals"]
+            if type(original) is bool:
+                wrong = not original
+            elif type(original) is int and -(2**53) < original < 2**53 - 1:
+                wrong = original + 1
+            elif (isinstance(original, str) and len(original.encode("utf-8")) +
+                  len("__mcp_negative_control__") <= 8192):
+                wrong = original + "__mcp_negative_control__"
+            else:
+                wrong = "__mcp_negative_control__"
+            mutated["steps"][step_index]["expect"]["assertions"][assertion_index]["equals"] = wrong
+            validate(mutated)
+            return mutated, step_index, assertion_index, step["id"], item["path"]
+    return None
+
+
+def challenge(plan):
+    """MCP option: test one assertion's sensitivity, not application correctness."""
+    validate(plan)
+    if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") != "1":
+        _error("Contract challenge requires the isolated Docker lab")
+    baseline = run(plan)
+    output = {"schemaVersion": 1, "mode": "assertion_challenge",
+              "baseline": baseline, "passed": False,
+              "applicationFixVerified": False, "productionAwsValidated": False,
+              "scope": "One synthetic equality assertion challenge; not application execution, "
+                       "IAM testing or production AWS fidelity."}
+    expected = hashlib.sha256(_json_bytes(plan)).hexdigest()
+    if not (baseline.get("passed") is True and baseline.get("accountVerified") is True
+            and baseline.get("planSha256") == expected and
+            baseline.get("passedSteps") == baseline.get("totalSteps") == len(plan["steps"])):
+        output["assertionChallenge"] = {"status": "baseline_not_passed"}
+        return output
+    candidate = _negative_control_plan(plan)
+    if candidate is None:
+        output["assertionChallenge"] = {"status": "no_equality_assertion"}
+        return output
+    mutated, step_index, assertion_index, step_id, path = candidate
+    target_sha = hashlib.sha256(_json_bytes(mutated)).hexdigest()
+    assessment = {"stepId": step_id, "path": path,
+                  "planSha256": target_sha, "status": "inconclusive"}
+    control = run(mutated)
+    if not (control.get("accountVerified") is True and
+            control.get("planSha256") == target_sha and
+            control.get("emulatorVersion") == baseline.get("emulatorVersion") and
+            control.get("totalSteps") == len(plan["steps"])):
+        assessment["status"] = "invalid_evidence"
+    elif control.get("passed") is True:
+        assessment["status"] = "not_detected"
+    else:
+        steps = control.get("steps")
+        if isinstance(steps, list) and len(steps) == step_index + 1 and all(
+                entry.get("passed") is True for entry in steps[:step_index]):
+            observed = steps[step_index]
+            assertions = observed.get("assertions")
+            if (observed.get("id") == step_id and
+                    observed.get("service") == mutated["steps"][step_index]["service"] and
+                    observed.get("operation") == mutated["steps"][step_index]["operation"] and
+                    observed.get("observed") == "success" and observed.get("passed") is False and
+                    control.get("passedSteps") == step_index and
+                    isinstance(assertions, list) and
+                    len(assertions) == len(mutated["steps"][step_index]["expect"]["assertions"]) and
+                    all(entry.get("path") == test["path"] and
+                        entry.get("passed") is (i != assertion_index)
+                        for i, (entry, test) in enumerate(zip(
+                            assertions, mutated["steps"][step_index]["expect"]["assertions"])))):
+                assessment["status"] = "detected"
+    output["assertionChallenge"] = assessment
+    output["passed"] = assessment["status"] == "detected"
+    return output
+
+
+def run_or_challenge(plan, negativeControl=False):
+    """Preserve default contract_run semantics; challenge only on opt-in."""
+    if type(negativeControl) is not bool:
+        _error("negativeControl must be a boolean")
+    return challenge(plan) if negativeControl else run(plan)
+
+
 def run(plan):
     """MCP entry: a new independent emulator process, no access to main MCP state."""
     validate(plan)  # before any process is started

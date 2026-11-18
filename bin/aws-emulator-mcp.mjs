@@ -12,7 +12,7 @@ import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compa
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
-import { summarizeProjectProbes, formatProjectCheck } from '../scripts/project_check.mjs';
+import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge } from '../scripts/project_check.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.15';
@@ -40,7 +40,7 @@ Usage: aws-emulator-mcp <command>
 Commands:
   try [--json]     Verify 7 architecture artifacts offline in a temporary workspace
   project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
-  project-check PATH [--run] [--json]  Scan your app; optionally execute synthetic API probes
+  project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -51,6 +51,7 @@ Commands:
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
+                   Add --challenge to test that a wrong expectation is detected
   gate [directory] Run 1-6 checked-in JSON contracts and write sanitized CI evidence
   architecture demo|build|review  Generate diagrams, CloudFormation and PR change reviews offline
   failure-lab      Reproduce missing events, timeout recovery and deduplication
@@ -509,10 +510,11 @@ async function main() {
   }
   if (command === 'project-check') {
     const [file, ...options] = args;
-    if (!file || file.startsWith('-') || options.length > 2 ||
-        options.some(option => !['--json', '--run'].includes(option)) ||
-        new Set(options).size !== options.length) {
-      fail('Usage: aws-emulator-mcp project-check MODULE.py|GIT_DIRECTORY [--run] [--json]', 2);
+    if (!file || file.startsWith('-') || options.length > 3 ||
+        options.some(option => !['--json', '--run', '--challenge'].includes(option)) ||
+        new Set(options).size !== options.length ||
+        (options.includes('--challenge') && !options.includes('--run'))) {
+      fail('Usage: aws-emulator-mcp project-check MODULE.py|GIT_DIRECTORY [--run] [--challenge] [--json]', 2);
     }
     const scan = runPythonProject(file, ['--json']);
     if (scan.status !== 0) {
@@ -535,14 +537,31 @@ async function main() {
         runs.push({ code: result.code, proof });
       }
     }
+    // Challenge is opt-in and runs only for passing baseline contracts. The
+    // only mutation is a synthetic assertion's expected value. Both executions
+    // use independent, network-disabled local emulator containers.
+    let controlRuns;
+    if (options.includes('--challenge')) {
+      const firstPass = summarizeProjectProbes(inventory, runs);
+      controlRuns = [];
+      for (const [index, draft] of inventory.drafts.entries()) {
+        const challenge = firstPass.probes[index].status === 'passed'
+          ? buildAssertionChallenge(draft.plan) : null;
+        if (!challenge) { controlRuns.push(null); continue; }
+        const result = await runCaptured(dockerArgs('contract'), JSON.stringify(challenge.plan));
+        let proof;
+        try { proof = JSON.parse(result.raw); } catch { proof = null; }
+        controlRuns.push({ code: result.code, proof });
+      }
+    }
     let report;
-    try { report = summarizeProjectProbes(inventory, runs); }
+    try { report = summarizeProjectProbes(inventory, runs, controlRuns); }
     catch { fail('Project check could not verify the scan or probe evidence', 2); }
     stdout.write(options.includes('--json') ? JSON.stringify(report, null, 2) + '\n'
       : formatProjectCheck(report));
     // A successfully completed synthetic probe is not a passing app test.
     // Exit nonzero for untested calls, failed probes or review gaps after --run.
-    if (options.includes('--run') && report.status !== 'api_probes_passed')
+    if (options.includes('--run') && !['api_probes_passed', 'assertion_challenges_passed'].includes(report.status))
       process.exitCode = 1;
     return;
   }
@@ -595,11 +614,13 @@ async function main() {
   }
   if (command === 'contract') {
     const wantsJson = args.includes('--json');
-    const rest = args.filter(x => x !== '--json');
-    if (rest.length !== 1 || args.length > 2 ||
-        args.filter(x => x === '--json').length > 1 || rest[0].startsWith('-') ||
+    const challengeRequested = args.includes('--challenge');
+    const rest = args.filter(x => x !== '--json' && x !== '--challenge');
+    if (rest.length !== 1 || args.length > 3 ||
+        args.filter(x => x === '--json').length > 1 ||
+        args.filter(x => x === '--challenge').length > 1 || rest[0].startsWith('-') ||
         /^(https?:|file:)/i.test(rest[0])) {
-      fail('Usage: aws-emulator-mcp contract demo|fault-demo|<local-plan.json> [--json]', 2);
+      fail('Usage: aws-emulator-mcp contract demo|fault-demo|<local-plan.json> [--json] [--challenge]', 2);
     }
     let plan;
     try {
@@ -626,6 +647,35 @@ async function main() {
     let proof;
     try { proof = JSON.parse(result.raw); }
     catch { fail('Contract worker returned invalid evidence', result.code || 1); }
+    if (challengeRequested) {
+      const original = { code: result.code, proof };
+      const candidate = buildAssertionChallenge(plan);
+      // No second Docker run after failed/invalid baseline evidence or when
+      // the contract contains no equality assertion to mutate.
+      const preliminary = assessContractChallenge(plan, original, null);
+      let control = null;
+      if (candidate && preliminary.status === 'not_run') {
+        const attempted = await runCaptured(dockerArgs('contract'), JSON.stringify(candidate.plan));
+        let observed;
+        try { observed = JSON.parse(attempted.raw); } catch { observed = null; }
+        control = { code: attempted.code, proof: observed };
+      }
+      const assessment = assessContractChallenge(plan, original, control);
+      const verified = assessment.status === 'detected';
+      const report = { schemaVersion: 1, mode: 'assertion_challenge',
+        baseline: proof, assertionChallenge: assessment, passed: verified,
+        applicationFixVerified: false, productionAwsValidated: false,
+        scope: 'One equality assertion negative control of an isolated local AWS SDK contract; no application execution or AWS parity.' };
+      if (wantsJson) stdout.write(JSON.stringify(report, null, 2) + '\n');
+      else {
+        renderReport('contract', proof);
+        stdout.write('  Assertion negative control: ' + assessment.status.toUpperCase() +
+          (assessment.stepId ? ' at ' + assessment.stepId + '.' + assessment.path : '') + '\n' +
+          '  This does not verify application source or AWS parity.\n');
+      }
+      if (!verified) fail('Assertion challenge did not establish expected mismatch detection', 1);
+      return;
+    }
     if (wantsJson) stdout.write(JSON.stringify(proof, null, 2) + '\n');
     else renderReport('contract', proof);
     if (result.code !== 0 || !proof.passed)

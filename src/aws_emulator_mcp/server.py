@@ -715,14 +715,16 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
              "Get the contract schema, or pass low-level clientMethods from your app (such as sqs.send_message) to get reviewable synthetic test plans and unmatched methods.",
              {"clientMethods": {"type": "array", "items": {"type": "string"}, "maxItems": 80}}),
         spec("contract_run",
-             "Execute 1-16 agent-authored AWS SDK steps and assertions, optionally injecting one SDK-boundary RequestTimeout on approved writes, in a fresh isolated emulator. No user code, cloud credentials or real outages.",
-             {"plan": {"type": "object", "additionalProperties": True}}, ("plan",)),
+             "Execute 1-16 agent-authored local AWS SDK steps; set negativeControl=true to rerun a deliberately wrong expectation in a second fresh isolated emulator and prove the test catches it. No user code or cloud credentials.",
+             {"plan": {"type": "object", "additionalProperties": True},
+              "negativeControl": {"type": "boolean"}}, ("plan",)),
     ])
     TOOLS[-2]["annotations"] = {"readOnlyHint": True, "destructiveHint": False,
                                   "idempotentHint": True, "openWorldHint": False}
     TOOLS[-1]["annotations"] = {"readOnlyHint": False, "destructiveHint": True,
                                   "idempotentHint": False, "openWorldHint": False}
-    FUNCTIONS.update(contract_guide=contract_case.guide, contract_run=contract_case.run)
+    FUNCTIONS.update(contract_guide=contract_case.guide,
+                     contract_run=contract_case.run_or_challenge)
 
     from aws_emulator_mcp import failure_lab
     TOOLS.extend([
@@ -791,6 +793,8 @@ def _tool_arguments_ok(name,args):
         except (TypeError, ValueError): return False
     for k,value in args.items():
         declared=properties[k]
+        if declared.get("type")=="boolean" and type(value) is not bool:
+            return False
         if declared.get("type")=="integer":
             if type(value) is not int: return False
             if value < declared.get("minimum",0) or value > declared.get("maximum",20000):

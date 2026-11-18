@@ -135,6 +135,77 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(report["steps"][0]["errorCode"], "NotImplemented")
         self.assertNotIn("redacted-request-information", str(report))
 
+    def test_assertion_challenge_changes_one_expectation_not_aws_parameters(self):
+        import copy
+        import json
+        original = json.loads((Path(__file__).resolve().parents[1] /
+            "examples/contracts/sqs-consume.json").read_text())
+        before = copy.deepcopy(original)
+        mutation = cases._negative_control_plan(original)
+        self.assertIsNotNone(mutation)
+        mutated, index, assertion, step, path = mutation
+        self.assertEqual((step, path), ("receive", "Messages.0.Body"))
+        mutated["steps"][index]["expect"]["assertions"][assertion]["equals"] = (
+            before["steps"][index]["expect"]["assertions"][assertion]["equals"])
+        self.assertEqual(mutated, before)
+        self.assertEqual(original, before)
+        no_equals = {"schemaVersion": 1, "name": "no-equals", "steps": [
+            {"id": "list", "service": "s3", "operation": "ListBuckets",
+             "expect": {"assertions": [{"path": "Buckets", "exists": True}]}}
+        ]}
+        self.assertIsNone(cases._negative_control_plan(no_equals))
+
+    def test_negative_control_catches_exact_assertion_and_avoids_app_code(self):
+        fake = FakeClient()
+        plan = {"schemaVersion": 1, "name": "local-mismatch", "steps": [
+            {"id": "create", "service": "s3", "operation": "CreateBucket",
+             "parameters": {"Bucket": {"$fixture": "bucket"}}},
+            {"id": "inspect", "service": "s3", "operation": "GetBucketLocation",
+             "parameters": {"Bucket": {"$ref": "create.Location"}},
+             "expect": {"assertions": [{
+                 "path": "LocationConstraint", "equals": {"$ref": "create.Location"}}]}}
+        ]}
+        with patch.dict(os.environ, {"AWS_EMULATOR_MCP_ISOLATED_LAB": "1"}), \
+             patch.object(aws, "doctor", return_value={"ready": True, "emulator_version": "unit-test"}), \
+             patch.object(aws, "identity", return_value={"Account": "000000000000"}), \
+             patch("aws_emulator_mcp.aws_sdk._client", return_value=(None, None, fake, None, None)), \
+             patch.object(cases, "run", side_effect=lambda selected: cases.execute(selected)) as local:
+            result = cases.run_or_challenge(plan, negativeControl=True)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["assertionChallenge"]["status"], "detected")
+        self.assertEqual(result["assertionChallenge"]["stepId"], "inspect")
+        self.assertEqual(result["assertionChallenge"]["path"], "LocationConstraint")
+        self.assertEqual(local.call_count, 2)
+        self.assertFalse(result["applicationFixVerified"])
+        self.assertFalse(result["productionAwsValidated"])
+        self.assertEqual(fake.calls, ["create", "get", "create", "get"])
+
+    def test_mcp_challenge_rejects_nonboolean_and_unrelated_failure(self):
+        plan = {"schemaVersion": 1, "name": "probe", "steps": [
+            {"id": "list", "service": "s3", "operation": "ListBuckets",
+             "expect": {"assertions": [{"path": "Buckets.0.Name", "equals": "expected"}]}}
+        ]}
+        with patch.object(cases, "run") as worker:
+            with self.assertRaisesRegex(aws.LocalError, "boolean"):
+                cases.run_or_challenge(plan, negativeControl="yes")
+            worker.assert_not_called()
+        first = {"passed": True, "schemaVersion": 1,
+                 "accountVerified": True, "emulatorVersion": "one",
+                 "planSha256": __import__("hashlib").sha256(cases._json_bytes(plan)).hexdigest(),
+                 "passedSteps": 1, "totalSteps": 1}
+        control = {"passed": False, "schemaVersion": 1,
+                   "accountVerified": True, "emulatorVersion": "different",
+                   "planSha256": "not-verified", "passedSteps": 0, "totalSteps": 1}
+        with patch.dict(os.environ, {"AWS_EMULATOR_MCP_ISOLATED_LAB": "1"}), \
+             patch.object(cases, "run", side_effect=[first, control]) as worker:
+            report = cases.challenge(plan)
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["assertionChallenge"]["status"], "invalid_evidence")
+        self.assertEqual(worker.call_count, 2)
+        with patch.dict(os.environ, {"AWS_EMULATOR_MCP_ISOLATED_LAB": "0"}):
+            with self.assertRaisesRegex(aws.LocalError, "isolated Docker"):
+                cases.challenge(plan)
+
     def test_identity_or_runtime_rejected_before_sdk_calls(self):
         with patch.dict(os.environ, {"AWS_EMULATOR_MCP_ISOLATED_LAB": "0"}):
             with self.assertRaisesRegex(aws.LocalError, "isolated Docker"):
