@@ -9,6 +9,11 @@ import {openSync, writeFileSync, closeSync, fstatSync, lstatSync, unlinkSync} fr
 const SHA = /^[a-f0-9]{64}$/;
 const IDENT = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 const RESERVED = /REVIEW_ME|REPLACE_WITH_SYNTHETIC_VALUE/i;
+// Validate Windows spellings on every host: a Linux preview must never
+// approve a Windows UNC, network-share or device namespace selector.
+// Two leading separators cover \\host, //host and mixed slash variants;
+// single-backslash NT device namespaces are also not local files.
+const WINDOWS_REMOTE_OR_DEVICE = /^(?:[\\/]{2}|\\\?\?\\|\\(?:device|globalroot)\\)/i;
 const KNOWN = new Set(['--json','--draft','--draft-proof','--run','--approve']);
 const ALLOWED_CASE_FIELDS = [
   'schemaVersion','name','services','setup','invoke','checks','cleanup','regression'];
@@ -16,7 +21,7 @@ const ALLOWED_CASE_FIELDS = [
 function selectedFile(value, suffix) {
   return typeof value === 'string' && value.length > 0 && value.length <= 260 &&
     value.endsWith(suffix) && !value.startsWith('-') && !/^(?:https?|file):/i.test(value) &&
-    !/[\r\n\0]/.test(value);
+    !WINDOWS_REMOTE_OR_DEVICE.test(value) && !/[\r\n\0]/.test(value);
 }
 
 export function parseAppGuideArgs(args) {
