@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "kind": "independent_local_agent_evaluation_handoff",
+  "compatibility": "Framework-neutral reference case; not an AWS-Bench task, benchmark score, AWS partnership, or official emulator test suite.",
+  "taskId": "sqs-idempotent-order-handler",
+  "source": "Project-maintained recorded local application evidence; no external attestation",
+  "emulator": {
+    "name": "AWS Emulator",
+    "version": "Version: 1.0.506",
+    "locallyVerifiedAccount": true,
+    "productionAWSValidated": false
+  },
+  "case": {
+    "name": "sqs-idempotent-retry",
+    "sha256": "307dd02c38f54358bad9c73be6bfdbaa24306584afc65060ef40255b51a2dec0",
+    "services": [
+      "dynamodb",
+      "sqs"
+    ],
+    "action": "Two invocations of the same trusted local order handler using synthetic inputs",
+    "postcondition": "Independent DynamoDB typed-value read and SQS message count/body checks",
+    "expectedRegression": {
+      "stepId": "receive",
+      "path": "Messages.1"
+    }
+  },
+  "candidate": {
+    "brokenSourceSha256": "191df45bd88c2dcc686f51f0f15a673852e0c0e21f72d80beba9bdd4a19f0248",
+    "fixedSourceSha256": "dfc5ac396b90d92a1c74c451f7f9c9eace87d17b7e217e55150c8ddd841156af"
+  },
+  "observed": {
+    "before": {
+      "assertions": {
+        "passed": 3,
+        "total": 4
+      },
+      "sdkCalls": [
+        {
+          "service": "dynamodb",
+          "operation": "PutItem",
+          "attempts": 2,
+          "successes": 2
+        },
+        {
+          "service": "sqs",
+          "operation": "SendMessage",
+          "attempts": 2,
+          "successes": 2
+        }
+      ],
+      "cleanupPassed": true,
+      "passed": false
+    },
+    "after": {
+      "assertions": {
+        "passed": 4,
+        "total": 4
+      },
+      "sdkCalls": [
+        {
+          "service": "dynamodb",
+          "operation": "PutItem",
+          "attempts": 2,
+          "successes": 1
+        },
+        {
+          "service": "sqs",
+          "operation": "SendMessage",
+          "attempts": 1,
+          "successes": 1
+        }
+      ],
+      "cleanupPassed": true,
+      "passed": true
+    },
+    "namedRegressionObserved": [
+      {
+        "id": "receive",
+        "path": "Messages.1"
+      }
+    ],
+    "bugReproduced": true,
+    "fixVerified": true
+  },
+  "result": {
+    "localEvaluationPassed": true,
+    "positiveControlVerified": true,
+    "negativeControlDetected": true,
+    "cleanupVerifiedBoth": true
+  },
+  "metadata": {
+    "recordedDate": "2026-11-18",
+    "localOnly": true,
+    "sourceExecutedDuringExport": false,
+    "awsCallsDuringExport": false,
+    "dockerUsedDuringExport": false,
+    "productionAWSValidated": false
+  },
+  "limitations": "Only the recorded synthetic local app case. Not AWS-Bench compatibility, evaluator signing, IAM enforcement, deployment proof, emulator service fidelity outside tested behavior, or real AWS production validation."
+}
