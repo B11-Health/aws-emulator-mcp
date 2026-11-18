@@ -96,6 +96,15 @@ Do not imply AWS sponsorship or endorsement.
 - Improve onboarding across Windows WSL2, Debian/Ubuntu, or an independently verified Docker/macOS route.
 - Add a tiny complete workflow demonstrating failure, diagnosis, repair, and scoped cleanup.
 
+## Community support and safety
+
+Please read the [Code of Conduct](CODE_OF_CONDUCT.md) and use
+[SUPPORT.md](SUPPORT.md) to route product questions, independent test reports,
+engine bugs and security vulnerabilities to the right place. Software
+vulnerabilities belong in [GitHub's private report flow](https://github.com/B11-Health/aws-emulator-mcp/security/advisories),
+not in public issues. We welcome critical technical feedback; disagreement
+with maintainers is not a conduct violation.
+
 ## Security and coding conventions
 
 - Keep AWS API traffic on verified HTTPS loopback. Never introduce arbitrary endpoint overrides, real AWS credentials, or public network listeners by default.
@@ -107,4 +116,4 @@ Do not imply AWS sponsorship or endorsement.
 - Keep runtime dependencies minimal and explain any new dependency's necessity, license, and threat model.
 - Document unsupported operations instead of claiming universal AWS parity.
 
-Before opening an issue about security, follow SECURITY.md and contact the maintainers privately when an address is available. The project is independent of AWS.
+Before publicizing a security concern, follow [SECURITY.md](SECURITY.md) and use the enabled private vulnerability reporting flow. The project is independent of AWS.

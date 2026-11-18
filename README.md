@@ -26,7 +26,8 @@
   <a href="#connect-your-ai-assistant">Connect your assistant</a> ·
   <a href="docs/COVERAGE.md">Service coverage</a> ·
   <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a> ·
-  <a href="CONTRIBUTING.md">Contribute</a>
+  <a href="CONTRIBUTING.md">Contribute</a> ·
+  <a href="SUPPORT.md">Get help</a>
 </p>
 
 ## See the proof in 90 seconds
@@ -70,6 +71,7 @@ or an AWS account to help. A real first-run failure report, accessibility
 fix or reproducible API gap is more useful than an unverified claim.
 
 [**Start contributing**](CONTRIBUTING.md) ·
+[**Get support**](SUPPORT.md) ·
 [**Browse good first issues**](https://github.com/B11-Health/aws-emulator-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) ·
 [**Report a first-run result**](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=independent_first_run.yml)
 

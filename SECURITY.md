@@ -32,6 +32,18 @@ not inside the source repository. Source archives deliberately exclude it.
 
 ## Reporting
 
-Until a dedicated public B11-Health repository exists, communicate potential
-vulnerabilities privately to the maintainer through the verified project
-contact rather than publishing exploit details.
+**Private vulnerability reporting is enabled for this public repository.**
+Use the [Security Advisories page](https://github.com/B11-Health/aws-emulator-mcp/security/advisories)
+and select **Report a vulnerability** to submit details privately through
+GitHub's built-in reporting system. The maintainer can review the report
+without first publishing an exploit or asking you to email credentials.
+
+Provide a minimal synthetic proof, affected version, impact and suggested
+mitigation. Never post live credentials, customer data or undisclosed
+vulnerability details in a public issue or pull request. We do not promise a
+fixed response time or a paid bug bounty.
+
+For ordinary installation or API behavior questions, use [SUPPORT.md](SUPPORT.md)
+and the public, sanitized issue forms instead. Interpersonal conduct
+concerns belong under [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), **not** in a
+security advisory.
