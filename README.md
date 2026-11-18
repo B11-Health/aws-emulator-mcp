@@ -32,14 +32,15 @@
 
 ## One command to get your first result
 
-In a **development checkout containing the new `onboard` command** (not
-the immutable v0.4.0-beta.15 release), beginners can verify a real local
-result and see their next steps **without an AWS account or Docker build**:
+The new `onboard` command is available for review in
+[the unmerged integration preview](https://github.com/B11-Health/aws-emulator-mcp/pull/74),
+**not** in the published v0.4.0-beta.15 release or the current default
+`master` checkout. To try it without an AWS account or Docker build:
 
 ```sh
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch release/agent-team-preview-20261118 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
-node bin/aws-emulator-mcp.mjs onboard
+node bin/aws-emulator-mcp.mjs onboard --offline --json
 ```
 
 It validates **seven generated architecture artifacts** (not an AWS API
@@ -204,7 +205,7 @@ Docker-backed commands in the current source checkout verify a build-input
 fingerprint before image reuse and rebuild stale cached bundles. This prevents
 same-tag checkout collisions; it is not a security signature.
 
-**New on master (not beta.15):** when a rebuild is needed and the Linux
+**New in the unmerged integration preview ([PR #74](https://github.com/B11-Health/aws-emulator-mcp/pull/74)), not in the published beta.15 or current `master`:** when a rebuild is needed and the Linux
 host-visible Docker data root reports less than 3 GiB free, `preflight`
 flags an advisory `imageBuildSpace.status="critical"` and recommends the
 read-only `docker system df` command **before** the signed image build.

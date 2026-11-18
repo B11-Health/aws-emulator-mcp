@@ -7,18 +7,21 @@ For the released version, use [the existing beta.15 onboarding](ONBOARDING.md).
 
 ## 1. Verify that the local tools work
 
-Requirements: Git, **Node.js 20+**, and a terminal (Windows PowerShell, macOS
-Terminal, or Linux shell). Clone the repository and from that directory run:
+Requirements: Git, **Node.js 20+**, and a terminal (Windows PowerShell,
+macOS Terminal, or Linux shell). Until this work merges, clone the **actual
+unmerged integration preview branch**, rather than the default `master`
+branch (which does not yet include this command):
 
 ```sh
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch release/agent-team-preview-20261118 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs onboard
 ```
 
-Before this change is merged, use the preview checkout linked in
-[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71),
-rather than assuming the default branch already supports `onboard`.
+[Review the unmerged integration preview PR #74](https://github.com/B11-Health/aws-emulator-mcp/pull/74).
+The command is also under review in
+[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71). The
+preview branch is not a published release; review its source before using it.
 
 After a future version containing this command is installed globally, run
 `aws-emulator-mcp onboard` instead; its follow-up commands will use the
