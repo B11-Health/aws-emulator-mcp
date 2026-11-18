@@ -1,5 +1,11 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Private vulnerability disclosure
+    url: https://github.com/B11-Health/aws-emulator-mcp/security/advisories
+    about: Do not publish vulnerabilities in issues; use GitHub's private security reporting flow.
+  - name: Help with setup and contribution routes
+    url: https://github.com/B11-Health/aws-emulator-mcp/blob/master/SUPPORT.md
+    about: First-run reporting, client setup, bugs, feature requests, contributions and support limits.
   - name: AWS Emulator engine issues (upstream)
     url: https://github.com/aws/aws-emulator/issues
     about: Use this for core emulator bugs, fidelity gaps or API implementations, not the independent MCP adapter.

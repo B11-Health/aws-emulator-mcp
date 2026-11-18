@@ -172,3 +172,33 @@ test('newcomer contribution paths are public, scoped, and require no push or AWS
  assert.match(form,/configuration-only results separately from actual MCP tool calls/);
  assert.doesNotMatch(form,/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|personal access token input/i);
 });
+
+
+test('community conduct and support policies route issues and protect private reports',()=>{
+ const rootRead=rel=>readFileSync(path.join(ROOT,rel),'utf8');
+ const coc=rootRead('CODE_OF_CONDUCT.md');
+ const support=rootRead('SUPPORT.md');
+ const security=rootRead('SECURITY.md');
+ const readme=rootRead('README.md');
+ const contribute=rootRead('CONTRIBUTING.md');
+ const chooser=rootRead('.github/ISSUE_TEMPLATE/config.yml');
+ for(const text of [coc,support,security,chooser])
+  assert.ok(text.includes('https://github.com/B11-Health/aws-emulator-mcp/security/advisories'));
+ for(const text of [coc,support,security])
+  assert.match(text,/not|never|do not/i);
+ assert.match(coc,/Harassment|harassment/i);
+ assert.match(coc,/Report abuse/i);
+ assert.match(coc,/independent open-source/i);
+ assert.match(support,/Independent first-run report/i);
+ assert.match(support,/Upstream AWS Emulator issues/i);
+ assert.match(support,/Code of Conduct/i);
+ assert.match(support,/cannot guarantee response/i);
+ assert.match(security,/Private vulnerability reporting is enabled/);
+ assert.match(security,/public issue or pull request/i);
+ assert.match(readme,/SUPPORT\.md/);
+ assert.match(contribute,/CODE_OF_CONDUCT\.md/);
+ assert.match(contribute,/SUPPORT\.md/);
+ assert.match(chooser,/Private vulnerability disclosure/);
+ assert.match(chooser,/Help with setup and contribution routes/);
+ assert.doesNotMatch(coc+support+security,/security@b11-health|support@b11-health/i);
+});
