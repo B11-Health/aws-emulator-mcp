@@ -58,16 +58,18 @@
    <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/evidence/app-case-aws-emulator-1.0.506.json" target="_blank" rel="noopener noreferrer">Inspect recorded before/after evidence ↗</a>
   </div>
   <div class="app-proof-run">
-   <p class="mission-tag">RUN IT YOURSELF · NODE 20+ + LOCAL DOCKER</p>
+   <p class="mission-tag">RUN IT YOURSELF · 3 REVIEWED STEPS · NODE 20+ + LOCAL DOCKER</p>
    <h3>A test your app cannot mark as passed</h3>
-   <p>The verifier checks actual emulated AWS state and observed SDK calls—not a flag returned by the application.</p>
-   <div class="mission-terminal"><pre id="app-proof-command" tabindex="0"><code>git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+   <p>The verifier checks independently observed emulated AWS state, not only an application return flag or SDK call count.</p>
+   <p><strong>1 · Inspect first, without building.</strong> Start local Docker with Linux containers and inspect the read-only preflight. Check <code>imageReusable</code>, cache source fingerprint and free Docker image storage. Host disk advisories do <strong>not</strong> prove Docker Desktop VM capacity. Do not proceed until you understand any warning.</p>
+   <div class="mission-terminal"><pre id="app-proof-preflight-command" tabindex="0"><code>git clone --depth 1 --branch master https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
-node bin/aws-emulator-mcp.mjs app-case-compare \
-  examples/app-case/buggy.py \
-  examples/app-case/fixed.py \
-  examples/app-case/sqs-idempotency.json --json</code></pre><button class="copy-button" type="button" data-copy="app-proof-command">Copy commands</button></div>
-   <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/APP_CASE.md" target="_blank" rel="noopener noreferrer">How it works, limitations and safety ↗</a> <a class="proof-link" href="proof-explorer.html">Explore the recorded assertions and hashes ↗</a>
+node bin/aws-emulator-mcp.mjs preflight --json</code></pre><button class="copy-button" type="button" data-copy="app-proof-preflight-command">Copy preflight</button></div>
+   <p><strong>2 · Opt into the signed-image build only if needed.</strong> Review the first-run storage guidance and actual Docker Engine/Desktop storage before running this <em>separate</em> command. The first build downloads a substantial signed upstream AWS Emulator package and may take significant disk space and network traffic. If preflight confirms a reusable local image, skip this build.</p>
+   <div class="mission-terminal"><pre id="app-proof-build-command" tabindex="0"><code>node bin/aws-emulator-mcp.mjs build</code></pre><button class="copy-button" type="button" data-copy="app-proof-build-command">Copy optional build</button></div>
+   <p><strong>3 · Run the trusted example only after source and disk review.</strong> Read <code>examples/app-case/buggy.py</code>, <code>examples/app-case/fixed.py</code> and the JSON case first. The CLI <strong>may automatically build</strong> if its cached image becomes missing or stale; recheck preflight and do not run this command unless you accept that possible build. The test intentionally executes trusted local Python inside separate Docker labs.</p>
+   <div class="mission-terminal"><pre id="app-proof-command" tabindex="0"><code>node bin/aws-emulator-mcp.mjs app-case-compare examples/app-case/buggy.py examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json</code></pre><button class="copy-button" type="button" data-copy="app-proof-command">Copy app test</button></div>
+   <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/APP_CASE.md" target="_blank" rel="noopener noreferrer">How it works, limitations and safety ↗</a> <a class="proof-link" href="proof-explorer.html">Proof Explorer (available only after an approved Pages deployment) ↗</a>
   </div>
  </div>
  <div class="note"><strong>Trust boundary:</strong> this intentionally executes a developer-selected, trusted Python file <em>locally</em> after explicit opt-in. Docker is not a sandbox for hostile code. This tests one selected entrypoint and invariant; it does <strong>not</strong> establish whole-project coverage, AWS production parity, IAM enforcement or crash safety. The offline beta.15 tour below remains unchanged.</div>
