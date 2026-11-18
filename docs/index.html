@@ -16,7 +16,7 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#missions">Demos</a><a href="#install">Try offline</a><a href="#connect">Connect</a><a href="#evidence">Evidence</a><a href="#community">Community</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
+<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#app-proof">App proof</a><a href="#missions">Demos</a><a href="#install">Try offline</a><a href="#connect">Connect</a><a href="#evidence">Evidence</a><a href="#community">Community</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
 <main id="main">
 <section class="hero wrap" id="top">
  <div class="hero-copy">
@@ -41,6 +41,36 @@
   </svg>
   <div class="diagram-bottom"><span>Bounded synthetic SDK fault</span><span>Not a production outage</span></div>
  </div>
+</section>
+<section class="section wrap app-proof" id="app-proof" aria-labelledby="app-proof-heading">
+ <div class="section-header"><p class="eyebrow">NEW ON MASTER · DEVELOPER PREVIEW · NOT IN THE BETA.15 TAG</p>
+  <h2 id="app-proof-heading">Did the fix change what your application actually did?</h2>
+  <p>Choose a Python function you own, give it a reviewable JSON behavior case, and inspect independent SDK reads from a verified, isolated AWS Emulator. No arbitrary source execution through the MCP server.</p>
+ </div>
+ <div class="app-proof-grid">
+  <div class="app-proof-case">
+   <div class="app-proof-case-top"><span>ONE TEST CASE · TWO SOURCE REVISIONS</span><span>Signed Emulator 1.0.506</span></div>
+   <div class="app-proof-comparison">
+    <div><span class="app-proof-label app-proof-error">BEFORE · EXPECTED FAILURE</span><strong>2</strong><span>SQS messages</span><small>Unconditional DynamoDB write</small></div>
+    <div><span class="app-proof-label app-proof-success">AFTER · EXPECTED PASS</span><strong>1</strong><span>SQS message</span><small>Conditional DynamoDB write</small></div>
+   </div>
+   <p>The broken handler fails only <code>receive.Messages.1</code>. The corrected handler passes the same assertion. Both were executed in separate local labs and completed declared cleanup.</p>
+   <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/evidence/app-case-aws-emulator-1.0.506.json" target="_blank" rel="noopener noreferrer">Inspect recorded before/after evidence ↗</a>
+  </div>
+  <div class="app-proof-run">
+   <p class="mission-tag">RUN IT YOURSELF · NODE 20+ + LOCAL DOCKER</p>
+   <h3>A test your app cannot mark as passed</h3>
+   <p>The verifier checks actual emulated AWS state and observed SDK calls—not a flag returned by the application.</p>
+   <div class="mission-terminal"><pre id="app-proof-command" tabindex="0"><code>git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs app-case-compare \
+  examples/app-case/buggy.py \
+  examples/app-case/fixed.py \
+  examples/app-case/sqs-idempotency.json --json</code></pre><button class="copy-button" type="button" data-copy="app-proof-command">Copy commands</button></div>
+   <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/APP_CASE.md" target="_blank" rel="noopener noreferrer">How it works, limitations and safety ↗</a>
+  </div>
+ </div>
+ <div class="note"><strong>Trust boundary:</strong> this intentionally executes a developer-selected, trusted Python file <em>locally</em> after explicit opt-in. Docker is not a sandbox for hostile code. This tests one selected entrypoint and invariant; it does <strong>not</strong> establish whole-project coverage, AWS production parity, IAM enforcement or crash safety. The offline beta.15 tour below remains unchanged.</div>
 </section>
 <section class="section wrap" id="install">
  <div class="section-header"><p class="eyebrow">01 / THE 30-SECOND FIRST RUN</p><h2>Install nothing heavy. See proof first.</h2><p>You'll need Node.js 20+ and Git. No Docker, AWS account, or globally installed package required.</p></div>
