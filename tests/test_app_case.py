@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from types import ModuleType
 import sys
 import unittest
 from unittest.mock import patch
@@ -13,6 +14,25 @@ from aws_emulator_mcp import app_case, contract_case
 from aws_emulator_mcp import server as aws
 
 SPEC=json.loads((ROOT/'examples/app-case/sqs-idempotency.json').read_text())
+
+
+# Unit tests must run without boto3/botocore installed. Provide only the
+# exception class used by the reviewed synthetic retry examples; the actual
+# Docker application runner still imports real botocore in production.
+class _SyntheticReadTimeoutError(Exception):
+    def __init__(self, endpoint_url=None):
+        super().__init__('synthetic SDK timeout for unit tests')
+
+
+_botocore_stub = ModuleType('botocore')
+_botocore_stub.__path__ = []
+_botocore_exceptions_stub = ModuleType('botocore.exceptions')
+_botocore_exceptions_stub.ReadTimeoutError = _SyntheticReadTimeoutError
+_botocore_stub.exceptions = _botocore_exceptions_stub
+_BOTOCORE_TEST_MODULES = {
+    'botocore': _botocore_stub,
+    'botocore.exceptions': _botocore_exceptions_stub,
+}
 
 
 def envelope(source, spec=SPEC):
@@ -136,6 +156,7 @@ class AppCaseTests(unittest.TestCase):
         self.assertNotIn('https://localhost.test',payload)
         self.assertNotIn(buggy[:40],payload)
 
+    @patch.dict(sys.modules, _BOTOCORE_TEST_MODULES)
     def test_real_python_retry_branch_recovers_a_pre_send_timeout(self):
         case=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
         self.assertIs(app_case.validate_case(case),case)
@@ -170,6 +191,7 @@ class AppCaseTests(unittest.TestCase):
         self.assertEqual(corrected['sdkCalls'][0]['successes'],1)
         self.assertEqual(len(runs[1][0].messages),1)
 
+    @patch.dict(sys.modules, _BOTOCORE_TEST_MODULES)
     def test_fault_must_occur_or_green_application_checks_still_fail(self):
         case=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
         case['invoke']['fault']['occurrence']=2
@@ -190,6 +212,7 @@ class AppCaseTests(unittest.TestCase):
         self.assertFalse(proof['passed'])
         self.assertTrue(proof['cleanupPassed'])
 
+    @patch.dict(sys.modules, _BOTOCORE_TEST_MODULES)
     def test_after_success_is_not_misreported_as_a_pre_send_timeout(self):
         case=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
         case['invoke']['fault']['mode']='after-success'
