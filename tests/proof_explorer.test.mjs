@@ -67,6 +67,20 @@ test('raw teardown failures cannot hide behind green comparison cleanup summarie
   assert.equal(validateEvidence(load(snapshots[1])).ok, true);
 });
 
+test('SQS recorded proof cannot silently drop both raw cleanup histories', () => {
+  const original=load(snapshots[0]);
+  for (const remove of ['before','after','both']) {
+    const changed=structuredClone(original);
+    if (remove!=='after') delete changed.before;
+    if (remove!=='before') delete changed.after;
+    const outcome=validateEvidence(changed);
+    assert.equal(outcome.ok,false,'missing '+remove+' raw history must not pass');
+    assert.match(outcome.reason,/missing required raw cleanup evidence/);
+  }
+  // The S3 snapshot was recorded with only a sanitized comparison and remains valid.
+  assert.equal(validateEvidence(load(snapshots[1])).ok,true);
+});
+
 test('webpage is accessible, fixed-source, and does not pretend to run live AWS', () => {
   const html = read('docs/proof-explorer.html');
   const js = read('docs/proof-explorer.js');
