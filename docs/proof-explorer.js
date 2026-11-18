@@ -37,6 +37,18 @@ function assertionList(side) {
   return values;
 }
 
+function rawCleanupMatches(raw, summarized) {
+  // The full project-maintained SQS record retains the actual SDK teardown
+  // responses. Do not let a green comparison summary conceal a failed or
+  // missing cleanup step in that underlying run.
+  if (!Array.isArray(raw.cleanup) || raw.cleanup.length !== summarized.cleanup.length)
+    return false;
+  return raw.cleanup.every((step, index) =>
+    step?.id === summarized.cleanup[index].id &&
+    step.passed === true && summarized.cleanup[index].passed === true &&
+    step.observed === 'success' && SHA.test(step.responseSha256 || ''));
+}
+
 /**
  * Fail closed for a missing or contradictory saved report.
  * This is a consistency check over project-authored JSON, NOT independent
@@ -92,10 +104,12 @@ export function validateEvidence(record) {
   // the sanitized comparison. Validate those additional summaries when present.
   if ((record.before && (record.before.caseSha256 !== c.caseSha256 ||
         record.before.sourceSha256 !== before.sourceSha256 ||
-        record.before.cleanupPassed !== true || record.before.passed !== false)) ||
+        record.before.cleanupPassed !== true || record.before.passed !== false ||
+        !rawCleanupMatches(record.before, before))) ||
       (record.after && (record.after.caseSha256 !== c.caseSha256 ||
         record.after.sourceSha256 !== after.sourceSha256 ||
-        record.after.cleanupPassed !== true || record.after.passed !== true))) {
+        record.after.cleanupPassed !== true || record.after.passed !== true ||
+        !rawCleanupMatches(record.after, after)))) {
     return no('Saved run summaries disagree with the comparison');
   }
   return {ok: true, beforeAssertions: b, afterAssertions: a};

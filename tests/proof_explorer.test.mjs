@@ -45,6 +45,28 @@ test('reader refuses contradictory source, named regression, cleanup or AWS pari
   }
 });
 
+test('raw teardown failures cannot hide behind green comparison cleanup summaries', () => {
+  const original = load(snapshots[0]); // SQS includes full raw per-SDK-step evidence.
+  assert.equal(validateEvidence(original).ok, true);
+  for (const mutate of [
+    d => { d.before.cleanup[0].passed = false; },
+    d => { d.after.cleanup[1].passed = false; },
+    d => { d.after.cleanup[0].observed = 'api_error'; },
+    d => { d.before.cleanup[0].responseSha256 = 'invalid'; },
+    d => { d.after.cleanup.pop(); },
+    d => { d.comparison.after.cleanup[0].id = 'unrelated-resource'; },
+  ]) {
+    const altered = structuredClone(original);
+    mutate(altered);
+    const checked = validateEvidence(altered);
+    assert.equal(checked.ok, false, 'raw or summarized teardown mismatch must fail closed');
+    assert.match(checked.reason, /Saved run summaries disagree/);
+  }
+  // The S3 reference intentionally publishes only a sanitized comparison.
+  // This correction must not require unavailable raw SDK records for that case.
+  assert.equal(validateEvidence(load(snapshots[1])).ok, true);
+});
+
 test('webpage is accessible, fixed-source, and does not pretend to run live AWS', () => {
   const html = read('docs/proof-explorer.html');
   const js = read('docs/proof-explorer.js');
