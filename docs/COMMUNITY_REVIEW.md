@@ -20,7 +20,7 @@ A reviewer can also assess the architecture and documentation **without installi
 
 - AWS Emulator is an AWS project; **AWS Emulator MCP is independent**, not official or AWS-endorsed.
 - Available SDK API models and emulator fidelity are different measurements. Not every modeled operation works.
-- The current Docker adapter exposes 29 curated tools plus 9 Docker-only tools. It does not implement all AWS services.
+- The current Docker adapter exposes 29 curated tools plus 10 Docker-only tools. It does not implement all AWS services.
 - The Failure Lab timeout is synthetic and injected at the local SDK boundary, not an AWS outage.
 - A passing contract validates the **declared emulated API sequence**, not arbitrary developer application source, IAM fidelity, or production AWS behavior.
 - Isolated tests shouldn't receive your AWS credentials or real customer data. Never share such data in a report.

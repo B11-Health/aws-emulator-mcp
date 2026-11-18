@@ -61,9 +61,10 @@ The official Linux emulator binary is approximately **994 MB unpacked** for the 
 
 The 29 curated tools give simple, explicit operations for S3 text objects, DynamoDB id/message records, standard SQS messages, diagnostics, and verified order/self-test workflows. They remain available from the dependency-free native Python adapter.
 
-The **isolated Docker bundle adds three SDK tools, two packaged app-debug tools, two contract tools and two Failure Lab tools (38 total)**:
+The **current source Docker bundle adds four SDK tools, two packaged app-debug tools, two contract tools and two Failure Lab tools (39 total)**:
 
 - `aws_sdk_discover`: introspect locally installed botocore service and operation models, including required operation inputs.
+- `aws_sdk_preview` shows model fields and validates proposed input before an API call. [Example](COVERAGE.md#check-a-proposed-sdk-request).
 - `aws_sdk_invoke`: call a specific modeled AWS SDK operation against the **local emulator endpoint only**, with explicit emulator-issued credentials and the generated TLS CA.
 - `aws_sdk_coverage`: run a **fixed list of 20 read-only operations** with per-service observed statuses. This measures only those operations, not complete service/API parity.
 

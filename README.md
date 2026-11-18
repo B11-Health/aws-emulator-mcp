@@ -166,6 +166,11 @@ requires local Docker. No command here deploys to a real AWS account.
 
 ## See what your agent can do
 
+**Check a proposed AWS call before executing it.** In the current source
+checkout, ask your assistant to preview a DynamoDB `PutItem` request. The
+Docker MCP server shows required fields, explains nested input errors, and
+lets you inspect the expected response. [Request preview example](docs/COVERAGE.md#check-a-proposed-sdk-request).
+
 **Catch an application bug.** Our sample Python order service writes to DynamoDB, stores an S3 receipt, and sends a fulfillment message through SQS. When a client retries, the buggy version sends the event twice. A conditional DynamoDB write fixes it.
 
 | After two identical requests | Before | After |
@@ -426,7 +431,7 @@ Eight built-in experiments exercise S3, DynamoDB, SQS, SNS, EC2, EventBridge, SS
   <img src="docs/assets/architecture.svg" width="100%" alt="MCP client connects through a Node launcher to the isolated Docker AWS Emulator and local SDK tools">
 </p>
 
-- **29 curated MCP tools**, plus **9 Docker-only tools** for SDK discovery, API invocation, coverage, application debugging, replayable contracts and failure/recovery testing.
+- **29 curated MCP tools**, plus **10 Docker-only tools** for SDK discovery, request preview, API invocation, coverage, application debugging, replayable contracts and failure/recovery testing.
 - **Verified stateful workflows:** reproducible order-processing bug and reference fix, a developer-selected Python order handler, isolated SDK contracts and GitHub PR review.
 - **Coverage is measured per operation and application workflow—not by SDK catalog size.** An SDK model is not an implemented emulator service; passing zero-argument `List*`/`Describe*` probes does not prove write behavior, real events, IAM or AWS compatibility.
 - The [exact historical read-only probe results and methodology](docs/COVERAGE.md) are available for reproducibility, **not** as a general supported-service coverage score.

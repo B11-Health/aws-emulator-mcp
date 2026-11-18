@@ -666,12 +666,19 @@ for extra in TOOLS[-2:]:
 # Broad SDK operations are available only inside the completely network-isolated
 # Docker lab. The native 27-tool adapter stays dependency-free and unchanged.
 if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
-    from aws_emulator_mcp import aws_sdk
+    from aws_emulator_mcp import aws_sdk, sdk_preview
     TOOLS.extend([
         spec("aws_sdk_discover",
-             "Page through ALL SDK-modeled AWS services or operations; models do NOT imply AWS Emulator implementation. Use query, offset and limit.",
+             "Page through ALL SDK-modeled AWS services or operations; models do NOT imply AWS Emulator implementation. Use query, offset and limit. Inspect a single operation with aws_sdk_preview.",
              {"service": STR, "offset": {"type": "integer", "minimum": 0, "maximum": 20000},
               "limit": {"type": "integer", "minimum": 1, "maximum": 100}, "query": STR}),
+        spec("aws_sdk_preview",
+             "Inspect an operation's modeled input or output. Optionally validate a complete input parameters object without executing the operation. Follow dot-separated member paths and * for list items or map values.",
+             {"service": STR, "operation": STR, "direction": {"type": "string", "enum": ["input", "output"]},
+              "path": {"type": "string", "maxLength": 512},
+              "offset": {"type": "integer", "minimum": 0, "maximum": 20000},
+              "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+              "parameters": {"type": "object", "additionalProperties": True}}, ("service", "operation")),
         spec("aws_sdk_coverage",
              "Perform ONLY a fixed allowlist of read-only AWS SDK API probes against the local emulator; report actual responses. NOT a full AWS fidelity audit.",
              {"service": STR}),
@@ -681,14 +688,14 @@ if os.environ.get("AWS_EMULATOR_MCP_ISOLATED_LAB") == "1":
               "parameters": {"type": "object", "additionalProperties": True}},
              ("service", "operation")),
     ])
-    for extra in TOOLS[-3:]:
+    for extra in TOOLS[-4:]:
         extra["annotations"] = {
-            "readOnlyHint": extra["name"] in ("aws_sdk_discover", "aws_sdk_coverage"),
+            "readOnlyHint": extra["name"] in ("aws_sdk_discover", "aws_sdk_coverage", "aws_sdk_preview"),
             "destructiveHint": extra["name"] == "aws_sdk_invoke",
-            "idempotentHint": extra["name"] == "aws_sdk_discover",
+            "idempotentHint": extra["name"] in ("aws_sdk_discover", "aws_sdk_preview"),
             "openWorldHint": False
         }
-    FUNCTIONS.update(aws_sdk_discover=aws_sdk.discover,
+    FUNCTIONS.update(aws_sdk_discover=aws_sdk.discover, aws_sdk_preview=sdk_preview.preview,
                      aws_sdk_coverage=aws_sdk.coverage, aws_sdk_invoke=aws_sdk.invoke)
     from aws_emulator_mcp import app_debug
     TOOLS.extend([
@@ -780,12 +787,11 @@ def _tool_arguments_ok(name,args):
             contract_case.validate(args.get("plan"))
         except (LocalError, TypeError, ValueError):
             return False
-    if name == "aws_sdk_invoke":
-        parameters = args.get("parameters", {})
-        if not isinstance(parameters, dict): return False
+    if name in ("aws_sdk_invoke", "aws_sdk_preview"):
         try:
-            if len(json.dumps(parameters, allow_nan=False).encode("utf-8")) > 65536: return False
-        except (TypeError, ValueError): return False
+            aws_sdk.check_parameters(args.get("parameters", {}))
+        except LocalError:
+            return False
     for k,value in args.items():
         declared=properties[k]
         if declared.get("type")=="integer":
@@ -795,7 +801,7 @@ def _tool_arguments_ok(name,args):
         if declared.get("type")=="string":
             if not isinstance(value,str): return False
             if len(value.encode("utf-8"))>limits.get(k,65536): return False
-            if k!="text" and not value: return False
+            if not value and k!="text" and (name, k)!=("aws_sdk_preview", "path"): return False
     return True
 
 def _modern_result(result,method):
@@ -868,8 +874,9 @@ def handle(msg):
             value=FUNCTIONS[name](**args)
             failed_selftest=(name in ("emulator_self_test","emulator_order_demo","lab_run","app_debug_run","contract_run","failure_lab_run") and
                              isinstance(value,dict) and not value.get("passed",False))
+            invalid_preview = name == "aws_sdk_preview" and value.get("validation", {}).get("valid") is False
             result={"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],
-                    "isError":failed_selftest}
+                    "isError":failed_selftest or invalid_preview}
         except (LocalError,OSError,ValueError,TypeError,UnicodeError,ET.ParseError) as exc:
             result={"content":[{"type":"text","text":str(exc)}],"isError":True}
         except Exception:

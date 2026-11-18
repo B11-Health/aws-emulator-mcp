@@ -15,7 +15,7 @@ function cli(...args) {
 test('help states a limited tool surface, not full AWS parity', () => {
   const result = cli('help');
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /29 curated \+ 9 Docker-only tools/);
+  assert.match(result.stdout, /29 curated \+ 10 Docker-only tools/);
   assert.match(result.stdout, /No AWS account/);
   assert.doesNotMatch(result.stdout, /1000|full AWS API parity/i);
 });

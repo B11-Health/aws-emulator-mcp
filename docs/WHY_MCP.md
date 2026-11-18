@@ -8,7 +8,7 @@
 
 | Developer's job | Native AWS Emulator | This independent MCP adapter |
 | --- | --- | --- |
-| Run ordinary AWS API calls through SDK/CLI | **Preferred**. Use existing code and familiar tooling. | The 38-tool curated MCP surface adds an extra abstraction; do not use it just for parity. |
+| Run ordinary AWS API calls through SDK/CLI | **Preferred**. Use existing code and familiar tooling. | The MCP tool surface adds an extra abstraction; do not use it just for parity. |
 | Ask a coding agent to reproduce a duplicate-order event | Possible with your own script/test harness. | Bundled S3/DynamoDB/SQS order demo shows 2 accepted submissions and 2 messages before a conditional-write fix, then 1 and 1. |
 | Test a synthetic failure across a multi-service workflow | Write and run the fixture yourself. | Reviewed Failure Lab scenarios inject a bounded SDK timeout, verify persisted state and retry behavior against isolated emulator APIs, then test cleanup. |
 | Compare your own *trusted* Python order handler before/after a fix | Use your own Python tests. | Explicit **local CLI** `app-compare` runs two developer-selected handlers in separate Docker labs and exports sanitized assertion results plus source hashes. **Not available over MCP.** |
