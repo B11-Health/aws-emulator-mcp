@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, symlinkSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 const requirePackage = () => readFileSync(new URL('../package.json', import.meta.url), 'utf8');
 
@@ -33,6 +33,59 @@ test('VS Code config is valid stdio', () => {
   assert.equal(JSON.parse(result.stdout).servers['aws-emulator-local'].type, 'stdio');
   assert.match(result.stderr, /deprecated editor-managed/);
 });
+test('Claude Desktop config is a paste-ready stdio entry with the real executable and package path', () => {
+  const result = cli('config', 'claude');
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, '');
+  const payload = JSON.parse(result.stdout);
+  assert.deepEqual(Object.keys(payload), ['mcpServers']);
+  const cfg = payload.mcpServers['aws-emulator-local'];
+  assert.deepEqual(Object.keys(cfg), ['command', 'args']);
+  assert.equal(cfg.command, process.execPath);
+  assert.deepEqual(cfg.args, [BIN, 'mcp']);
+  assert.ok(existsSync(cfg.args[0]));
+  assert.ok(path.isAbsolute(cfg.command) && path.isAbsolute(cfg.args[0]));
+});
+
+test('Claude config rejects unattended install, file-write and extra CLI arguments', () => {
+  for (const args of [
+    ['claude','--install'], ['claude','--write'], ['claude','/tmp/other.json'],
+    ['claude','--json'], ['claude','--docker'], ['claude','claude']
+  ]) {
+    const result = cli('config', ...args);
+    assert.equal(result.status, 2, `Unexpected status for ${JSON.stringify(args)}`);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /config accepts at most one format/);
+  }
+});
+
+test('Claude config fails closed for unknown clients and does not print a fallback JSON', () => {
+  for (const name of ['claude-desktop', 'claude-code', 'http', 'remote', '-h']) {
+    const result = cli('config', name);
+    assert.equal(result.status, 2);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /config format: copilot .* claude .* vscode/);
+  }
+});
+
+test('Claude config is read-only even with remote Docker and ambient AWS credentials', () => {
+  const home = mkdtempSync(path.join(tmpdir(), 'aws-mcp-claude-config-'));
+  try {
+    const result = spawnSync(process.execPath, [BIN, 'config', 'claude'], {
+      cwd:home, encoding:'utf8', timeout:12000,
+      env:{...process.env, HOME:home, APPDATA:home,
+        PATH:'/nonexistent', DOCKER_HOST:'tcp://192.0.2.88:2375',
+        AWS_SECRET_ACCESS_KEY:'DO_NOT_PRINT_SECRET', AWS_PROFILE:'DO_NOT_PRINT_PROFILE'}
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const cfg = JSON.parse(result.stdout).mcpServers['aws-emulator-local'];
+    assert.equal(cfg.env, undefined);
+    assert.equal(result.stderr, '');
+    assert.doesNotMatch(result.stdout, /DO_NOT_PRINT|192\.0\.2\.88/);
+    assert.deepEqual(readdirSync(home), []); // Does not modify the user's settings.
+  } finally { rmSync(home, {recursive:true, force:true}); }
+});
+
 test('invalid commands/format fail before calling Docker', () => {
   assert.equal(cli('config', 'remote').status, 2);
   assert.equal(cli('execute', 'aws').status, 2);

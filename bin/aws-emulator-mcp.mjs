@@ -78,7 +78,7 @@ Commands:
                    Modes: compare (default), buggy, fixed
   self-test        Exercise supported services and scoped cleanup
   build            Build the image from the signed official AWS package
-  config [format]  Print MCP configuration: copilot or vscode
+  config [format]  Print MCP configuration: copilot, claude or vscode (legacy)
   help             Show this help
 
 Docker is required to run experiments and MCP tools; listing experiments or printing config needs only Node.
@@ -463,12 +463,17 @@ function renderDiff(report) {
 }
 
 function config(format = 'copilot') {
-  if (!['copilot', 'vscode'].includes(format)) fail('config format: copilot (native) or vscode (legacy)', 2);
+  if (!['copilot', 'claude', 'vscode'].includes(format))
+    fail('config format: copilot (native), claude (desktop), or vscode (legacy)', 2);
   if (format === 'vscode') stderr.write('AWS Emulator MCP: config vscode uses the deprecated editor-managed servers format. For current VS Code Copilot use: config copilot (native mcpServers).\n');
-  const launch = { type: 'stdio', command: execPath, args: [fileURLToPath(import.meta.url), 'mcp'] };
-  const result = format === 'copilot'
-    ? { mcpServers: { 'aws-emulator-local': launch } }
-    : { servers: { 'aws-emulator-local': launch } };
+  // Claude Desktop accepts an mcpServers stdio command/args entry, without the
+  // Copilot-specific type property. Never edit a client config file or start
+  // Docker here: the developer must review and install this output manually.
+  const launch = { command: execPath, args: [fileURLToPath(import.meta.url), 'mcp'] };
+  if (format !== 'claude') launch.type = 'stdio';
+  const result = format === 'vscode'
+    ? { servers: { 'aws-emulator-local': launch } }
+    : { mcpServers: { 'aws-emulator-local': launch } };
   stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
 function readSelectedHandler(file) {

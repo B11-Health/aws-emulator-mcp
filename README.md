@@ -84,7 +84,7 @@ or AWS fidelity certification.
 
 ## Connect to an AI assistant
 
-**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** to print a native mcpServers definition. **Claude Desktop:** an optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) reduces JSON setup, but you still need to install and run local Docker. Neither route is a hosted public MCP endpoint or a production AWS deployment.
+**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client, since the MCP launcher can build an image if one is missing. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
 
 [**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
 

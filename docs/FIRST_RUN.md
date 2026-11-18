@@ -78,6 +78,40 @@ prove Docker Desktop's VM capacity. The `build` command downloads and builds
 a signed AWS Emulator package from AWS's installation channel; it does not
 create an AWS account.
 
+### Connect Claude Desktop without an unsigned extension
+
+The preview's CLI can print a **Claude Desktop-specific** stdio entry. From a
+checkout containing the new command (or from a locally installed preview
+package, replacing `node bin/aws-emulator-mcp.mjs` with `aws-emulator-mcp`):
+
+```sh
+node bin/aws-emulator-mcp.mjs config claude
+```
+
+Unlike `config copilot`, this output uses Claude Desktop's `mcpServers`
+`command`/`args` shape **without** Copilot's `type: "stdio"` field. The values
+contain the exact local Node executable and package path, JSON-escaped on
+Windows as needed. Review and **merge the single `aws-emulator-local` entry**
+into your existing `mcpServers` object; do not overwrite or discard other
+servers. Claude Desktop's configuration file is
+`%APPDATA%\Claude\claude_desktop_config.json` on Windows and
+`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS.
+See the [MCP client's configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
+for the current setup interface. Restart Claude Desktop after editing.
+
+**Before enabling the connection**, run `preflight` and check Docker Desktop/
+Engine in Linux-container mode. The `mcp` launcher can **build the large,
+upstream-signed emulator image** when an image is missing or stale; this is
+not a no-Docker offline check. If you do not want that build during client
+startup, review disk capacity and explicitly run `build` and `doctor` from
+the same CLI first. The generated JSON **does not edit Claude settings,
+install Docker, run containers, download images or call AWS**. It is not a
+signed extension. A successful `config claude` proves only config generation;
+it does **not** prove that Claude Desktop loaded the server. After a real
+connection, ask Claude to call `emulator_doctor`; inspect actual tool output
+and local STS-account verification rather than assuming readiness. No
+independent Claude Desktop connection is claimed here.
+
 ## 3. How do I know I tested my application?
 
 The offline first win establishes **only** that the bundled local
