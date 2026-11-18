@@ -38,6 +38,69 @@ post-invocation assertions, owned cleanup and a named regression assertion.
 See [the S3 reference](../examples/app-case/s3-object-write.json) and the
 [DynamoDB/SQS reference](../examples/app-case/sqs-idempotency.json).
 
+### Optional: create a focused state-proof pair for your own handler
+
+Instead of the empty `--draft` starter, `--draft-proof` provides a narrower
+bridge for **one unambiguous literal** `clients[service].method(...)` write:
+`S3 PutObject`, `SQS SendMessage`, or `DynamoDB PutItem`. No dynamic clients,
+multi-operation handlers, URLs, or inferred business logic are accepted.
+
+```sh
+# Replace this example path with your OWN reviewed local handler.
+node bin/aws-emulator-mcp.mjs app-guide ./my-handler.py \
+  --draft-proof ./my-proof.json --json
+```
+
+The read-only scan creates **two new files** (neither overwrites an existing
+file or symlink): `my-proof.json` and `my-proof.expected-red.json`. The first
+suggests a synthetic resource setup, one independent SDK state read and scoped
+cleanup. The second is identical **except that the same named post-state
+assertion is deliberately inverted** (`exists: true` -> `exists: false`).
+These are an *editable proposal*, **not an assertion that your handler behaves
+this way**:
+
+| Detected literal call | Suggested owned setup | Independent check | Owned cleanup |
+| --- | --- | --- | --- |
+| `s3.PutObject` | `CreateBucket` with a generated fixture name | `HeadObject.ContentLength` exists | `DeleteObject`, then `DeleteBucket` |
+| `sqs.SendMessage` | `CreateQueue` with a generated fixture name | `ReceiveMessage.Messages.0.Body` exists | `DeleteQueue` |
+| `dynamodb.PutItem` | `CreateTable` with suggested `id` string key | `GetItem.Item.id.S` exists | `DeleteTable` |
+
+**You must inspect and edit both JSON files.** Their `reviewRequired: true`
+field deliberately violates the executable case schema. All discovered input
+keys are set to `REPLACE_WITH_SYNTHETIC_VALUE`, and S3's object key is
+`REVIEW_ME_SYNTHETIC_OBJECT_KEY`. Map actual handler arguments to fresh
+`$fixture`/`$ref` values and synthetic body values, confirm the DynamoDB key
+schema and SQS delivery assumptions, set matching S3 keys for writing,
+asserting and cleanup, and review every cleanup operation. Do not reuse an
+existing bucket, queue, table or customer data. Only after you have personally
+verified the full case should you remove `reviewRequired` and replace all
+review markers. **Creating drafts never approves or runs either case.**
+
+Then run `app-guide ./my-handler.py ./my-proof.json --json` to obtain an
+explicit approval token for the *exact reviewed positive case*, and separately
+inspect `./my-proof.expected-red.json` for its own token. The two tokens must
+differ. `--run --approve TOKEN` is always a separate intentional command and
+requires local Docker and the previously built signed emulator image.
+
+**Expected-red is a sensitivity control, not a bug-fix verdict.** After a
+passing positive baseline, run the independently reviewed negative case in a
+**separate disposable lab**. It should exit nonzero because the *named check
+assertion* is false **while** the selected handler ran, its required SDK write
+succeeded, setup worked and owned cleanup passed. An error from startup,
+missing SDK model support, failed cleanup or an unreachable assertion is **not**
+a detected negative control. If the negative case unexpectedly passes, revisit
+the test assumptions rather than claiming that a repair was proven. Before/
+after proof still requires the separate `app-case-compare` workflow using a
+shared reviewed invariant.
+
+This optional generator does not import your module, deduce application
+business intent, install dependencies, call AWS, run Docker, or add source
+execution through MCP/CI. The generated `exists` checks prove only the
+presence of an object/message/item; strengthen them with an exact synthetic
+expected value (`equals`) before making a business-level correctness claim. It is deliberately limited to one literal SDK call;
+for multi-service workflows author and review the existing declarative case
+format manually using [APP_CASE.md](APP_CASE.md).
+
 ## 3. Review the exact source and complete case
 
 ```sh

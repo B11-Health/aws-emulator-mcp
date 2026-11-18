@@ -58,7 +58,7 @@ test('saved 1.0.511 local-emulator guide evidence remains tied to source and cas
 
 test('parse flags strictly without accepting arbitrary URLs or extra arguments',()=>{
   assert.deepEqual(parseAppGuideArgs(['app.py']),{
-    source:'app.py',caseFile:null,json:false,draft:null,run:false,approval:null});
+    source:'app.py',caseFile:null,json:false,draft:null,proofDraft:null,run:false,approval:null});
   const token='f'.repeat(64);
   const parsed=parseAppGuideArgs(['--json','app.py','case.json','--run','--approve',token]);
   assert.equal(parsed.run,true);

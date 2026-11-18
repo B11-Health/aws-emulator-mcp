@@ -53,7 +53,7 @@ a sanitized first-run report. This command was introduced in
 
 [**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
 
-**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification.
+**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification. The [Pages release gate](docs/PAGES_LAUNCH_GATE.md) validates draft links and evidence before merge and requires separate public verification after a reviewed Pages deployment.
 
 ## See the proof in 90 seconds
 
@@ -99,6 +99,8 @@ This only prints configuration; it does not prove a live Claude Desktop MCP conn
 
 [**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
 
+**After pasting client config (round-three draft):** run `node bin/aws-emulator-mcp.mjs connect-check --json` for a bounded local MCP stdio handshake and read-only `emulator_status` tool reply **only when an existing local emulator image has a matching source fingerprint**. It never builds or pulls Docker images. A terminal handshake does not verify that the desktop client connected. [Exact setup and failure guidance](docs/FIRST_RUN.md#before-your-first-mcp-reply-explicitly-check-the-local-connection-round-3-draft).
+
 ## Help build and test it
 
 **Outside contributors welcome.** You do not need repository write access
@@ -127,6 +129,12 @@ It never turns selected code into an MCP source-execution endpoint.
 ```sh
 node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json
 ```
+
+For a single literal S3, SQS or DynamoDB write in **your own trusted Python
+handler**, optional `--draft-proof ./my-proof.json` creates a review-required
+positive case **and** a separate deliberately inverted expected-red control.
+The files require explicit manual editing and independent approval; the scanner
+never imports your code or starts Docker.
 
 [**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
 
