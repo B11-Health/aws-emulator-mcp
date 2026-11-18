@@ -1,0 +1,73 @@
+name: Independent first-run report
+description: Share a real first installation result, success or failure, without exposing private information
+title: "[First run] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing **AWS Emulator MCP**, an independent adapter (not an AWS product).
+        A blocker is as valuable as success. You do not need repository write access.
+        **Never include** access tokens, AWS credentials, account IDs, private endpoints,
+        customer information, proprietary source code, or identifiable local file paths.
+        Do not treat architecture output or generated configuration as a completed MCP session.
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system tested
+      options:
+        - Windows 11
+        - macOS
+        - Ubuntu / Debian / other Linux
+        - Other environment
+    validations:
+      required: true
+
+  - type: dropdown
+    id: test-path
+    attributes:
+      label: Which milestone did you reach?
+      options:
+        - Offline trial or read-only preflight only (no Docker)
+        - Generated MCP client configuration only
+        - Desktop MCP extension installed, tool not yet called
+        - Real local MCP tool call attempted (failed or blocked)
+        - Real local MCP tool call completed successfully
+        - Emulator SDK/CLI workflow run without an MCP client
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions used (when known)
+      description: Share OS, Node.js, VS Code or Claude Desktop, Docker and emulator version; omit machine and user names.
+      placeholder: "macOS, Node 22, VS Code version ..., Docker Desktop ..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Commands and observed outcomes
+      description: State what you did, what you expected and the actual error or tool result; sanitize all output.
+      placeholder: "I ran ...; it returned ...; the first unexpected step was ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: What one change would make the first run easier?
+      description: A single actionable suggestion helps us prioritize fixes.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy and evidence check
+      options:
+        - label: I removed credentials, private paths, account identifiers, customer data and proprietary code, and I labeled configuration-only results separately from actual MCP tool calls.
+          required: true

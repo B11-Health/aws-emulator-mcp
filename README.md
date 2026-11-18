@@ -25,7 +25,8 @@
   <a href="docs/ARCHITECTURE_REVIEW.md">PR Architecture Review</a> ·
   <a href="#connect-your-ai-assistant">Connect your assistant</a> ·
   <a href="docs/COVERAGE.md">Service coverage</a> ·
-  <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a>
+  <a href="docs/COMMUNITY_REVIEW.md">Give feedback</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
 ## See the proof in 90 seconds
@@ -61,6 +62,21 @@ or AWS fidelity certification.
 **VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** to print a native mcpServers definition. **Claude Desktop:** an optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) reduces JSON setup, but you still need to install and run local Docker. Neither route is a hosted public MCP endpoint or a production AWS deployment.
 
 [**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
+
+## Help build and test it
+
+**Outside contributors welcome.** You do not need repository write access
+or an AWS account to help. A real first-run failure report, accessibility
+fix or reproducible API gap is more useful than an unverified claim.
+
+[**Start contributing**](CONTRIBUTING.md) ·
+[**Browse good first issues**](https://github.com/B11-Health/aws-emulator-mcp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) ·
+[**Report a first-run result**](https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=independent_first_run.yml)
+
+Open requests include Windows/macOS/Linux first runs, the optional **unsigned**
+Claude Desktop preview, and keyboard/screen-reader testing of the Demo Studio.
+Maintainers can assign scoped tasks without granting push or admin privileges.
+Independent user reports are distinguished from project-maintained CI.
 
 ## Why another MCP if AWS already supports agents?
 
