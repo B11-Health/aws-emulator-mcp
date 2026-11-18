@@ -85,7 +85,7 @@ test('approval binds exact 64-character raw source and case hashes',()=>{
 test('reviewed static match and valid case schema produce a token without executing source',()=>{
   const result=summarizeAppGuide(inspected,originalCase,{schemaValidation:{schemaVersion:1,
     valid:true,caseSha256:'b'.repeat(64),developerSourceExecuted:false,
-    awsApiCallsMade:false,dockerStarted:false}});
+    awsApiCallsMade:false,dockerStarted:false},selectedCaseSha256:'b'.repeat(64)});
   assert.equal(result.status,'explicit_approval_required');
   assert.equal(result.readyForApproval,true);
   assert.equal(result.approvalToken,approvalToken('a'.repeat(64),'b'.repeat(64)));
@@ -94,6 +94,28 @@ test('reviewed static match and valid case schema produce a token without execut
   assert.equal(result.productionAwsValidated,false);
   assert.equal(result.formalCaseSchemaValidated,true);
   assert.match(result.limitations,/offline declarative schema validation/);
+});
+
+test('approval must reject a selected case with different bytes despite matching inspection and formal validation',()=>{
+  // Deterministic simulation of an on-disk case edit between the three
+  // independent reads. Both versions have the same valid declarative schema.
+  const modified={...originalCase,invoke:{...originalCase.invoke,
+    inputs:{...originalCase.invoke.inputs,data:'synthetic-v2'}}};
+  const inspectedRawHash='b'.repeat(64);
+  const schema={schemaVersion:1,valid:true,caseSha256:inspectedRawHash,
+    developerSourceExecuted:false,awsApiCallsMade:false,dockerStarted:false};
+  const selectedCaseSha256=sha(Buffer.from(JSON.stringify(modified)));
+  assert.notEqual(selectedCaseSha256,inspectedRawHash);
+  const review=summarizeAppGuide(inspected,modified,{schemaValidation:schema,
+    selectedCaseSha256});
+  assert.equal(review.readyForApproval,false);
+  assert.equal(review.approvalToken,null);
+  assert.equal(review.formalCaseSchemaValidated,false);
+  assert.ok(review.reviewGaps.includes('selected_case_hash_mismatch'));
+  const missingHash=summarizeAppGuide(inspected,originalCase,{schemaValidation:schema});
+  assert.equal(missingHash.readyForApproval,false);
+  assert.equal(missingHash.approvalToken,null);
+  assert.ok(missingHash.reviewGaps.includes('selected_case_hash_mismatch'));
 });
 
 test('incomplete case, missing assertion, unresolved calls and missing SDK counters fail closed',()=>{

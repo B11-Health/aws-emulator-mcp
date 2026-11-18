@@ -7,18 +7,21 @@ For the released version, use [the existing beta.15 onboarding](ONBOARDING.md).
 
 ## 1. Verify that the local tools work
 
-Requirements: Git, **Node.js 20+**, and a terminal (Windows PowerShell, macOS
-Terminal, or Linux shell). Clone the repository and from that directory run:
+Requirements: Git, **Node.js 20+**, and a terminal (Windows PowerShell,
+macOS Terminal, or Linux shell). Until this work merges, clone the **actual
+unmerged integration preview branch**, rather than the default `master`
+branch (which does not yet include this command):
 
 ```sh
-git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+git clone --depth 1 --branch release/agent-team-preview-20261118 https://github.com/B11-Health/aws-emulator-mcp.git
 cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs onboard
 ```
 
-Before this change is merged, use the preview checkout linked in
-[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71),
-rather than assuming the default branch already supports `onboard`.
+[Review the unmerged integration preview PR #74](https://github.com/B11-Health/aws-emulator-mcp/pull/74).
+The command is also under review in
+[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71). The
+preview branch is not a published release; review its source before using it.
 
 After a future version containing this command is installed globally, run
 `aws-emulator-mcp onboard` instead; its follow-up commands will use the
@@ -77,6 +80,42 @@ start with `doctor` rather than rebuilding. If it says a rebuild is needed,
 prove Docker Desktop's VM capacity. The `build` command downloads and builds
 a signed AWS Emulator package from AWS's installation channel; it does not
 create an AWS account.
+
+### Connect Claude Desktop without an unsigned extension
+
+**This command is only in the [round-two preview PR #80](https://github.com/B11-Health/aws-emulator-mcp/pull/80)**. The initial first-run checkout above uses the earlier PR #74 branch and **does not have** `config claude`. From a separate clean directory, use the newer branch:
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r2-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r2
+cd aws-emulator-mcp-r2
+node bin/aws-emulator-mcp.mjs config claude
+```
+
+Or use `aws-emulator-mcp config claude` from a locally installed preview package that includes this feature. It generates a **Claude Desktop-specific** stdio entry; neither route changes settings automatically.
+
+Unlike `config copilot`, this output uses Claude Desktop's `mcpServers`
+`command`/`args` shape **without** Copilot's `type: "stdio"` field. The values
+contain the exact local Node executable and package path, JSON-escaped on
+Windows as needed. Review and **merge the single `aws-emulator-local` entry**
+into your existing `mcpServers` object; do not overwrite or discard other
+servers. Claude Desktop's configuration file is
+`%APPDATA%\Claude\claude_desktop_config.json` on Windows and
+`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS.
+See the [MCP client's configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
+for the current setup interface. Restart Claude Desktop after editing.
+
+**Before enabling the connection**, run `preflight` and check Docker Desktop/
+Engine in Linux-container mode. The `mcp` launcher can **build the large,
+upstream-signed emulator image** when an image is missing or stale; this is
+not a no-Docker offline check. If you do not want that build during client
+startup, review disk capacity and explicitly run `build` and `doctor` from
+the same CLI first. The generated JSON **does not edit Claude settings,
+install Docker, run containers, download images or call AWS**. It is not a
+signed extension. A successful `config claude` proves only config generation;
+it does **not** prove that Claude Desktop loaded the server. After a real
+connection, ask Claude to call `emulator_doctor`; inspect actual tool output
+and local STS-account verification rather than assuming readiness. No
+independent Claude Desktop connection is claimed here.
 
 ## 3. How do I know I tested my application?
 

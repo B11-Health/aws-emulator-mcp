@@ -21,6 +21,7 @@
     "docs/COVERAGE.md",
     "docs/WHY_MCP.md",
     "docs/AWS_COMPANION.md",
+    "docs/OFFICIAL_SKILL_TO_APP_PROOF_5MIN.md",
     "docs/DOCKER_NPM_BETA.md",
     "docs/EXPERIMENT_LABS.md",
     "docs/PRODUCT_VISION.md",
@@ -106,6 +107,8 @@
     "src/aws_emulator_mcp/app_verify.py",
     "src/aws_emulator_mcp/app_case.py",
     "src/aws_emulator_mcp/app_case_inspect.py",
+    "src/aws_emulator_mcp/official_session_identity.py",
+    "docs/evidence/official-session-identity-aws-emulator-1.0.511.json",
     "src/aws_emulator_mcp/app_case_static_validate.py",
     "docs/BYO_HANDLER.md",
     "docs/APP_CASE.md",
@@ -163,7 +166,7 @@
     "python-handler-testing"
   ],
   "scripts": {
-    "test": "node --test tests/node_cli.test.mjs tests/byo_compare.test.mjs tests/preflight.test.mjs tests/official_session.test.mjs tests/onboard.test.mjs tests/image_identity.test.mjs tests/offline_trial.test.mjs tests/demo_studio.test.mjs tests/desktop_bundle.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs tests/project_check.test.mjs tests/app_case_compare.test.mjs tests/app_case_inspect.test.mjs tests/app_guide.test.mjs tests/agent_eval_handoff.test.mjs tests/proof_explorer.test.mjs",
+    "test": "node --test tests/node_cli.test.mjs tests/byo_compare.test.mjs tests/preflight.test.mjs tests/official_session.test.mjs tests/onboard.test.mjs tests/image_identity.test.mjs tests/offline_trial.test.mjs tests/demo_studio.test.mjs tests/desktop_bundle.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs tests/project_check.test.mjs tests/app_case_compare.test.mjs tests/app_case_inspect.test.mjs tests/app_guide.test.mjs tests/agent_eval_handoff.test.mjs tests/proof_explorer.test.mjs tests/official_skill_app_proof_handoff.test.mjs",
     "pack:check": "npm pack --dry-run --json",
     "agent-eval:recorded": "node scripts/agent_eval_handoff.mjs --json",
     "qa": "npm test && npm run pack:check"
