@@ -483,7 +483,7 @@ async function main() {
   if (command === 'preflight') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
       fail('Usage: aws-emulator-mcp preflight [--json]', 2);
-    const report = inspectPreflight({image: IMAGE});
+    const report = inspectPreflight({image: IMAGE, expectedImageDigest: () => imageSourceDigest(ROOT)});
     if (args.includes('--json')) stdout.write(JSON.stringify(report, null, 2) + '\n');
     else stdout.write(printPreflight(report) + '\n');
     if (!report.emulatorReady) process.exitCode = 1;
