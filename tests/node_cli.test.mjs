@@ -33,14 +33,18 @@ test('VS Code config is valid stdio', () => {
   assert.equal(JSON.parse(result.stdout).servers['aws-emulator-local'].type, 'stdio');
   assert.match(result.stderr, /deprecated editor-managed/);
 });
-test('round-two Claude instructions select a branch that actually includes config claude', () => {
+test('round-three beginner instructions use one checkout with Claude config and connect-check', () => {
   const readme = readFileSync(new URL('../README.md',import.meta.url),'utf8');
   const firstRun = readFileSync(new URL('../docs/FIRST_RUN.md',import.meta.url),'utf8');
-  const command = 'git clone --depth 1 --branch release/agent-team-preview-r2-20261118';
-  assert.ok(readme.includes(command));
-  assert.ok(firstRun.includes(command));
-  assert.match(readme,/not.*earlier.*release\/agent-team-preview-20261118/);
-  assert.match(firstRun,/earlier PR #74 branch and \*\*does not have\*\* `config claude`/);
+  const checkout = 'git clone --depth 1 --branch release/agent-team-preview-r3-20261118';
+  for(const doc of [readme,firstRun]) {
+    assert.ok(doc.includes(checkout),'must clone branch containing both commands');
+    assert.ok(doc.includes('node bin/aws-emulator-mcp.mjs config claude'));
+    assert.ok(doc.includes('node bin/aws-emulator-mcp.mjs connect-check --json'));
+    assert.ok(!doc.includes('git clone --depth 1 --branch release/agent-team-preview-r2-20261118'));
+  }
+  assert.match(readme,/older round-two preview has `config claude` but not `connect-check`/);
+  assert.match(firstRun,/earlier round-two checkout: that checkout has `config claude` but does not/);
 });
 
 test('Claude Desktop config is a paste-ready stdio entry with the real executable and package path', () => {

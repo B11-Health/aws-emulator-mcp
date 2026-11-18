@@ -83,15 +83,15 @@ create an AWS account.
 
 ### Connect Claude Desktop without an unsigned extension
 
-**This command is only in the [round-two preview PR #80](https://github.com/B11-Health/aws-emulator-mcp/pull/80)**. The initial first-run checkout above uses the earlier PR #74 branch and **does not have** `config claude`. From a separate clean directory, use the newer branch:
+`config claude` was introduced in [round-two preview PR #80](https://github.com/B11-Health/aws-emulator-mcp/pull/80), but the first MCP response check was added in the **unmerged [round-three preview PR #85](https://github.com/B11-Health/aws-emulator-mcp/pull/85)**. The earlier PR #74 checkout above cannot run either feature. Use a separate **round-three** checkout for both commands, so the generated desktop configuration points to the same launcher you test:
 
 ```sh
-git clone --depth 1 --branch release/agent-team-preview-r2-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r2
-cd aws-emulator-mcp-r2
+git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r3
+cd aws-emulator-mcp-r3
 node bin/aws-emulator-mcp.mjs config claude
 ```
 
-Or use `aws-emulator-mcp config claude` from a locally installed preview package that includes this feature. It generates a **Claude Desktop-specific** stdio entry; neither route changes settings automatically.
+Or use `aws-emulator-mcp config claude` from a locally installed preview package containing these features; the current published beta.15 package does not. This generates a **Claude Desktop-specific** stdio entry. No settings file is changed, Docker image built or client connected.
 
 Unlike `config copilot`, this output uses Claude Desktop's `mcpServers`
 `command`/`args` shape **without** Copilot's `type: "stdio"` field. The values
@@ -102,7 +102,7 @@ servers. Claude Desktop's configuration file is
 `%APPDATA%\Claude\claude_desktop_config.json` on Windows and
 `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS.
 See the [MCP client's configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
-for the current setup interface. Restart Claude Desktop after editing.
+for the current setup interface. **Before restarting Claude Desktop**, follow the explicit connection check below and review the Docker image build requirements; the normal MCP launcher can build an image when needed.
 
 **Before enabling the connection**, run `preflight` and check Docker Desktop/
 Engine in Linux-container mode. The `mcp` launcher can **build the large,
@@ -119,13 +119,20 @@ independent Claude Desktop connection is claimed here.
 
 ### Before your first MCP reply: explicitly check the local connection (round 3 draft)
 
-After you copy and review the generated Claude Desktop or Copilot entry,
-check the **same installed CLI** in a terminal **before restarting the GUI**:
+After reviewing the generated Claude Desktop or Copilot entry, run the
+following from that **same round-three preview checkout**, before restarting
+the GUI:
 
 ```sh
-# From this source checkout; omit "node bin/…" if installed globally.
 node bin/aws-emulator-mcp.mjs connect-check --json
 ```
+
+If you instead installed the round-three preview package, run
+`aws-emulator-mcp connect-check --json`. Do **not** run `connect-check` from
+the earlier round-two checkout: that checkout has `config claude` but does not
+have the new command. The example above uses one-line commands compatible
+with Windows PowerShell, macOS Terminal and Linux; quote any custom checkout
+path containing spaces.
 
 This is **not the offline architecture test**. It first verifies the selected
 **local** Linux Docker Engine and the source fingerprint of the already-built
@@ -136,15 +143,29 @@ command. **No Docker image is built, pulled, pruned or downloaded by
 and the expected signed upstream download; that operation requires internet
 access and is **not** performed for you.
 
-Only when a **matching cached image** exists, the check starts one temporary
-local container with `--rm --network none --pull never`. It sends bounded
-JSON-RPC `initialize`, `tools/list` and `tools/call` for **read-only
-`emulator_status`**, checks that the response identifies a healthy **loopback**
-emulator, and exits **0** on success. It will not create S3 buckets or run
-application code. A timeout, corrupt reply, tool error, unsupported Docker
-context or missing prerequisites exits **1** with a sanitized failure stage;
-invalid flags exit **2**. The command will not edit desktop settings and
-never forwards production AWS credentials to the container.
+Only when a **matching cached image** exists, the check independently
+rechecks the selected **local Unix socket or Windows named pipe** with an
+explicit `docker --host`, verifies that daemon runs Linux containers, and
+inspects the tag for both the matching source label and a content-addressed
+`sha256:` image ID. It then starts one temporary local container using that
+**pinned daemon endpoint and immutable image ID**, not the mutable default
+Docker context and image tag. The run uses `--rm --network none --pull never`.
+It sends bounded JSON-RPC `initialize`, `tools/list` and `tools/call` for
+**read-only `emulator_status`**, requiring `running: true`, `installed: true`,
+the exact `https://127.0.0.1:9297` endpoint **and** the exact lowercase
+health response `body: "ok"`. Merely receiving HTTP 200, `body: "OK"`, or
+`body: "NOT_OK"` is **not** enough. The SDK passes the health body through
+without changing its case; the local signed emulator returns `ok`.
+
+The source label is a local cache-coherency fingerprint, **not** a publisher
+signature or AWS-production-fidelity check. If any daemon binding, image ID,
+source label, health body, protocol reply or timeout check fails, the command
+exits **1** with a sanitized stage; invalid flags exit **2**. No build,
+image pull, application code, desktop settings update or production AWS call
+is performed. Docker child processes do not receive ambient AWS credential
+environment variables. A local Docker socket may itself be forwarded to a
+remote daemon by user configuration; the user must select a trusted local
+Engine. This command cannot certify physical daemon location.
 
 **Interpretation:** `status: "passed"` means a local MCP stdio handshake and
 read-only tool reply worked **from this terminal**. It does **not** establish
