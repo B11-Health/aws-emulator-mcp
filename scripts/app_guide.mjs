@@ -96,7 +96,7 @@ function caseReviewGaps(caseData,inspection) {
   return gaps;
 }
 
-export function summarizeAppGuide(inspection, caseData=null, {schemaValidation=null}={}) {
+export function summarizeAppGuide(inspection, caseData=null, {schemaValidation=null,selectedCaseSha256=null}={}) {
   if(!inspection || typeof inspection!=='object' || !SHA.test(inspection.sourceSha256||'') ||
       !Array.isArray(inspection.calls) || !Array.isArray(inspection.unresolvedAccesses))
     throw Error('Static app inspection produced incomplete evidence');
@@ -118,6 +118,12 @@ export function summarizeAppGuide(inspection, caseData=null, {schemaValidation=n
       }
     }
     gaps.push(...caseReviewGaps(caseData,inspection));
+    // The case parsed for this review must be the exact bytes that both
+    // independent Python processes inspected and formally validated.
+    if(!SHA.test(selectedCaseSha256||'') ||
+       selectedCaseSha256!==inspection.caseReview?.caseSha256 ||
+       selectedCaseSha256!==schemaValidation?.caseSha256)
+      gaps.push('selected_case_hash_mismatch');
     if(!schemaValidation || schemaValidation.valid!==true ||
        schemaValidation.schemaVersion!==1 ||
        schemaValidation.developerSourceExecuted!==false ||
@@ -134,7 +140,8 @@ export function summarizeAppGuide(inspection, caseData=null, {schemaValidation=n
     status:caseData===null ? (inspection.starterCase?'draft_available':'unsupported_source') :
       readyForApproval?'explicit_approval_required':'review_required',
     readyForApproval, formalCaseSchemaValidated:caseData!==null &&
-      !gaps.includes('formal_case_schema_not_validated'),
+      !gaps.includes('formal_case_schema_not_validated') &&
+      !gaps.includes('selected_case_hash_mismatch'),
     sourceSha256:inspection.sourceSha256, caseSha256:caseSha,
     entrypoint:inspection.entrypoint,
     operationCandidates:inspection.calls.map(call=>({service:call.service,

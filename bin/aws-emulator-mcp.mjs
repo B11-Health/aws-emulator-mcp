@@ -494,17 +494,20 @@ function readSelectedHandler(file) {
   } };
 }
 
-function readSelectedCase(file) {
+function readSelectedCase(file, {includeHash = false} = {}) {
   if (typeof file !== 'string' || file.length > 260 || file.startsWith('-') ||
       /^(https?:|file:)/i.test(file) || !file.endsWith('.json')) {
     fail('Select a regular local JSON case file (max 48 KiB), never a URL', 2);
   }
-  let value;
+  let value, raw;
   try {
     const stat = lstatSync(file);
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > 48 * 1024)
       throw Error('not a small regular file');
-    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
+    raw = readFileSync(file);
+    if (raw.length < 1 || raw.length > 48 * 1024)
+      throw Error('case bytes changed during read');
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(raw);
     value = JSON.parse(decoded);
     if (!value || value.schemaVersion !== 1 || typeof value.name !== 'string' ||
         !Array.isArray(value.setup) || !Array.isArray(value.checks) ||
@@ -513,7 +516,7 @@ function readSelectedCase(file) {
   } catch {
     fail('Select a valid, bounded local application case .json file (max 48 KiB, no symlinks)', 2);
   }
-  return value;
+  return includeHash ? {value, sha256:createHash('sha256').update(raw).digest('hex')} : value;
 }
 
 async function runSelectedAppCase(sourceEnvelope, reviewedCase) {
@@ -576,9 +579,11 @@ async function main() {
     let inspected;
     try { inspected = JSON.parse(scan.stdout); }
     catch { fail('Python case inspection produced invalid structured output', 2); }
-    let caseData = null, schemaValidation = null;
+    let caseData = null, selectedCaseSha256 = null, schemaValidation = null;
     if (options.caseFile) {
-      caseData = readSelectedCase(options.caseFile);
+      const selectedCase = readSelectedCase(options.caseFile,{includeHash:true});
+      caseData = selectedCase.value;
+      selectedCaseSha256 = selectedCase.sha256;
       const formal = runPythonReadOnly('app_case_static_validate.py',[options.caseFile]);
       if (formal.status === 0) {
         try { schemaValidation = JSON.parse(formal.stdout); }
@@ -586,7 +591,7 @@ async function main() {
       }
     }
     let review;
-    try { review = summarizeAppGuide(inspected,caseData,{schemaValidation}); }
+    try { review = summarizeAppGuide(inspected,caseData,{schemaValidation,selectedCaseSha256}); }
     catch { fail('Static case inspection produced unverifiable evidence', 2); }
     if (options.draft) {
       if (review.status !== 'draft_available')
@@ -607,12 +612,12 @@ async function main() {
     // Re-read the source and case after inspection and compare byte hashes.
     // The selected in-memory source/case, not mutable host paths, reach Docker.
     const sourceEnvelope = readSelectedHandler(options.source).envelope;
-    const validatedCase = readSelectedCase(options.caseFile);
-    let afterCaseSha;
-    try { afterCaseSha = createHash('sha256').update(readFileSync(options.caseFile)).digest('hex'); }
-    catch { fail('Selected case changed or is no longer readable', 2); }
+    // Hash the same exact bytes that produced the case object sent to Docker;
+    // a subsequent path read could otherwise hash a different case version.
+    const selectedForRun = readSelectedCase(options.caseFile,{includeHash:true});
+    const validatedCase = selectedForRun.value;
     if (sourceEnvelope.sourceSha256!==review.sourceSha256 ||
-        afterCaseSha!==review.caseSha256 ||
+        selectedForRun.sha256!==review.caseSha256 ||
         planSha256(validatedCase)!==planSha256(caseData)) {
       fail('Trusted source or case changed since inspection; re-review and reapprove', 2);
     }
