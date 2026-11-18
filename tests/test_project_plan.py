@@ -58,6 +58,29 @@ def other(aws):
         self.assertTrue(calls[0]["hasUnresolvedArguments"])
         self.assertEqual(calls[0]["keywordNames"], ["Body"])
 
+    def test_explicit_boto3_sessions_are_detected_without_inference(self):
+        source = """import boto3 as sdk
+from boto3 import Session as AwsSession
+from boto3.session import Session as SessionFromModule
+session = sdk.Session(region_name='us-east-1')
+session.client('s3').put_object()
+a = AwsSession()
+a.client('sqs').send_message()
+SessionFromModule().client('dynamodb').get_item()
+sdk.Session().client('ssm').get_parameter()
+external = get_external_session()
+external.client('s3').delete_bucket()
+def f(session):
+    session.client('s3').list_buckets()
+def g():
+    a = AwsSession()
+    a = get_external_session()
+    a.client('s3').delete_bucket()
+"""
+        calls = project_plan._source_calls(source)
+        self.assertEqual([call["method"] for call in calls],
+                         ["s3.put_object", "sqs.send_message", "dynamodb.get_item", "ssm.get_parameter"])
+
     def test_checkout_inventory_respects_tracking_skips_and_does_not_execute_source(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

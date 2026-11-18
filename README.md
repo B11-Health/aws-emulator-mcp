@@ -185,6 +185,13 @@ need their own tests. Directory mode reads tracked Python files. You can also
 select a single module. Planning requires Python 3.10+ and works offline.
 [Generate and run a contract for your app](docs/CONTRACT_TESTING.md#start-with-an-existing-python-app).
 
+To inspect without running your application, use
+`node bin/aws-emulator-mcp.mjs project-check /path/to/app`. Add `--run` to
+execute matched **synthetic SDK** tests in isolated Docker and see which call
+sites have passing probes, failing probes or no test. No application code is
+executed, and passing API probes are **not** evidence that the application's
+fix is verified. [Project check details](docs/CONTRACT_TESTING.md#one-command-project-check-opt-in-api-tests).
+
 ## Test your own Python handler, not just our bundled files
 
 A first, intentionally limited **Bring Your Own App pilot** lets you

@@ -12,6 +12,7 @@ import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compa
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
+import { summarizeProjectProbes, formatProjectCheck } from '../scripts/project_check.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.15';
@@ -39,6 +40,7 @@ Usage: aws-emulator-mcp <command>
 Commands:
   try [--json]     Verify 7 architecture artifacts offline in a temporary workspace
   project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
+  project-check PATH [--run] [--json]  Scan your app; optionally execute synthetic API probes
   preflight [--json]  Check Node and local Docker without building an image
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -467,6 +469,28 @@ async function runSelectedHandler(envelope) {
   return { code: result.code, proof };
 }
 
+function runPythonProject(file, options) {
+  // Source is parsed with AST, never imported. Prefer supported host Python;
+  // do not silently pick a system Python 3.9 when 3.10+ is installed.
+  const script = path.join(ROOT, 'src', 'aws_emulator_mcp', 'project_plan.py');
+  const interpreters = process.platform === 'win32'
+    ? [['py', '-3'], ['python']]
+    : [['python3.12'], ['python3.11'], ['python3.10'], ['python3']];
+  for (const [exe, ...prefix] of interpreters) {
+    const result = spawnSync(exe, [...prefix, '-I', '-B', script, file, ...options], {
+      stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: 3 * 1024 * 1024,
+      timeout: 30000, windowsHide: true, shell: false,
+    });
+    if (result.error?.code === 'ENOENT' ||
+        (result.status !== 0 && result.stderr?.includes('requires Python 3.10 or newer')))
+      continue;
+    if (result.error || result.status === null)
+      fail('Local Python analysis did not finish', 2);
+    return result;
+  }
+  fail('Project scanning requires Python 3.10 or newer on the host', 2);
+}
+
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
@@ -477,18 +501,50 @@ async function main() {
           (options.length === 2 && options[0] === '--contract' && /^[a-z][a-z0-9-]*$/.test(options[1])))) {
       fail('Usage: aws-emulator-mcp project-plan MODULE.py|GIT_DIRECTORY [--json | --contract SERVICE]', 2);
     }
-    const script = path.join(ROOT, 'src', 'aws_emulator_mcp', 'project_plan.py');
-    const python = process.platform === 'win32' ? [['py', '-3'], ['python']] : [['python3']];
-    for (const [exe, ...prefix] of python) {
-      const run = spawnSync(exe, [...prefix, '-I', '-B', script, file, ...options], {
-        stdio: ['ignore', 'inherit', 'inherit'], timeout: 30000, windowsHide: true
-      });
-      if (run.error?.code === 'ENOENT') continue;
-      if (run.error || run.status === null) fail('Local Python analysis did not finish', 2);
-      process.exitCode = run.status;
-      return;
+    const result = runPythonProject(file, options);
+    if (result.stdout) stdout.write(result.stdout);
+    if (result.stderr) stderr.write(result.stderr);
+    process.exitCode = result.status;
+    return;
+  }
+  if (command === 'project-check') {
+    const [file, ...options] = args;
+    if (!file || file.startsWith('-') || options.length > 2 ||
+        options.some(option => !['--json', '--run'].includes(option)) ||
+        new Set(options).size !== options.length) {
+      fail('Usage: aws-emulator-mcp project-check MODULE.py|GIT_DIRECTORY [--run] [--json]', 2);
     }
-    fail('project-plan requires Python 3.10 or newer on the host', 2);
+    const scan = runPythonProject(file, ['--json']);
+    if (scan.status !== 0) {
+      if (scan.stderr) stderr.write(scan.stderr);
+      fail('Could not inspect the selected local Python source', 2);
+    }
+    let inventory;
+    try { inventory = JSON.parse(scan.stdout); }
+    catch { fail('Project scan returned invalid JSON', 2); }
+    const runs = [];
+    if (options.includes('--run') && inventory.drafts?.length) {
+      // Explicit opt-in. Use only the existing, validated contract worker.
+      // No application source or host mounts enter Docker.
+      requireDocker();
+      if (!imageExists()) await buildImage();
+      for (const draft of inventory.drafts) {
+        const result = await runCaptured(dockerArgs('contract'), JSON.stringify(draft.plan));
+        let proof;
+        try { proof = JSON.parse(result.raw); } catch { proof = null; }
+        runs.push({ code: result.code, proof });
+      }
+    }
+    let report;
+    try { report = summarizeProjectProbes(inventory, runs); }
+    catch { fail('Project check could not verify the scan or probe evidence', 2); }
+    stdout.write(options.includes('--json') ? JSON.stringify(report, null, 2) + '\n'
+      : formatProjectCheck(report));
+    // A successfully completed synthetic probe is not a passing app test.
+    // Exit nonzero for untested calls, failed probes or review gaps after --run.
+    if (options.includes('--run') && report.status !== 'api_probes_passed')
+      process.exitCode = 1;
+    return;
   }
   if (command === 'try') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))

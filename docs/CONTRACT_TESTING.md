@@ -46,6 +46,45 @@ node bin/aws-emulator-mcp.mjs project-plan /path/to/app --contract sqs > queue-c
 node bin/aws-emulator-mcp.mjs contract queue-contract.json --json
 ```
 
+### One-command project check (opt-in API tests)
+
+The `project-check` command joins discovery with the existing, isolated
+contract executor. Without `--run` it only parses Python syntax. With `--run`
+it executes up to four **synthetic API probes** in disposable, network-disabled
+Docker labs and correlates the results back to the recognized call sites.
+
+```sh
+# Safe static inventory: no Docker, no application execution
+node bin/aws-emulator-mcp.mjs project-check /path/to/app
+
+# Explicitly run generated S3/SQS/DynamoDB/EC2 SDK probes
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run
+node bin/aws-emulator-mcp.mjs project-check /path/to/app --run --json > project-check.json
+```
+
+Every call site is classified as `api_probe_passed`, `api_probe_failed`,
+`not_reached`, `not_run`, `not_covered` or `invalid_evidence`.
+The summary also counts arguments the generated probe does not exercise,
+source files skipped during discovery, and unmatched SDK methods. A failing
+probe stops only its own test plan; other plans still run in fresh labs.
+Failed, missing, inconsistent or mismatched plan-hash evidence can never
+produce a passing result. `--run` exits nonzero when probes fail, source was
+skipped, no direct calls were found or relevant behavior remains untested.
+
+**The boundary is important:** `api_probe_passed` proves that the *synthetic*
+AWS SDK operation and its declared assertions worked against that emulator
+version. It does **not** prove that the developer's application function,
+branch, IAM permissions, input values or business invariant worked. The
+report always includes `applicationFixVerified: false`. SHA-256 binds the
+returned contract evidence to the generated plan; it is not a cryptographic
+signature or third-party attestation.
+
+For a real, narrow application-level before/after assertion, see
+[`app-compare`](../docs/BYO_HANDLER.md): it executes a user-selected Python
+order handler after explicit local opt-in. General application execution,
+custom business assertions, and unrelated languages are not supported by
+`project-check`.
+
 Planning needs Python 3.10+ on PATH. Directory mode also needs Git and
 considers up to 256 tracked Python files, 128 KiB per file and 4 MiB total.
 Single-file mode also works on an untracked module. The JSON lists every
@@ -54,7 +93,8 @@ operations and keyword arguments absent from each draft. Source payloads,
 environment values and application resource names stay out of the generated
 contract. Review the synthetic inputs and assertions before running it.
 
-Discovery recognizes direct low-level `boto3.client("service")` calls, import
+Discovery recognizes direct low-level `boto3.client("service")` calls,
+`boto3.Session().client("service")`, explicit session variables, import
 aliases, and receivers assigned once in a straight-line module or function
 body. Static discovery can include dead branches and miss injected clients,
 wrappers, dynamic factories and Boto3 resources. Matching a keyword name
