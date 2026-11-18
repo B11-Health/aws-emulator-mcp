@@ -53,6 +53,31 @@ the same human version tag. It is **not** an authentication mechanism against
 someone with write access to the Docker daemon, does not validate upstream AWS
 service fidelity, and does not pin all remote build dependencies.
 
+### When a new signed Docker image needs more disk space
+
+Before a Docker-backed command, run `node bin/aws-emulator-mcp.mjs preflight --json`.
+An old image with a **different source fingerprint** cannot be reused, even
+when the human beta version tag is the same. A new image may need several
+GiB of extra download/unpack/layer space in addition to its final size.
+
+On a Linux host with a visible local Docker data-root, the read-only
+preflight reports host-visible free space. If the next command must rebuild
+and the measured host-visible free space is below a **conservative 3 GiB
+warning threshold**, it marks `imageBuildSpace.status="critical"`, recommends
+`docker system df`, and warns before a build starts. It **does not automatically
+prune, remove, or alter images, volumes or containers**. You choose what can
+safely be reclaimed. A completed build can still fail for reasons unrelated
+to disk, and a passing disk advisory is no promise of sufficient capacity.
+
+The host-visible `statfs` measurement is **not** proof of actual Docker daemon
+or Docker Desktop/WSL2 VM capacity. On Windows/macOS, or when the daemon path
+is unavailable, the result is `unknown`; no green capacity claim is inferred.
+The existing `emulatorReady` field means local Docker daemon prerequisites
+passed, **not** that a pending large image build has enough storage.
+`imageBuildSpace` and the next-command guidance distinguish those states.
+The no-Docker `try` command and optional host-Python 3.10+ `app-case-inspect`
+need no emulator image build.
+
 Every runtime container is `--network none`, `--cap-drop ALL`, `--security-opt no-new-privileges`, `--pids-limit 256`, `--memory 2g`. The launcher publishes **no ports**, mounts **no host paths**, and forwards **no AWS environment variables or credentials**.
 
 The official Linux emulator binary is approximately **994 MB unpacked** for the tested v1.0.338 AMD64 package, so the image is currently larger than 1 GB. The npm package is small and does not contain the binary. The initial build downloads the upstream signed package; subsequent CLI runs reuse the cached image.

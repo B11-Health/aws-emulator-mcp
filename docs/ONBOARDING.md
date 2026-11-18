@@ -2,6 +2,15 @@
 
 AWS Emulator MCP connects a compatible local AI assistant to a disposable AWS development lab. You can run the examples directly from your terminal, or let the agent operate the local MCP tools.
 
+## Prefer a single first-run command?
+
+In source checkouts that include the **new `onboard` command** (not the
+immutable beta.15 tag), run `node bin/aws-emulator-mcp.mjs onboard`.
+It verifies offline architecture artifacts, checks Docker prerequisites
+without starting any containers, and prints optional next steps.
+Use `--offline` to avoid even Docker probing, or `--json` to report your
+setup. [Start with the shorter guide](FIRST_RUN.md).
+
 ## Start by watching the example
 
 [**Narrated beta.15 walkthrough (87 seconds)**](assets/demos/proof-first-beta15.mp4) · [Six interactive demo missions](https://b11-health.github.io/aws-emulator-mcp/) · [Accessible transcript](SHOWCASE_TRANSCRIPT.md) · [Common questions before trying](https://b11-health.github.io/aws-emulator-mcp/#faq)
