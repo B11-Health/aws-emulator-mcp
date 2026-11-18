@@ -108,6 +108,79 @@ The actual local test on signed AWS Emulator **1.0.506** reproduced the
 [Inspect the sanitized S3 evidence](evidence/app-case-s3-aws-emulator-1.0.506.json).
 This is an assertion on one synthetic object; not a complete S3 test suite.
 
+## Verify an application's own retry branch (one-shot fault)
+
+A synthetic contract can retry an SDK write, but cannot prove **your Python
+handler caught the error and recovered**. This local-only `app-case` extension
+injects a single reviewed **SDK-boundary exception into the selected app's
+client**, then independently checks emulated AWS state. This is a simulated
+exception, **not** a real network outage or evidence of production retry
+semantics. The [sanitized signed-emulator 1.0.506 test evidence](evidence/app-case-sqs-retry-aws-emulator-1.0.506.json)
+is project-maintained and identifies the exact two selected source hashes.
+A separate [November 18, 2026 local rerun on signed AWS Emulator 1.0.508](evidence/app-case-sqs-retry-aws-emulator-1.0.508.json)
+verified the combined retry and fail-closed implementation: the injected
+`before-call` timeout yielded zero successful sends and one named failing
+state assertion for the broken handler, while the corrected handler retried
+and produced exactly one successful send. Both scenarios passed declared
+cleanup. A separately executed `after-success` negative control sent two
+messages and correctly failed the `Messages.1` assertion. This is bounded
+local emulator evidence, not production AWS or genuine network-outage proof.
+
+```sh
+# The same SQS state invariant must fail for the broken app and pass for the
+# corrected app. Both explicitly run trusted local Python in separate labs.
+node bin/aws-emulator-mcp.mjs app-case-compare \
+  examples/app-case/sqs-retry-bug.py examples/app-case/sqs-retry-fixed.py \
+  examples/app-case/sqs-retry-timeout.json --json
+
+# Separate negative control: expected exit 1, because the handler swallows
+# the timeout instead of delivering an SQS message.
+node bin/aws-emulator-mcp.mjs app-case \
+  examples/app-case/sqs-retry-bug.py \
+  examples/app-case/sqs-retry-timeout.json --json
+```
+
+The reviewed JSON adds one optional `invoke.fault` object:
+
+```json
+"fault": {
+  "service": "sqs", "operation": "SendMessage",
+  "occurrence": 1, "mode": "before-call"
+}
+```
+
+Only one fault is permitted, and it must select a declared, counted write:
+`SendMessage` (SQS), `PutObject` (S3) or `PutItem` (DynamoDB). The occurrence
+is a 1-based SDK call index; it cannot exceed the selected operation's
+`expectedCalls.max` (maximum 12). Supported modes are `before-call` (the
+chosen write **never reaches** the emulator) and `after-success` (the write
+**succeeds** in the emulator, but the Python handler does not receive its
+acknowledgement). The local SDK wrapper raises a **botocore
+`ReadTimeoutError`** in both modes; it does not configure transport retries
+inside botocore, pause sockets or modify the emulator. This test is meaningful
+only for handler logic that explicitly handles that exception. Blindly retrying
+`after-success` may duplicate writes, particularly on standard SQS queues;
+this sample proves only the `before-call` recovery path. A separate
+`after-success` negative control in the [recorded evidence](evidence/app-case-sqs-retry-aws-emulator-1.0.506.json)
+shows the same retry handler sending **two** SQS messages: the independent
+`Messages.1` assertion fails, with cleanup still successful. This is a
+separate case hash and is **not** a passing retry strategy for lost
+acknowledgements.
+
+Evidence records `appFault.{mode,occurrence,attemptsSeen,injected,
+sentToEmulator,exceptionType}` and SDK attempt/success counts, with no payloads
+or exception messages. A green state check **cannot** pass the application test
+unless the selected fault actually fired. The comparator also requires the
+same reviewed case hash, emulator version, source identities, cleanup, a
+specific failing regression assertion before the fix and a passing one after.
+If a selected call is never reached, setup fails, real SDK calls fail before
+injection, or app exceptions remain unhandled, the proof fails closed.
+
+This is a local CLI-only, trusted-source capability. The MCP server and CI
+contract gate **cannot** execute caller-supplied Python. Docker is not a
+sandbox for malicious code; use synthetic fixtures and only run source you
+have reviewed and approved.
+
 ## Bring your own module and case
 
 Supply a trusted, regular UTF-8 `.py` file (max 20 KiB, no symlinks) defining:
@@ -123,7 +196,10 @@ installed Python dependencies, but this first version does **not** install
 packages or import sibling files from your host project. Use a self-contained
 module or a reviewed thin adapter if your original app is more complex.
 Only clients in the case's `services` list are injected. Calls through those
-clients are observed and counted without recording argument values. A source
+clients are observed and counted without recording argument values. Expected
+Expected call-count rows measure **attempts**. For an overall green
+application invariant, each expected SDK operation must also have at least one
+successful call. A caught exception alone cannot prove a successful write. A source
 module can import dependencies already bundled in the container; this is not
 a general project packaging system.
 

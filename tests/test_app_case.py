@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from types import ModuleType
 import sys
 import unittest
 from unittest.mock import patch
@@ -13,6 +14,25 @@ from aws_emulator_mcp import app_case, contract_case
 from aws_emulator_mcp import server as aws
 
 SPEC=json.loads((ROOT/'examples/app-case/sqs-idempotency.json').read_text())
+
+
+# Unit tests must run without boto3/botocore installed. Provide only the
+# exception class used by the reviewed synthetic retry examples; the actual
+# Docker application runner still imports real botocore in production.
+class _SyntheticReadTimeoutError(Exception):
+    def __init__(self, endpoint_url=None):
+        super().__init__('synthetic SDK timeout for unit tests')
+
+
+_botocore_stub = ModuleType('botocore')
+_botocore_stub.__path__ = []
+_botocore_exceptions_stub = ModuleType('botocore.exceptions')
+_botocore_exceptions_stub.ReadTimeoutError = _SyntheticReadTimeoutError
+_botocore_stub.exceptions = _botocore_exceptions_stub
+_BOTOCORE_TEST_MODULES = {
+    'botocore': _botocore_stub,
+    'botocore.exceptions': _botocore_exceptions_stub,
+}
 
 
 def envelope(source, spec=SPEC):
@@ -135,6 +155,140 @@ class AppCaseTests(unittest.TestCase):
         self.assertNotIn('synthetic-order-event',payload)
         self.assertNotIn('https://localhost.test',payload)
         self.assertNotIn(buggy[:40],payload)
+
+    @patch.dict(sys.modules, _BOTOCORE_TEST_MODULES)
+    def test_real_python_retry_branch_recovers_a_pre_send_timeout(self):
+        case=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
+        self.assertIs(app_case.validate_case(case),case)
+        runs=[]
+        for filename in ('sqs-retry-bug.py','sqs-retry-fixed.py'):
+            sqs=FakeSQS()
+            source=(ROOT/'examples/app-case'/filename).read_text()
+            with patch.dict(os.environ,{'AWS_EMULATOR_MCP_ISOLATED_LAB':'1'}), \
+                 patch.object(aws,'doctor',return_value={'ready':True,'emulator_version':'test-1'}), \
+                 patch.object(aws,'identity',return_value={'Account':'000000000000'}), \
+                 patch('aws_emulator_mcp.aws_sdk._client',
+                       return_value=(None,None,sqs,None,None)):
+                result=app_case.execute(envelope(source,case))
+            self.assertTrue(result['sourceInvoked'])
+            self.assertTrue(result['cleanupPassed'])
+            self.assertTrue(result['appFault']['injected'])
+            self.assertFalse(result['appFault']['sentToEmulator'])
+            self.assertEqual(result['appFault']['exceptionType'],'ReadTimeoutError')
+            self.assertTrue(sqs.deleted)
+            self.assertNotIn('synthetic-retry-event',json.dumps(result))
+            runs.append((sqs,result))
+        buggy,corrected=(item[1] for item in runs)
+        self.assertFalse(buggy['passed'])
+        self.assertEqual(buggy['checks'][0]['assertions'],[
+            {'path':'Messages.0.Body','passed':False},
+            {'path':'Messages.1','passed':True}])
+        self.assertEqual(buggy['sdkCalls'][0]['attempts'],1)
+        self.assertEqual(buggy['sdkCalls'][0]['successes'],0)
+        self.assertEqual(len(runs[0][0].messages),0)
+        self.assertTrue(corrected['passed'])
+        self.assertEqual(corrected['sdkCalls'][0]['attempts'],2)
+        self.assertEqual(corrected['sdkCalls'][0]['successes'],1)
+        self.assertEqual(len(runs[1][0].messages),1)
+
+    @patch.dict(sys.modules, _BOTOCORE_TEST_MODULES)
+    def test_fault_must_occur_or_green_application_checks_still_fail(self):
+        case=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
+        case['invoke']['fault']['occurrence']=2
+        # The source only calls SendMessage once and successfully writes the
+        # event; claiming a tested retry path would be a false green.
+        sqs=FakeSQS()
+        source=(ROOT/'examples/app-case/sqs-retry-bug.py').read_text()
+        with patch.dict(os.environ,{'AWS_EMULATOR_MCP_ISOLATED_LAB':'1'}), \
+             patch.object(aws,'doctor',return_value={'ready':True,'emulator_version':'test-1'}), \
+             patch.object(aws,'identity',return_value={'Account':'000000000000'}), \
+             patch('aws_emulator_mcp.aws_sdk._client',
+                   return_value=(None,None,sqs,None,None)):
+            proof=app_case.execute(envelope(source,case))
+        self.assertFalse(proof['appFault']['injected'])
+        self.assertEqual(proof['appFault']['attemptsSeen'],1)
+        self.assertTrue(all(c['passed'] for c in proof['checks']))
+        self.assertFalse(proof['applicationInvariantPassed'])
+        self.assertFalse(proof['passed'])
+        self.assertTrue(proof['cleanupPassed'])
+
+    @patch.dict(sys.modules, _BOTOCORE_TEST_MODULES)
+    def test_after_success_is_not_misreported_as_a_pre_send_timeout(self):
+        case=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
+        case['invoke']['fault']['mode']='after-success'
+        sqs=FakeSQS()
+        source=(ROOT/'examples/app-case/sqs-retry-fixed.py').read_text()
+        with patch.dict(os.environ,{'AWS_EMULATOR_MCP_ISOLATED_LAB':'1'}), \
+             patch.object(aws,'doctor',return_value={'ready':True,'emulator_version':'test-1'}), \
+             patch.object(aws,'identity',return_value={'Account':'000000000000'}), \
+             patch('aws_emulator_mcp.aws_sdk._client',
+                   return_value=(None,None,sqs,None,None)):
+            proof=app_case.execute(envelope(source,case))
+        self.assertTrue(proof['appFault']['injected'])
+        self.assertTrue(proof['appFault']['sentToEmulator'])
+        self.assertEqual(proof['sdkCalls'][0]['successes'],2)
+        self.assertEqual(len(sqs.messages),2)
+        self.assertFalse(proof['passed'])
+        self.assertEqual(proof['checks'][0]['assertions'][1],
+                         {'path':'Messages.1','passed':False})
+        self.assertTrue(proof['cleanupPassed'])
+
+    def test_unreviewed_or_unsupported_application_fault_rejected(self):
+        base=json.loads((ROOT/'examples/app-case/sqs-retry-timeout.json').read_text())
+        mutations=(
+            lambda v:v['invoke']['fault'].update(mode='arbitrary-shell'),
+            lambda v:v['invoke']['fault'].update(operation='DeleteQueue'),
+            lambda v:v['invoke']['fault'].update(occurrence=True),
+            lambda v:v['invoke']['fault'].update(occurrence=3),
+            lambda v:v['invoke']['fault'].update(service=['sqs']),
+            lambda v:v['invoke']['fault'].update(extra='no'),
+            lambda v:v['invoke'].pop('expectedCalls'),
+            lambda v:v['invoke'].update(fault={'mode':'after-success'}),
+        )
+        for mutate in mutations:
+            case=json.loads(json.dumps(base))
+            mutate(case)
+            with self.subTest(fault=str(case['invoke'].get('fault'))), self.assertRaises(ValueError):
+                app_case.validate_case(case)
+    def test_caught_failed_sdk_attempt_never_verifies_application(self):
+        # The independent read finds an empty queue and passes, but a handler
+        # that caught SendMessage's exception cannot claim its AWS write worked.
+        spec=json.loads(json.dumps(SPEC))
+        spec['invoke']['times']=1
+        spec['invoke']['expectedCalls']=[
+            {'service':'sqs','operation':'SendMessage','min':1,'max':1}]
+        spec['checks']=[{
+            'id':'empty_queue','service':'sqs','operation':'ReceiveMessage',
+            'parameters':{'QueueUrl':{'$ref':'queue.QueueUrl'},
+                          'MaxNumberOfMessages':10,'WaitTimeSeconds':1},
+            'expect':{'assertions':[{'path':'Messages.0','exists':False}]}}]
+        spec['regression']={'stepId':'empty_queue','path':'Messages.0'}
+        app_case.validate_case(spec)
+        sqs,ddb=FakeSQS(),FakeDynamoDB()
+        def broken_send(**kwargs):
+            raise RuntimeError('synthetic SDK failure')
+        sqs.send_message=broken_send
+        def sdk_client(name):
+            return (None,None,{'sqs':sqs,'dynamodb':ddb}[name],None,None)
+        source='''def handle(clients, inputs):
+    try:
+        clients['sqs'].send_message(QueueUrl=inputs['queueUrl'],MessageBody=inputs['body'])
+    except RuntimeError:
+        pass
+'''
+        with patch.dict(os.environ,{'AWS_EMULATOR_MCP_ISOLATED_LAB':'1'}), \
+             patch.object(aws,'doctor',return_value={'ready':True,'emulator_version':'test-1'}), \
+             patch.object(aws,'identity',return_value={'Account':'000000000000'}), \
+             patch('aws_emulator_mcp.aws_sdk._client',side_effect=sdk_client), \
+             patch('aws_emulator_mcp.contract_case._wait_created_table_active',return_value=1):
+            report=app_case.execute(envelope(source,spec))
+        self.assertEqual(report['sdkCalls'],[
+            {'service':'sqs','operation':'SendMessage','attempts':1,'successes':0}])
+        self.assertTrue(report['checks'][0]['passed'])
+        self.assertTrue(report['cleanupPassed'])
+        self.assertTrue(report['expectedCalls'][0]['passed'])  # attempt count only
+        self.assertFalse(report['applicationInvariantPassed'])
+        self.assertFalse(report['passed'])
 
     def test_no_source_execution_when_emulator_identity_is_unverified(self):
         source='''raise RuntimeError('NEVER_EXECUTE_THIS_APP')'''

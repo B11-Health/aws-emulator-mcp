@@ -1,0 +1,285 @@
+{
+  "schemaVersion": 1,
+  "recordedDate": "2026-11-18",
+  "lab": "Network-disabled Docker app-case runs, using an isolated QA overlay of the changed app_case.py atop a cached image of signed official AWS Emulator 1.0.506",
+  "scope": "Project-maintained evidence for two explicitly selected trusted sample Python handlers and one synthetic SQS retry case; not independent validation, AWS production parity, or a genuine network outage",
+  "before": {
+    "schemaVersion": 1,
+    "case": "application-sqs-before-send-retry",
+    "sourceSha256": "d3d2c0ab1c5e71673f05db259f84b3dd60e12535179ea8bb70370acb3654390f",
+    "caseSha256": "40b7a7ff092d7bc513830ef756aaab17afcb03014e3569f7ef08f1d2ca0009fe",
+    "emulatorVersion": "Version: 1.0.506",
+    "accountVerified": true,
+    "sourceInvoked": true,
+    "applicationErrors": false,
+    "sourceExecution": "trusted_local_opt_in",
+    "productionAwsValidated": false,
+    "setup": [
+      {
+        "id": "queue",
+        "service": "sqs",
+        "operation": "CreateQueue",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "8ca829b8612ded2adcd4092df5f80f063019c663288cee3ea5fded1e16c9e1da"
+      }
+    ],
+    "checks": [
+      {
+        "id": "receive",
+        "service": "sqs",
+        "operation": "ReceiveMessage",
+        "passed": false,
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "passed": false
+          },
+          {
+            "path": "Messages.1",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "remove",
+        "service": "sqs",
+        "operation": "DeleteQueue",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      }
+    ],
+    "sdkCalls": [
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "attempts": 1,
+        "successes": 0
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "min": 1,
+        "max": 2,
+        "observed": 1,
+        "passed": true
+      }
+    ],
+    "passed": false,
+    "applicationInvariantPassed": false,
+    "cleanupPassed": true,
+    "dataExposure": "Source, app inputs, SDK request/response bodies, local paths, exception text and logs omitted",
+    "scope": "One explicitly selected trusted Python function and independently authored SDK state assertions. Not hostile-code isolation, full project test coverage, IAM or AWS production fidelity.",
+    "appFault": {
+      "service": "sqs",
+      "operation": "SendMessage",
+      "occurrence": 1,
+      "mode": "before-call",
+      "attemptsSeen": 1,
+      "injected": true,
+      "sentToEmulator": false,
+      "exceptionType": "ReadTimeoutError",
+      "source": "local_sdk_wrapper"
+    }
+  },
+  "after": {
+    "schemaVersion": 1,
+    "case": "application-sqs-before-send-retry",
+    "sourceSha256": "038aaa0ff82e05f4b181ddf1ab55ad4d9d2546538473cc1e751e069e2900731c",
+    "caseSha256": "40b7a7ff092d7bc513830ef756aaab17afcb03014e3569f7ef08f1d2ca0009fe",
+    "emulatorVersion": "Version: 1.0.506",
+    "accountVerified": true,
+    "sourceInvoked": true,
+    "applicationErrors": false,
+    "sourceExecution": "trusted_local_opt_in",
+    "productionAwsValidated": false,
+    "setup": [
+      {
+        "id": "queue",
+        "service": "sqs",
+        "operation": "CreateQueue",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "acec09a3bb178d410231c3b6d896505885b0856eb0fba572b740295481379782"
+      }
+    ],
+    "checks": [
+      {
+        "id": "receive",
+        "service": "sqs",
+        "operation": "ReceiveMessage",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "passed": true
+          },
+          {
+            "path": "Messages.1",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "c99f6e2a5f69cbeea55333712e4ed23d4c6afaab5a46afd4bfd5f270a3644e81"
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "remove",
+        "service": "sqs",
+        "operation": "DeleteQueue",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      }
+    ],
+    "sdkCalls": [
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "attempts": 2,
+        "successes": 1
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "min": 1,
+        "max": 2,
+        "observed": 2,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "applicationInvariantPassed": true,
+    "cleanupPassed": true,
+    "dataExposure": "Source, app inputs, SDK request/response bodies, local paths, exception text and logs omitted",
+    "scope": "One explicitly selected trusted Python function and independently authored SDK state assertions. Not hostile-code isolation, full project test coverage, IAM or AWS production fidelity.",
+    "appFault": {
+      "service": "sqs",
+      "operation": "SendMessage",
+      "occurrence": 1,
+      "mode": "before-call",
+      "attemptsSeen": 2,
+      "injected": true,
+      "sentToEmulator": false,
+      "exceptionType": "ReadTimeoutError",
+      "source": "local_sdk_wrapper"
+    }
+  },
+  "afterSuccessNegativeControl": {
+    "schemaVersion": 1,
+    "case": "application-sqs-before-send-retry",
+    "sourceSha256": "038aaa0ff82e05f4b181ddf1ab55ad4d9d2546538473cc1e751e069e2900731c",
+    "caseSha256": "8981e54a59857627b9312839c9ef5e5b63b55f252aac317062d44db84da7a762",
+    "emulatorVersion": "Version: 1.0.506",
+    "accountVerified": true,
+    "sourceInvoked": true,
+    "applicationErrors": false,
+    "sourceExecution": "trusted_local_opt_in",
+    "productionAwsValidated": false,
+    "setup": [
+      {
+        "id": "queue",
+        "service": "sqs",
+        "operation": "CreateQueue",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "QueueUrl",
+            "passed": true
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "30ab5f0cab704810d2feedb29e77d70c480d6a14457eff45bcf12e33e43b29ce"
+      }
+    ],
+    "checks": [
+      {
+        "id": "receive",
+        "service": "sqs",
+        "operation": "ReceiveMessage",
+        "passed": false,
+        "assertions": [
+          {
+            "path": "Messages.0.Body",
+            "passed": true
+          },
+          {
+            "path": "Messages.1",
+            "passed": false
+          }
+        ],
+        "observed": "success",
+        "responseSha256": "bf52ca9f04d30aa0895b802a2e1ba1e1c8ff7f4dfd79b8c437ce3506a4ccab53"
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "remove",
+        "service": "sqs",
+        "operation": "DeleteQueue",
+        "passed": true,
+        "assertions": [],
+        "observed": "success",
+        "responseSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+      }
+    ],
+    "sdkCalls": [
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "attempts": 2,
+        "successes": 2
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "sqs",
+        "operation": "SendMessage",
+        "min": 1,
+        "max": 2,
+        "observed": 2,
+        "passed": true
+      }
+    ],
+    "passed": false,
+    "applicationInvariantPassed": false,
+    "cleanupPassed": true,
+    "dataExposure": "Source, app inputs, SDK request/response bodies, local paths, exception text and logs omitted",
+    "scope": "One explicitly selected trusted Python function and independently authored SDK state assertions. Not hostile-code isolation, full project test coverage, IAM or AWS production fidelity.",
+    "appFault": {
+      "service": "sqs",
+      "operation": "SendMessage",
+      "occurrence": 1,
+      "mode": "after-success",
+      "attemptsSeen": 2,
+      "injected": true,
+      "sentToEmulator": true,
+      "exceptionType": "ReadTimeoutError",
+      "source": "local_sdk_wrapper"
+    }
+  }
+}

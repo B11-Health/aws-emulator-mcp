@@ -53,24 +53,60 @@ export function verifyAppCaseProof(proof, sourceSha, spec, exitCode) {
       throw Error('Malformed observed AWS SDK counts');
     actual.set(c.service+'.'+c.operation,c);
   }
+  const faultSpec = spec.invoke.fault;
+  let fault = null;
+  if (faultSpec) {
+    const raw = proof.appFault;
+    const fields = ['service','operation','mode','occurrence','attemptsSeen',
+      'injected','sentToEmulator','exceptionType','source'];
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        Object.keys(raw).sort().join('|') !== fields.sort().join('|') ||
+        raw.service !== faultSpec.service || raw.operation !== faultSpec.operation ||
+        raw.mode !== faultSpec.mode || raw.occurrence !== faultSpec.occurrence ||
+        raw.source !== 'local_sdk_wrapper' || raw.exceptionType !== 'ReadTimeoutError' ||
+        typeof raw.injected !== 'boolean' || typeof raw.sentToEmulator !== 'boolean' ||
+        !Number.isInteger(raw.attemptsSeen) || raw.attemptsSeen < 0 ||
+        raw.attemptsSeen > 1000 ||
+        raw.sentToEmulator !== (raw.injected && raw.mode === 'after-success'))
+      throw Error('Missing or inconsistent application fault evidence');
+    const observed = actual.get(raw.service+'.'+raw.operation);
+    if (raw.attemptsSeen !== (observed?.attempts || 0) ||
+        raw.injected !== (raw.attemptsSeen >= raw.occurrence) ||
+        (raw.injected && raw.mode === 'before-call' && observed.successes >= observed.attempts) ||
+        (raw.injected && raw.mode === 'after-success' && observed.successes < 1))
+      throw Error('Application fault was not observed at the claimed SDK attempt');
+    fault = {service:raw.service,operation:raw.operation,mode:raw.mode,
+      occurrence:raw.occurrence, injected:raw.injected,
+      sentToEmulator:raw.sentToEmulator};
+  } else if (proof.appFault !== undefined) {
+    throw Error('Unrequested application fault evidence');
+  }
   // Observed calls can only originate from the explicitly invoked function:
   // setup/check/cleanup never use the observed client proxies.
   if (!proof.sourceInvoked && proof.sdkCalls.length)
     throw Error('SDK calls reported without an invoked source function');
   for (let i = 0; i < spec.invoke.expectedCalls.length; i++) {
     const ref = spec.invoke.expectedCalls[i], rec = proof.expectedCalls[i];
-    const observed = actual.get(ref.service+'.'+ref.operation)?.attempts || 0;
+    const call = actual.get(ref.service+'.'+ref.operation);
+    const observed = call?.attempts || 0;
+    // This field confirms the declared *attempt count*. Successful SDK calls
+    // are checked separately in the application invariant, so a deliberately
+    // faulted baseline can retain valid call-count evidence without going green.
+    const validated = ref.min <= observed && observed <= ref.max;
     if (!rec || rec.service !== ref.service || rec.operation !== ref.operation ||
         rec.min !== ref.min || rec.max !== ref.max || rec.observed !== observed ||
-        rec.passed !== (ref.min <= observed && observed <= ref.max))
+        rec.passed !== validated)
       throw Error('SDK call-count evidence mismatch');
   }
   const all = v => v.every(row => row.passed);
   const cleanup = proof.cleanup.length === spec.cleanup.length && all(proof.cleanup);
+  const successfulExpectedCalls = spec.invoke.expectedCalls.every(ref =>
+    (actual.get(ref.service+'.'+ref.operation)?.successes || 0) > 0);
   const invariant = proof.sourceInvoked && !proof.applicationErrors &&
       proof.setup.length === spec.setup.length && all(proof.setup) &&
       proof.checks.length === spec.checks.length && all(proof.checks) &&
-      all(proof.expectedCalls);
+      all(proof.expectedCalls) && successfulExpectedCalls &&
+      (!faultSpec || fault.injected);
   if (proof.cleanupPassed !== cleanup || proof.applicationInvariantPassed !== invariant ||
       proof.passed !== (cleanup && invariant) || exitCode !== (proof.passed ? 0 : 1)) {
     throw Error('Contradictory application success or process exit evidence');
@@ -79,6 +115,7 @@ export function verifyAppCaseProof(proof, sourceSha, spec, exitCode) {
     sourceSha256: sourceSha, emulatorVersion: proof.emulatorVersion,
     invoked: proof.sourceInvoked, applicationErrors: proof.applicationErrors,
     passed: proof.passed, cleanupPassed: proof.cleanupPassed,
+    ...(fault ? {appFault:fault} : {}),
     sdkCalls: proof.sdkCalls.map(c=>({service:c.service,operation:c.operation,
       attempts:c.attempts,successes:c.successes})),
     setup: proof.setup.map(r=>({id:r.id,passed:r.passed})),
@@ -108,8 +145,10 @@ export function compareAppCaseEvidence(beforeProof, beforeSha, beforeExit,
     before.invoked && before.cleanupPassed && before.expectedCalls.every(x=>x.passed) &&
     before.checks.every(c=> c.passed === c.assertions.every(a=>a.passed));
   const bugReproduced = !before.passed && beforeChecksReached && noUnrelatedFailures &&
+    (!spec.invoke.fault || before.appFault?.injected === true) &&
     failures.length===1 && failures[0].id===regression.stepId && failures[0].path===regression.path;
   const fixVerified = after.passed && after.cleanupPassed && !after.applicationErrors &&
+    (!spec.invoke.fault || after.appFault?.injected === true) &&
     after.checks.length===spec.checks.length && after.checks.every(c=>c.passed);
   return {
     schemaVersion:1, mode:'local_application_before_after', case:spec.name,
@@ -135,6 +174,9 @@ export function appCaseMarkdown(r) {
     `| Developer source hash | \`${r.before.sourceSha256}\` | \`${r.after.sourceSha256}\` |`,
     `| Independent assertions | ${checks(r.before)}/${total(r.before)} | ${checks(r.after)}/${total(r.after)} |`,
     `| Scoped cleanup | ${fmt(r.before.cleanupPassed)} | ${fmt(r.after.cleanupPassed)} |`,
+    ...(r.before.appFault ? [
+      `| Synthetic ${r.before.appFault.mode} SDK fault (${r.before.appFault.service}.${r.before.appFault.operation}) | ${fmt(r.before.appFault.injected)} | ${fmt(r.after.appFault.injected)} |`
+    ] : []),
     '', `**Expected regression:** ${r.regression.stepId}.${r.regression.path}`,
     `**Case hash:** \`${r.caseSha256}\``,
     `**Emulator:** ${r.emulatorVersion.replace(/[|\r\n]/g,' ')}`,

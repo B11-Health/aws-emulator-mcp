@@ -160,10 +160,15 @@ returned contract evidence to the generated plan; it is not a cryptographic
 signature or third-party attestation.
 
 For a real, narrow application-level before/after assertion, see
-[`app-compare`](../docs/BYO_HANDLER.md): it executes a user-selected Python
-order handler after explicit local opt-in. General application execution,
-custom business assertions, and unrelated languages are not supported by
-`project-check`.
+[`app-case`](APP_CASE.md): it executes one *trusted, developer-selected local*
+Python function under an explicitly reviewed case and independently observes
+AWS state. The optional one-shot `invoke.fault` tests whether **the application
+itself** handles an SDK-boundary `ReadTimeoutError` (before-call or
+acknowledgement-lost after-success), with fault-activation evidence and a
+reproducible broken-versus-fixed SQS retry example. Synthetic `contract` and
+`project-check` results never claim this application proof. No source is
+executed through MCP or the PR contract gate; general repository tests and
+production AWS fault fidelity remain unsupported.
 
 Planning needs Python 3.10+ on PATH. Directory mode also needs Git and
 considers up to 256 tracked Python files, 128 KiB per file and 4 MiB total.
