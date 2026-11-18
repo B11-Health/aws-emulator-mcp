@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-18",
+  "testScope": "Project-maintained local CLI QA. Cached AWS Emulator image 1.0.511 in a transient Docker internal network (telemetry off), loopback-only forward. Generated per-run files were copied into owner-matched temporary test fixtures. Not an official-agent-skill installation test or independent package-signature re-verification.",
+  "probe": "Only sts.GetCallerIdentity; no app source or SDK writes; no real AWS credentials or AWS cloud connection",
+  "sdk": "Python 3.12; Botocore 1.44.2",
+  "verificationLimitations": "The tool validates TLS and signed emulator account only. No provenance certification, IAM, AWS production parity, or application behavior is established.",
+  "outcomes": {
+    "verified": {
+      "status": "identity_verified",
+      "localHealthPassed": true,
+      "accountIdentityVerified": true,
+      "credentialFilesRead": true,
+      "cloudCallsMade": false,
+      "sdkProbe": {
+        "operation": "sts.GetCallerIdentity",
+        "passed": true,
+        "attempted": true
+      }
+    },
+    "staleEphemeralCredentials": {
+      "status": "identity_unverified",
+      "localHealthPassed": true,
+      "accountIdentityVerified": false,
+      "credentialFilesRead": true,
+      "cloudCallsMade": false,
+      "sdkProbe": {
+        "operation": "sts.GetCallerIdentity",
+        "passed": false,
+        "attempted": true,
+        "reason": "sdk_request_failed"
+      }
+    },
+    "missingCredentials": {
+      "status": "identity_unverified",
+      "localHealthPassed": true,
+      "accountIdentityVerified": false,
+      "credentialFilesRead": false,
+      "cloudCallsMade": false,
+      "sdkProbe": {
+        "operation": "sts.GetCallerIdentity",
+        "passed": false,
+        "attempted": false,
+        "reason": "session_file_unavailable"
+      }
+    },
+    "mismatchedCA": {
+      "status": "unreachable",
+      "localHealthPassed": false,
+      "accountIdentityVerified": false,
+      "credentialFilesRead": false,
+      "cloudCallsMade": false
+    },
+    "differentPort": {
+      "status": "not_configured",
+      "localHealthPassed": false,
+      "accountIdentityVerified": false,
+      "credentialFilesRead": false,
+      "cloudCallsMade": false
+    },
+    "otherUserOwnedFiles": {
+      "status": "identity_unverified",
+      "localHealthPassed": true,
+      "accountIdentityVerified": false,
+      "credentialFilesRead": false,
+      "cloudCallsMade": false,
+      "sdkProbe": {
+        "operation": "sts.GetCallerIdentity",
+        "passed": false,
+        "attempted": false,
+        "reason": "session_file_untrusted"
+      }
+    }
+  },
+  "hostNetworkGuard": "Loopback-only destination enforced by worker and HTTP transport; container internal network. No public AWS requests performed.",
+  "dockerCleanup": "The temporary owned Docker container, network, and loopback forward are cleaned after QA; no existing user resources are stopped or modified."
+}

@@ -3,6 +3,9 @@
  * Healthy loopback HTTPS is NOT account identity, package provenance, or fidelity.
  */
 import https from 'node:https';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {lstatSync, readFileSync} from 'node:fs';
 import {homedir} from 'node:os';
 import path from 'node:path';
@@ -15,10 +18,11 @@ export function validPort(value) {
 }
 
 export function parseOfficialSessionArgs(args) {
-  let port = 9297, json = false, seenPort = false;
+  let port = 9297, json = false, identity = false, seenPort = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--json' && !json) { json = true; continue; }
+    if (arg === '--identity' && !identity) { identity = true; continue; }
     if (arg === '--port' && !seenPort) {
       const next = args[++i];
       if (typeof next !== 'string' || !/^[1-9][0-9]{0,4}$/.test(next))
@@ -28,9 +32,9 @@ export function parseOfficialSessionArgs(args) {
       seenPort = true;
       continue;
     }
-    throw Error('Usage: aws-emulator-mcp official-session [--port 9297] [--json]');
+    throw Error('Usage: aws-emulator-mcp official-session [--port 9297] [--identity] [--json]');
   }
-  return {port, json};
+  return {port, json, identity};
 }
 
 export function healthRequest({port, ca}) {
@@ -54,6 +58,71 @@ export function healthRequest({port, ca}) {
   });
 }
 
+
+const WORKER = fileURLToPath(new URL('../src/aws_emulator_mcp/official_session_identity.py', import.meta.url));
+const IDENTITY_FAILURES = new Set([
+  'invalid_port','invalid_certificate_digest','invalid_input',
+  'session_directory_untrusted','session_file_untrusted','session_file_changed',
+  'session_file_unavailable','session_certificate_changed',
+  'session_config_mismatch','emulator_credentials_unrecognized',
+  'botocore_unavailable','python_unsupported','network_target_blocked','unexpected_account',
+  'sdk_request_failed','probe_unverified',
+]);
+
+/** A separate trusted-local worker, never an MCP or PR source-execution path.
+ * Only this subprocess may inspect the official per-run emulator credentials.
+ * Its environment contains no inherited AWS profiles, endpoints, proxies,
+ * web identity providers, container credential sources, or real AWS keys.
+ */
+export function readOfficialIdentity({port, sessionDir, caSha256}) {
+  if (!validPort(port) || !/^[a-f0-9]{64}$/.test(caSha256))
+    return {status:'probe_unverified',accountVerified:false};
+  const payload = JSON.stringify({schemaVersion:1,port,sessionDir,caSha256});
+  const env = {PYTHONNOUSERSITE:'1',PYTHONDONTWRITEBYTECODE:'1'};
+  // PATH only locates the Python interpreter. No shell is used and Python -I
+  // prevents injection through Python startup and environment import paths.
+  if (process.env.PATH) env.PATH = process.env.PATH;
+  if (process.platform === 'win32') {
+    for (const key of ['SystemRoot','WINDIR','COMSPEC','PATHEXT'])
+      if (process.env[key]) env[key]=process.env[key];
+  }
+  const choices = process.platform === 'win32'
+    ? [['py','-3'],['python']]
+    : [['python3.12'],['python3.11'],['python3.10'],['python3']];
+  for (const [command, ...prefix] of choices) {
+    const completed = spawnSync(command,[...prefix,'-I','-B',WORKER],{
+      input:payload,encoding:'utf8',timeout:7500,maxBuffer:4096,
+      windowsHide:true,shell:false,env,
+    });
+    if (completed.error?.code === 'ENOENT') continue;
+    if (completed.error || completed.signal || ![0,1,2].includes(completed.status))
+      return {status:'probe_unverified',accountVerified:false};
+    let result;
+    try {result=JSON.parse(completed.stdout || '');}
+    catch {return {status:'probe_unverified',accountVerified:false};}
+    if (result?.schemaVersion !== 1 || result.operation !== 'sts.GetCallerIdentity' ||
+        typeof result.accountVerified !== 'boolean' ||
+        typeof result.credentialFilesRead !== 'boolean' ||
+        typeof result.sdkCallAttempted !== 'boolean')
+      return {status:'probe_unverified',accountVerified:false};
+    if (completed.status === 0 && result.status === 'verified' &&
+        result.accountVerified && result.sdkCallAttempted === true &&
+        result.credentialFilesRead === true)
+      return {status:'verified',accountVerified:true,
+        credentialFilesRead:true,sdkCallAttempted:true};
+    if (completed.status !== 0 && !result.accountVerified &&
+        IDENTITY_FAILURES.has(result.status)) {
+      // Try a different already-installed Python only if botocore was absent.
+      if (['botocore_unavailable','python_unsupported'].includes(result.status)) continue;
+      return {status:result.status,accountVerified:false,
+        credentialFilesRead:result.credentialFilesRead,
+        sdkCallAttempted:result.sdkCallAttempted};
+    }
+    return {status:'probe_unverified',accountVerified:false};
+  }
+  return {status:'botocore_unavailable',accountVerified:false};
+}
+
 function isRegularNoLink(file) {
   try {
     const stat = lstatSync(file);
@@ -68,7 +137,8 @@ function isDirectoryNoLink(file) {
   } catch { return false; }
 }
 
-export async function inspectOfficialSession({port=9297, home=homedir(), probe=healthRequest}={}) {
+export async function inspectOfficialSession({port=9297, home=homedir(), probe=healthRequest,
+  identity=false, identityRunner=readOfficialIdentity}={}) {
   if (!validPort(port)) throw Error('Port must be 1 to 65535');
   const base = {schemaVersion: 1, mode: 'official_session_read_only', port,
     endpoint: `https://${LOCAL_HOST}:${port}`, sessionDirectoryRecognized: false,
@@ -76,7 +146,9 @@ export async function inspectOfficialSession({port=9297, home=homedir(), probe=h
     dockerOperationsPerformed: false, cloudCallsMade: false, credentialFilesRead: false,
     accountIdentityVerified: false, officialPackageVerified: false,
     applicationBehaviorTested: false, productionAwsValidated: false,
-    limitations: 'Local TLS health only. Does not attach this MCP to the session, sign AWS API calls, prove package origin, test IAM/fidelity, or deploy to AWS.'};
+    limitations: identity
+      ? 'Only an explicit signed STS identity read against the official local session. No package origin, IAM/fidelity, application behavior or production AWS proof.'
+      : 'Local TLS health only. Does not attach this MCP to the session, sign AWS API calls, prove package origin, test IAM/fidelity, or deploy to AWS.'};
   const awsDir = path.join(home,'.aws');
   const emuDir = path.join(awsDir,'emulator');
   const sessionDir = path.join(emuDir,String(port));
@@ -96,9 +168,27 @@ export async function inspectOfficialSession({port=9297, home=homedir(), probe=h
   try {
     const response = await probe({port, ca});
     if (response?.statusCode === 200 && response.body?.trim() === 'ok') {
-      return {...base, status:'healthy', sessionDirectoryRecognized: true,
+      const healthy = {...base, status:'healthy', sessionDirectoryRecognized: true,
         localHealthPassed: true,
         nextAction:'Use the official AWS SDK/CLI configuration and verify sts.GetCallerIdentity account 000000000000 before any AWS API test. This MCP still uses independent disposable Docker labs.'};
+      if (!identity) return healthy;
+      // Health is not identity: deliberately run a second, separately approved
+      // local-only process for the one allowlisted STS operation.
+      let observed;
+      try {observed = await identityRunner({port,sessionDir,
+        caSha256:createHash('sha256').update(ca).digest('hex')});}
+      catch {observed = {status:'probe_unverified',accountVerified:false};}
+      const ok = observed?.status === 'verified' && observed.accountVerified === true;
+      const reason = IDENTITY_FAILURES.has(observed?.status)
+        ? observed.status : 'probe_unverified';
+      return {...healthy, status: ok ? 'identity_verified':'identity_unverified',
+        accountIdentityVerified:ok, credentialFilesRead: observed?.credentialFilesRead === true,
+        sdkProbe: {operation:'sts.GetCallerIdentity',passed:ok,
+          attempted:observed?.sdkCallAttempted === true,
+          ...(ok ? {} : {reason})},
+        nextAction: ok
+          ? 'The local emulator account is verified. Application cases still run in separate disposable Docker labs.'
+          : 'Official local STS identity could not be verified. Review the per-run session credentials, configuration, CA, and installed Python botocore; do not run non-STS tests.'};
     }
     return {...base, status:'unhealthy', sessionDirectoryRecognized:true,
       nextAction:'The loopback health response was not the documented 200 OK. Check the official emulator logs.'};
@@ -113,6 +203,7 @@ export function formatOfficialSession(report) {
     `Official local session on ${report.endpoint}: ${report.status}`,
     `CA/session recognized: ${report.sessionDirectoryRecognized ? 'yes':'no'}`,
     `Verified local HTTPS health: ${report.localHealthPassed ? 'yes':'no'}`,
-    'No Docker started; no credential files read; no AWS cloud calls.',
+    ...(report.sdkProbe ? [`Signed local STS identity: ${report.accountIdentityVerified ? 'verified account 000000000000':'unverified'}`] : []),
+    `No Docker started; ${report.credentialFilesRead ? 'official ephemeral credentials read only in isolated worker':'no credential files read'}; no AWS cloud calls.`,
     report.nextAction, `Limits: ${report.limitations}`].join('\n');
 }

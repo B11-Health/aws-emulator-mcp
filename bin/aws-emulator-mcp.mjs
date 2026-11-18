@@ -47,7 +47,7 @@ Commands:
   project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
   project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
-  official-session [--port 9297] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
+  official-session [--port 9297] [--identity] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
   mcp              Run 29 curated + 10 Docker-only tools via local MCP
@@ -765,11 +765,11 @@ async function main() {
   if (command === 'official-session') {
     let parsed;
     try { parsed = parseOfficialSessionArgs(args); }
-    catch { fail('Usage: aws-emulator-mcp official-session [--port 9297] [--json]', 2); }
+    catch { fail('Usage: aws-emulator-mcp official-session [--port 9297] [--identity] [--json]', 2); }
     const report = await inspectOfficialSession(parsed);
     stdout.write(parsed.json ? JSON.stringify(report, null, 2) + '\n'
       : formatOfficialSession(report) + '\n');
-    if (!report.localHealthPassed) process.exitCode = 1;
+    if (!report.localHealthPassed || (parsed.identity && !report.accountIdentityVerified)) process.exitCode = 1;
     return;
   }
   if (command === 'preflight') {
