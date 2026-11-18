@@ -81,6 +81,19 @@ Claude Desktop preview, and keyboard/screen-reader testing of the Demo Studio.
 Maintainers can assign scoped tasks without granting push or admin privileges.
 Independent user reports are distinguished from project-maintained CI.
 
+## Share bounded app-proof evidence with independent agent evaluators
+
+For developers researching AWS agent benchmarks, the recorded SQS/DynamoDB
+before-and-after example exports a [framework-neutral evaluation handoff](docs/AGENT_EVALUATION.md):
+
+```sh
+npm run agent-eval:recorded
+```
+
+This **reads existing, project-maintained evidence** without Docker, source
+execution or AWS calls. It is **not AWS-Bench compatibility**, an AWS-endorsed
+score or a substitute for independent agent evaluation.
+
 ## Why another MCP if AWS already supports agents?
 
 AWS Emulator already works with AWS SDKs, the CLI and coding agents. **Use it

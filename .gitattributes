@@ -11,3 +11,9 @@ examples/architecture/review/*.json text eol=lf
 # SHA256 identities of locally selected app source must match across platforms.
 examples/byo-order-handler/*.py text eol=lf
 docs/evidence/byo-handler-aws-emulator-1.0.385.json text eol=lf
+
+# Recorded application evidence and its exact source/case hashes must remain stable.
+examples/app-case/*.py text eol=lf
+examples/app-case/*.json text eol=lf
+docs/evidence/app-case-*.json text eol=lf
+examples/agent-eval/*.json text eol=lf
