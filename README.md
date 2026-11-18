@@ -128,6 +128,12 @@ It never turns selected code into an MCP source-execution endpoint.
 node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json
 ```
 
+For a single literal S3, SQS or DynamoDB write in **your own trusted Python
+handler**, optional `--draft-proof ./my-proof.json` creates a review-required
+positive case **and** a separate deliberately inverted expected-red control.
+The files require explicit manual editing and independent approval; the scanner
+never imports your code or starts Docker.
+
 [**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
 
 The feature is a **draft**, not the pinned beta.15 release.
