@@ -54,6 +54,8 @@
     "docs/assets/demos/getting-started-poster.jpg",
     "docs/assets/demos/linkedin-launch-poster.jpg",
     "src/aws_emulator_mcp/contract_case.py",
+    "src/aws_emulator_mcp/project_plan.py",
+    "examples/contracts/dynamodb-put-get.json",
     "examples/contracts/s3-write-read.json",
     "docs/CONTRACT_TESTING.md",
     "examples/contracts/ec2-vpc.json",
