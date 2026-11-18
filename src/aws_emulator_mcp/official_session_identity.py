@@ -66,14 +66,27 @@ def read_private_file(file: Path, limit: int) -> bytes:
         raise RejectedSession("session_file_unavailable") from None
 
 
+def trusted_session_directory(directory: Path) -> bool:
+    """Trust only real, owner-controlled per-run directories (POSIX)."""
+    try:
+        details = directory.lstat()
+        return (stat.S_ISDIR(details.st_mode) and
+                (os.name == "nt" or
+                 (details.st_uid == os.geteuid() and
+                  not (details.st_mode & (stat.S_IWGRP | stat.S_IWOTH)))))
+    except OSError:
+        return False
+
+
 def checked_session(session_dir: Path, port: int, ca_sha256: str):
     """Read only the official per-run files, not real profiles or env credentials."""
     try:
         if (session_dir.name != str(port) or not session_dir.is_absolute() or
                 any(part == ".." for part in session_dir.parts) or
-                not session_dir.is_dir() or session_dir.is_symlink() or
-                session_dir.parent.name != "emulator" or session_dir.parent.is_symlink() or
-                session_dir.parent.parent.name != ".aws" or session_dir.parent.parent.is_symlink()):
+                session_dir.parent.name != "emulator" or
+                session_dir.parent.parent.name != ".aws" or
+                not all(trusted_session_directory(directory) for directory in (
+                    session_dir.parent.parent, session_dir.parent, session_dir))):
             raise RejectedSession("session_directory_untrusted")
     except (OSError, ValueError):
         raise RejectedSession("session_directory_untrusted") from None
@@ -152,6 +165,12 @@ def check_identity(reply):
     """Never expose account/ARN returned by an unverified endpoint."""
     if (not isinstance(reply, dict) or reply.get("Account") != EMULATOR_ACCOUNT or
             reply.get("Arn") != "arn:aws:iam::000000000000:user/emulator"):
+        raise RejectedSession("unexpected_account")
+    # Emulator implementations may use different STS UserId formats; require
+    # a bounded, visible identifier without assuming a particular prefix.
+    user_id = reply.get("UserId")
+    if (not isinstance(user_id, str) or not 1 <= len(user_id) <= 128 or
+            not all(char.isprintable() and not char.isspace() for char in user_id)):
         raise RejectedSession("unexpected_account")
 
 

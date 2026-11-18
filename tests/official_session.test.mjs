@@ -127,6 +127,31 @@ test('explicit identity opt-in follows verified health and reports only bounded 
   });
 });
 
+test('verified worker claims are rejected when SDK attempt or credential read evidence is missing',async()=>{
+  await fixture(async({home})=>{
+    for(const evidence of [
+      {sdkCallAttempted:false,credentialFilesRead:true},
+      {sdkCallAttempted:true,credentialFilesRead:false},
+      {sdkCallAttempted:false,credentialFilesRead:false},
+      {sdkCallAttempted:true},
+      {credentialFilesRead:true},
+    ]) {
+      const forged={status:'verified',accountVerified:true,...evidence};
+      const report=await inspectOfficialSession({home,identity:true,
+        probe:async()=>({statusCode:200,body:'ok'}),
+        identityRunner:async()=>forged});
+      assert.equal(report.localHealthPassed,true);
+      assert.equal(report.status,'identity_unverified');
+      assert.equal(report.accountIdentityVerified,false);
+      assert.equal(report.sdkProbe.passed,false);
+      assert.equal(report.sdkProbe.reason,'probe_unverified');
+      assert.equal(report.sdkProbe.attempted,evidence.sdkCallAttempted===true);
+      assert.equal(report.credentialFilesRead,evidence.credentialFilesRead===true);
+      assert.equal(report.cloudCallsMade,false);
+    }
+  });
+});
+
 test('invalid STS account never passes even when HTTPS health is healthy',async()=>{
   await fixture(async({home})=>{
     const report=await inspectOfficialSession({home,identity:true,

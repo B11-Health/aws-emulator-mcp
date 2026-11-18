@@ -178,7 +178,8 @@ export async function inspectOfficialSession({port=9297, home=homedir(), probe=h
       try {observed = await identityRunner({port,sessionDir,
         caSha256:createHash('sha256').update(ca).digest('hex')});}
       catch {observed = {status:'probe_unverified',accountVerified:false};}
-      const ok = observed?.status === 'verified' && observed.accountVerified === true;
+      const ok = observed?.status === 'verified' && observed.accountVerified === true &&
+        observed.sdkCallAttempted === true && observed.credentialFilesRead === true;
       const reason = IDENTITY_FAILURES.has(observed?.status)
         ? observed.status : 'probe_unverified';
       return {...healthy, status: ok ? 'identity_verified':'identity_unverified',

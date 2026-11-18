@@ -50,9 +50,11 @@ node bin/aws-emulator-mcp.mjs official-session --port 9299 --identity --json
 Unlike the default **health-only** check, `--identity` permits a dedicated
 trusted-local Python worker to read **only this emulator run's**
 `~/.aws/emulator/<port>/{config,ca.pem,emulator_credentials}`. It refuses
-symlinks, nonregular, oversized, stale and (on POSIX) files owned by
-another user or with overly broad permissions. For safety the worker currently recognizes only AWS Emulator's documented
-`EMULATOR`-prefixed, ephemeral credential format, not AWS cloud credentials.
+symlinks, nonregular, oversized, stale and (on POSIX) files or their
+`.aws/emulator/<port>` directory chain owned by another user or with
+unsafe group/world-write permissions. For safety, the worker currently
+recognizes only AWS Emulator's documented `EMULATOR`-prefixed ephemeral
+credential format, not AWS cloud credentials.
 If AWS changes that format, the probe fails closed pending an explicit update.
 No session file, key, secret, local home path, response payload, ARN or
 certificate body is returned.
@@ -70,21 +72,28 @@ transport also refuses endpoint redirects. TLS verification stays on and
 retries are disabled.
 
 The only SDK method callable by this feature is **zero-argument**
-`sts.GetCallerIdentity`. Success requires its account to be `000000000000`
-and its expected emulator ARN to match. `accountIdentityVerified: true` and
-`sdkProbe.passed: true` are reported only after both the HTTPS health check
-and signed STS check pass. The command returns nonzero for unavailable
-Botocore, auth-off sessions, stale credentials, unexpected account, altered
-certificate, redirects, wrong port or transport error. It does **not** fall
+`sts.GetCallerIdentity`. Success requires its account to be `000000000000`,
+its expected emulator ARN to match and a nonempty, bounded, visible `UserId`.
+The worker does not assume a particular IAM-style or emulator-specific UserId
+prefix. Both `accountIdentityVerified: true` and `sdkProbe.passed: true` require
+successful health and signed STS checks; the final verdict also requires
+observed SDK-call and per-run credential-read evidence. The command returns
+nonzero for unavailable Botocore, auth-off sessions, stale credentials,
+unexpected account, altered certificate, redirects, wrong port or transport
+error. It does **not** fall
 back to production credentials or a cloud endpoint. The health-only mode
 still does not open credential files or require Python.
 
 A [project-maintained local run record](evidence/official-session-identity-aws-emulator-1.0.511.json)
 shows successful identity verification on AWS Emulator 1.0.511 and failures
 for wrong synthetic ephemeral keys, missing credentials, a CA mismatch,
-other-user-owned files, and an unconfigured port. The QA used a previously built emulator image, not an
-end-to-end installation through AWS's official agent skill; independent
-third-party adoption and host-platform matrix remain unverified.
+other-user-owned files, and an unconfigured port. The QA used a previously
+built emulator image, not an end-to-end installation through AWS's official
+agent skill; independent third-party adoption and host-platform matrix remain
+unverified. The
+recorded signed-emulator run predates the additional UserId and parent-directory
+hardening; this follow-up verifies those guards with synthetic tests rather
+than claiming a new official-skill E2E run.
 
 **Safety boundary:** This is local CLI only; the remote MCP server cannot
 invoke it or execute source. No user-defined service, operation, URL, CA path,
