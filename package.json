@@ -41,6 +41,7 @@
     "docs/APP_DEBUGGING.md",
     "docs/evidence/app-debug-aws-emulator-1.0.365.json",
     "docs/ONBOARDING.md",
+    "docs/FIRST_RUN.md",
     "docs/DEMO_GALLERY.md",
     "docs/onboarding/index.html",
     "docs/onboarding/style.css",
@@ -77,6 +78,7 @@
     "scripts/preflight.mjs",
     "scripts/image_identity.mjs",
     "scripts/offline_trial.mjs",
+    "scripts/onboard.mjs",
     "docs/CI_CONTRACT_GATE.md",
     "examples/ci-contracts/01-s3-roundtrip.json",
     "examples/ci-contracts/02-sqs-lost-ack.json",
@@ -148,7 +150,7 @@
     "python-handler-testing"
   ],
   "scripts": {
-    "test": "node --test tests/node_cli.test.mjs tests/byo_compare.test.mjs tests/preflight.test.mjs tests/image_identity.test.mjs tests/offline_trial.test.mjs tests/demo_studio.test.mjs tests/desktop_bundle.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs tests/project_check.test.mjs tests/app_case_compare.test.mjs tests/app_case_inspect.test.mjs",
+    "test": "node --test tests/node_cli.test.mjs tests/byo_compare.test.mjs tests/preflight.test.mjs tests/image_identity.test.mjs tests/offline_trial.test.mjs tests/onboard.test.mjs tests/demo_studio.test.mjs tests/desktop_bundle.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs tests/project_check.test.mjs tests/app_case_compare.test.mjs tests/app_case_inspect.test.mjs",
     "pack:check": "npm pack --dry-run --json",
     "qa": "npm test && npm run pack:check"
   }

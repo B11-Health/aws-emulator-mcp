@@ -12,6 +12,7 @@ import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compa
 import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
+import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onboard.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
 
@@ -39,6 +40,7 @@ function help() {
 Usage: aws-emulator-mcp <command>
 
 Commands:
+  onboard [--offline] [--json]  First verified result + optional read-only Docker guidance
   try [--json]     Verify 7 architecture artifacts offline in a temporary workspace
   project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
   project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
@@ -649,6 +651,19 @@ async function main() {
     // Exit nonzero for untested calls, failed probes or review gaps after --run.
     if (options.includes('--run') && !['api_probes_passed', 'assertion_challenges_passed'].includes(report.status))
       process.exitCode = 1;
+    return;
+  }
+  if (command === 'onboard') {
+    let selected;
+    try { selected = parseOnboardArgs(args); }
+    catch { fail('Usage: aws-emulator-mcp onboard [--offline] [--json]', 2); }
+    const report = runOnboarding({offlineOnly:selected.offline, image:IMAGE,
+      fromCheckout: path.resolve(process.cwd()) === ROOT &&
+        !ROOT.split(path.sep).includes('node_modules'),
+      expectedImageDigest:() => imageSourceDigest(ROOT)});
+    stdout.write(selected.json ? JSON.stringify(report, null, 2) + '\n'
+      : formatOnboarding(report));
+    if (!report.passed) process.exitCode = 1;
     return;
   }
   if (command === 'try') {
