@@ -148,7 +148,33 @@ node bin/aws-emulator-mcp.mjs app-debug compare --json</code></pre><button type=
   <div><span class="proof-symbol">↗</span><h3>Your test matters</h3><p>Try the offline command, then one Docker-backed experiment. Reports saying “this doesn’t help me because…” are valuable too.</p><a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">Send a short field report ↗</a></div>
  </div>
 </section>
+<section class="section wrap" id="faq">
+ <div class="section-header"><p class="eyebrow">06 / BEFORE YOU TRUST A GREEN TEST</p><h2>Four questions worth asking.</h2>
+ <p>Short answers grounded in local tests and documented boundaries. The emulator is evolving; always evaluate the exact release and operations you need.</p></div>
+ <div class="faq-list">
+  <details>
+   <summary>Does this replace AWS or validate IAM permissions?</summary>
+   <div class="faq-answer"><p><strong>No.</strong> Our emulated S3, DynamoDB and SQS workflows verify specific behavior; they do not establish production AWS parity or enforce IAM policies like real AWS. A CloudFormation CREATE_COMPLETE result is not enough—read back the resource using its service API and preserve a small real-AWS test suite for permission-sensitive paths.</p>
+   <p>An <a href="https://www.reddit.com/r/aws/comments/1xua13r/i_tested_aws_emulator_against_18_services_last/">independent 18-service report</a> documented gaps in an earlier emulator version (1.0.322). That version-specific report is useful for choosing tests, <strong>not</strong> a score for the current release.</p></div>
+  </details>
+  <details>
+   <summary>Can Claude Code, Copilot, or other coding agents use it?</summary>
+   <div class="faq-answer"><p><strong>Yes, with the appropriate local integration.</strong> AWS Emulator itself can be used through its official agent skill or the native AWS SDK/CLI; you do not need this adapter for that. Our optional MCP adapter exposes bounded local stdio tools. The <a href="#connect">guided connection setup</a> shows current VS Code Copilot configuration and an unsigned Claude Desktop extension preview.</p>
+   <p>Our CI verifies official Python and TypeScript MCP SDK clients, but a complete independent Claude Desktop installation and real tool call has <strong>not yet been verified</strong>. A configuration file alone is not a working client session.</p></div>
+  </details>
+  <details>
+   <summary>Will this run on a normal laptop?</summary>
+   <div class="faq-answer"><p><strong>The first, offline step is lightweight:</strong> Node.js 20+ and Git, no Docker or AWS account. Emulated AWS API calls additionally need a local Docker Engine or Docker Desktop running Linux containers, a substantial signed upstream package download and image build, and enough disk headroom. We do not claim a universal laptop RAM or startup-time minimum.</p>
+   <p>On newer repository source, read-only <code>preflight --json</code> reports host working-volume space and cached image freshness; on a host-visible Linux Docker data root it may also report that volume. These are <strong>advisories, not Docker Desktop VM capacity measurements</strong>, and are not included in the immutable beta.15 tag. <a href="#install">Start with the zero-Docker command</a>.</p></div>
+  </details>
+  <details>
+   <summary>Why use an MCP adapter instead of the native AWS SDK?</summary>
+   <div class="faq-answer"><p><strong>Use the native SDK/CLI when it is simpler.</strong> The MCP layer adds value when a coding assistant needs a narrow, auditable tool interface for reproducing an order-processing bug, comparing two trusted local handlers, inspecting cleanup assertions, or reviewing an infrastructure blueprint. The adapter does not deploy CloudFormation to AWS or make unsupported emulator services work.</p>
+   <p>See the <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/WHY_MCP.md">honest comparison</a>, then try one concrete example. We welcome a <a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">sanitized first-run report</a>, especially if the native tools serve you better.</p></div>
+  </details>
+ </div>
+</section>
 </main>
-<footer class="footer"><div class="wrap footer-content"><div><strong>AWS Emulator MCP</strong><small>Independent developer tool · MIT · v0.4.0-beta.15</small></div><div><a href="https://github.com/B11-Health/aws-emulator-mcp">Source</a><a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15">Release</a><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/SECURITY.md">Security</a><a href="https://github.com/B11-Health/aws-emulator-mcp/issues/26">Feedback</a></div></div></footer>
+<footer class="footer"><div class="wrap footer-content"><div><strong>AWS Emulator MCP</strong><small>Independent developer tool · MIT · v0.4.0-beta.15</small></div><div><a href="#faq">FAQ</a><a href="https://github.com/B11-Health/aws-emulator-mcp">Source</a><a href="https://github.com/B11-Health/aws-emulator-mcp/releases/tag/v0.4.0-beta.15">Release</a><a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/SECURITY.md">Security</a><a href="https://github.com/B11-Health/aws-emulator-mcp/issues/26">Feedback</a></div></div></footer>
 <script src="demo-studio.js" defer></script>
 </body></html>

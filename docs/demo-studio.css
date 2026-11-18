@@ -53,3 +53,17 @@ h1,h2,h3,h4,p{margin-top:0}h1{font-size:clamp(2.7rem,4.8vw,4.6rem);line-height:1
 .client-warning{padding:14px 18px;background:#33291e;border:1px solid #76583b;border-radius:10px;color:#f9d7b8;font-size:.86rem;margin:22px 0 13px;max-width:900px}
 .client-panel .proof-link{display:inline-block;margin:4px 0 0;padding:0}
 @media(max-width:760px){.client-tabs{grid-template-columns:1fr}.client-tabs button{min-height:60px;padding:12px 18px;border-bottom:1px solid var(--border);border-left:3px solid transparent;border-right:0}.client-tabs button[aria-selected="true"]{border-left-color:var(--teal);border-bottom-color:var(--border)}.client-panel{padding:24px 21px;min-height:0}.client-panel ol{gap:11px;font-size:.88rem}.client-panel h3{font-size:1.7rem}}
+
+/* Native details make the trust-boundary FAQ usable without scripts. */
+.faq-list{display:grid;gap:12px;max-width:1050px}
+.faq-list details{background:#101f2c;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.faq-list details[open]{border-color:#477f80;background:#122534}
+.faq-list summary{cursor:pointer;padding:18px 25px;font-size:1.02rem;line-height:1.5;font-weight:700;letter-spacing:-.02em}
+.faq-list summary:hover{color:var(--teal)}
+.faq-list summary:focus-visible{outline:3px solid var(--teal);outline-offset:-5px}
+.faq-answer{border-top:1px solid var(--border);padding:20px 25px 11px;color:var(--muted);font-size:.9rem;max-width:100%}
+.faq-answer p{max-width:900px;margin-bottom:1rem}
+.faq-answer strong{color:var(--ink)}
+.faq-answer a{color:var(--teal);text-underline-offset:3px}
+.faq-answer code{font:500 .9em var(--mono);overflow-wrap:anywhere;color:#dafff0}
+@media(max-width:600px){.faq-list summary{padding:15px 18px;font-size:.93rem}.faq-answer{padding:18px 17px 8px;font-size:.86rem}}
