@@ -16,13 +16,9 @@ cd aws-emulator-mcp
 node bin/aws-emulator-mcp.mjs onboard
 ```
 
-While the change is still a draft PR, preview its branch directly:
-
-```sh
-git clone --depth 1 --branch feat/onboarding-first-win-20261118 https://github.com/B11-Health/aws-emulator-mcp.git
-cd aws-emulator-mcp
-node bin/aws-emulator-mcp.mjs onboard
-```
+Before this change is merged, use the preview checkout linked in
+[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71),
+rather than assuming the default branch already supports `onboard`.
 
 After a future version containing this command is installed globally, run
 `aws-emulator-mcp onboard` instead; its follow-up commands will use the
@@ -97,8 +93,9 @@ IAM enforcement, or release readiness.
 
 The official [AWS Emulator agent skill](https://docs.aws.amazon.com/emulator/latest/userguide/getting-started-agent.html)
 can install and configure AWS's local emulator. Our project is **independent**;
-the [AWS-native companion proposal](https://github.com/B11-Health/aws-emulator-mcp/pull/69) is still a separate
-draft PR, not a merged capability or AWS partnership.
+the [AWS-native companion work](https://github.com/B11-Health/aws-emulator-mcp/pull/69)
+is reviewed separately and does not establish an AWS partnership or a shared
+execution backend.
 
 ## 4. Help improve this first run
 

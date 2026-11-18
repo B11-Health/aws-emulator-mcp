@@ -46,9 +46,9 @@ It validates **seven generated architecture artifacts** (not an AWS API
 test), checks Docker readiness read-only where available, and **never**
 starts a container, installs software or executes application source.
 Use `onboard --offline` to skip Docker probes or `onboard --json` to capture
-a sanitized first-run report. For a draft PR preview, clone
-[the onboarding branch](https://github.com/B11-Health/aws-emulator-mcp/tree/feat/onboarding-first-win-20261118)
-instead of the current `master`.
+a sanitized first-run report. This command was introduced in
+[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71) and is
+**not in the pinned beta.15 release**.
 
 [**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
 
