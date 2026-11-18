@@ -144,6 +144,8 @@ general-purpose application runner or cloud deployment tool.
 
 [**Compare native AWS Emulator vs this adapter: concrete tasks, commands and tradeoffs.**](docs/WHY_MCP.md)
 
+**Five-minute hands-on (draft):** [official AWS skill to independent application proof](docs/OFFICIAL_SKILL_TO_APP_PROOF_5MIN.md) combines AWS-native setup/fidelity checks with a separate, bounded red/green Python application test. Requires prerequisites and a ready local Docker image; not in beta.15.
+
 **Prefer the AWS-native path.** The official agent skill owns installation and
 SDK setup; our complementary [AWS session check and application-proof workflow](docs/AWS_COMPANION.md)
 recognize a running local emulator without reading AWS credentials. The
