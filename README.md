@@ -30,6 +30,28 @@
   <a href="SUPPORT.md">Get help</a>
 </p>
 
+## One command to get your first result
+
+In a **development checkout containing the new `onboard` command** (not
+the immutable v0.4.0-beta.15 release), beginners can verify a real local
+result and see their next steps **without an AWS account or Docker build**:
+
+```sh
+git clone --depth 1 https://github.com/B11-Health/aws-emulator-mcp.git
+cd aws-emulator-mcp
+node bin/aws-emulator-mcp.mjs onboard
+```
+
+It validates **seven generated architecture artifacts** (not an AWS API
+test), checks Docker readiness read-only where available, and **never**
+starts a container, installs software or executes application source.
+Use `onboard --offline` to skip Docker probes or `onboard --json` to capture
+a sanitized first-run report. This command was introduced in
+[PR #71](https://github.com/B11-Health/aws-emulator-mcp/pull/71) and is
+**not in the pinned beta.15 release**.
+
+[**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
+
 ## See the proof in 90 seconds
 
 [![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
