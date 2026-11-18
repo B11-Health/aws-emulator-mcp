@@ -100,6 +100,12 @@ export function validateEvidence(record) {
   if (failed.length !== 1 || !reg || failed[0].name !== reg.stepId + '.' + reg.path) {
     return no('Before run did not fail exactly the named regression assertion');
   }
+  // The SQS snapshot was published with raw before/after SDK cleanup steps.
+  // Do not downgrade it to an unverifiable comparison-only record by deleting
+  // both raw records. The separate S3 snapshot was published summary-only.
+  if (c.case === 'sqs-idempotent-retry' && (!record.before || !record.after)) {
+    return no('Saved SQS run is missing required raw cleanup evidence');
+  }
   // Some saved records contain full raw before/after summaries and others only
   // the sanitized comparison. Validate those additional summaries when present.
   if ((record.before && (record.before.caseSha256 !== c.caseSha256 ||
