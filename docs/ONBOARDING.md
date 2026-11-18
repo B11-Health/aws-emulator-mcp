@@ -66,8 +66,19 @@ written to stdout. Invalid flags exit **2**. If the local daemon is ready,
 it exits **0**; the first emulator command may still require a sizable signed
 image download. A cached Docker tag is **not** proof it matches the current
 source checkout; on `master`, the CLI compares an embedded build-input digest
-before launching and rebuilds on a mismatch. The check **cannot** verify Docker disk capacity, upstream
-service fidelity or production IAM.
+before launching and rebuilds on a mismatch.
+
+**Additional diagnostics on the newer `master` branch (not in the immutable
+beta.15 tag):** `preflight --json` includes a `hostWorkspaceDisk` advisory,
+`imageSourceStatus`, and `imageReusable`. The host working-volume measurement
+can warn when it has under **10 GiB** of free space, but this is a **conservative
+planning advisory, not a minimum emulator requirement**. Docker Desktop may
+store its images in a different VM/disk, so a healthy host-space result **does not
+verify actual Docker storage capacity**. With a cached tag, preflight now checks
+the local Docker-copy source fingerprint and warns if an existing image would
+be rebuilt. The fingerprint is only a local cache-coherency check, **not**
+proof of an authentic package, emulator parity, IAM enforcement or upstream
+service fidelity. Preflight performs no download, build, prune or cloud call.
 
 On Windows PowerShell, the same two `node bin/aws-emulator-mcp.mjs preflight`
 commands work from the repository checkout. For genuine first-run feedback,

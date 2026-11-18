@@ -17,6 +17,14 @@ node bin/aws-emulator-mcp.mjs preflight --json
 
 The first command verifies generated files, **not AWS API behavior**. Preflight exits nonzero when Docker is missing; that is an expected, actionable prerequisite report.
 
+**On the newer repository `master` branch** (the beta.15 tag remains unchanged),
+preflight additionally reports a **read-only host working-volume free-space
+advisory** and, if a local Docker image tag already exists, whether its
+source fingerprint matches the checkout. Under 10 GiB of host working-volume
+free space is only a **planning warning**, not a launch blocker or a
+measurement of Docker Desktop's VM/disk capacity. It never prunes or downloads
+anything; no output verifies AWS production behavior.
+
 ## VS Code: native Copilot harness (recommended)
 
 ~~~bash

@@ -3,20 +3,23 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
+import { inspectPreflight, inspectWorkspaceDisk, printPreflight } from '../scripts/preflight.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bin = path.join(root, 'bin/aws-emulator-mcp.mjs');
 const localContext = JSON.stringify('unix:///var/run/docker.sock') + '\n';
 const socket = 'unix:///var/run/docker.sock';
-function fakeRun({cli = true, context = localContext, info = 'linux|25.0.16\n', image = false} = {}) {
+function fakeRun({cli = true, context = localContext, info = 'linux|25.0.16\n', image = false, label = 'a'.repeat(64)} = {}) {
   const calls = [];
   const run = (args) => {
     calls.push(args.join(' '));
     if (args[0] === '--version') return {status: cli ? 0 : 1, stdout: 'Docker version 25.0.16'};
     if (args[0] === 'context') return {status: 0, stdout: context};
     if (args[0] === 'info') return {status: info === null ? 1 : 0, stdout: info ?? ''};
-    if (args[0] === 'image') return {status: image ? 0 : 1, stdout: image ? 'sha256:123' : ''};
+    if (args[0] === 'image') {
+      if (args.at(-1).includes('Config.Labels')) return {status: label === null ? 1 : 0, stdout: label ?? ''};
+      return {status: image ? 0 : 1, stdout: image ? 'sha256:123' : ''};
+    }
     throw Error('Unexpected process call');
   };
   return {run, calls};
@@ -93,7 +96,7 @@ test('uncached image requires a later build, not a failed preflight', () => {
   assert.equal(report.imageCached,false);
   assert.equal(report.checks.image.passed,false);
   assert.match(report.checks.image.reason,/requires download/);
-  assert.match(report.limitations,/Cached tag does not verify source identity/);
+  assert.match(report.limitations,/Cached image reuse requires a matching source fingerprint/);
 });
 
 test('Node 18 cannot run this package even when Docker is available', () => {
@@ -120,4 +123,91 @@ test('CLI JSON is available without Docker and rejects options before probes', (
   assert.equal(invalid.status,2);
   assert.equal(invalid.stdout,'');
   assert.match(invalid.stderr,/Usage: aws-emulator-mcp preflight/);
+});
+
+
+test('host working-volume space is advisory and never claims Docker Desktop VM capacity', () => {
+  const statfsLow = () => ({bsize:1024n,bavail:9n * 1024n * 1024n});
+  const sample = inspectWorkspaceDisk(statfsLow);
+  assert.equal(sample.freeGiB,9);
+  assert.equal(sample.lowSpaceAdvisory,true);
+  assert.equal(sample.dockerDataCapacityVerified,false);
+  const {run,calls} = fakeRun({image:true});
+  const report = inspectPreflight({nodeVersion:'22.0.0',dockerHost:'',run,statfs:statfsLow});
+  assert.equal(report.emulatorReady,true);
+  assert.equal(report.hostWorkspaceDisk.lowSpaceAdvisory,true);
+  assert.match(printPreflight(report),/below 10 GiB on host working volume/);
+  assert.match(printPreflight(report),/Docker storage NOT verified/);
+  assert.deepEqual(calls.map(x=>x.split(' ')[0]),['--version','context','info','image']);
+});
+
+test('host disk probe failure is nonfatal, read-only, and never exposes a local path', () => {
+  const unknown = inspectWorkspaceDisk(() => { throw Error('SECRET_PRIVATE_HOME_PATH'); });
+  assert.equal(unknown.freeGiB,null);
+  assert.equal(unknown.lowSpaceAdvisory,null);
+  assert.equal(unknown.dockerDataCapacityVerified,false);
+  assert.doesNotMatch(JSON.stringify(unknown),/SECRET_PRIVATE_HOME_PATH/);
+  for(const bad of [
+    {bsize:0n,bavail:123n}, {bsize:512n,bavail:-1n},
+    {bsize:123456789123456789n,bavail:123456789123456789n}
+  ])assert.equal(inspectWorkspaceDisk(()=>bad).freeGiB,null);
+  const {run} = fakeRun({cli:false});
+  const r=inspectPreflight({run,statfs:()=>{throw Error('SECRET_PRIVATE_HOME_PATH')}});
+  assert.equal(r.emulatorReady,false);
+  assert.doesNotMatch(JSON.stringify(r),/SECRET_PRIVATE_HOME_PATH/);
+});
+
+test('valid cached image source fingerprint makes preflight explicitly report reuse', () => {
+  const hash = 'a'.repeat(64);
+  const {run,calls} = fakeRun({image:true,label:hash});
+  const report=inspectPreflight({nodeVersion:'22.0.0',dockerHost:'',run,
+    expectedImageDigest:()=>hash,statfs:()=>({bsize:4096n,bavail:3n*1024n*1024n})});
+  assert.equal(report.imageCached,true);
+  assert.equal(report.imageReusable,true);
+  assert.equal(report.imageSourceStatus,'matched');
+  assert.equal(report.emulatorReady,true);
+  assert.match(printPreflight(report),/matches current checkout/);
+  assert.equal(calls.filter(x=>x.startsWith('image inspect')).length,2);
+  assert.doesNotMatch(JSON.stringify(report),new RegExp(hash));
+});
+
+test('stale cached tag is not treated as reusable and next command rebuilds it', () => {
+  const {run,calls} = fakeRun({image:true,label:'b'.repeat(64)});
+  const report=inspectPreflight({nodeVersion:'22.0.0',dockerHost:'',run,
+    expectedImageDigest:()=> 'a'.repeat(64)});
+  assert.equal(report.imageCached,true);
+  assert.equal(report.imageReusable,false);
+  assert.equal(report.imageSourceStatus,'mismatched');
+  assert.equal(report.checks.image.passed,false);
+  assert.match(report.checks.image.reason,/will rebuild/);
+  assert.match(printPreflight(report),/rebuild needed/);
+  assert.equal(report.emulatorReady,true);
+  assert.ok(calls.every(x=>!/^build|^pull|^run|^exec/.test(x)));
+});
+
+test('unverified image label or unreadable local digest never authorizes reuse', () => {
+  for(const label of [null,'<no value>','zzzzzzzz']) {
+    const {run}=fakeRun({image:true,label});
+    const report=inspectPreflight({nodeVersion:'22.0.0',dockerHost:'',run,
+      expectedImageDigest:()=> 'a'.repeat(64)});
+    assert.equal(report.imageReusable,false);
+    assert.equal(report.imageSourceStatus,'unverified');
+    assert.equal(report.checks.image.passed,false);
+  }
+  const {run}=fakeRun({image:true});
+  const report=inspectPreflight({nodeVersion:'22.0.0',dockerHost:'',run,
+    expectedImageDigest:()=>{throw Error('PRIVATE_PATH')}});
+  assert.equal(report.imageSourceStatus,'unverified');
+  assert.doesNotMatch(JSON.stringify(report),/PRIVATE_PATH/);
+});
+
+test('remote Docker host refuses before any Docker call or cache fingerprint evaluation', () => {
+  const {run,calls}=fakeRun({image:true});
+  let sourceReads=0;
+  const r=inspectPreflight({nodeVersion:'22.0.0',dockerHost:'ssh://forbidden.example',run,
+    expectedImageDigest:()=>{sourceReads++;return 'a'.repeat(64)}});
+  assert.equal(r.emulatorReady,false);
+  assert.equal(r.imageSourceStatus,'not-checked');
+  assert.equal(sourceReads,0);
+  assert.equal(calls.length,0);
 });
