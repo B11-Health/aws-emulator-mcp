@@ -27,6 +27,7 @@
     "scripts/install_wsl.sh",
     "src/aws_emulator_mcp/__init__.py",
     "src/aws_emulator_mcp/aws_sdk.py",
+    "src/aws_emulator_mcp/sdk_preview.py",
     "src/aws_emulator_mcp/cli.py",
     "src/aws_emulator_mcp/experiments.json",
     "src/aws_emulator_mcp/http_transport.py",

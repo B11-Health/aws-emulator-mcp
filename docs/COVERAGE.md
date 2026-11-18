@@ -72,6 +72,33 @@ aws_sdk_discover({ "service": "lambda", "query": "List", "offset": 0, "limit": 4
 
 The response uses `nextOffset` for pagination. Every discovered operation is tagged `modeled_not_verified`. Even when an API has a model, AWS Emulator can return `501 Not Implemented` or other errors. An operation is not supported merely because it appears in botocore.
 
+### Check a proposed SDK request
+
+On the current source branch, the Docker MCP server exposes `aws_sdk_preview`.
+Ask your assistant, “What does DynamoDB PutItem expect? Check this input before writing.”
+For example, this request uses a number in a DynamoDB string attribute:
+
+```json
+{"service":"dynamodb","operation":"PutItem","parameters":{"TableName":"orders","Item":{"id":{"S":42}}}}
+```
+
+The preview returns `validation.valid: false`, identifies `Item.*.S` and shows
+the expected type `string`. Change `42` to `"42"` to store text, or use
+`{"N":"42"}` to store a DynamoDB number. The proposed write stays unexecuted.
+Only a subsequent `aws_sdk_invoke` call exercises the emulator.
+
+Omit `parameters` to inspect the model. Pass `{}` to validate an empty input.
+For nested data, pass a `path` such as `Item.*` to see the attribute members.
+Use `direction: "output"` to inspect a modeled response and `offset` / `limit`
+to page through members or enum values. Optional parameters always represent
+the complete operation input. Error paths replace map keys and list indices
+with `*`. A preview returns at most 12 diagnostic entries and a total issue count.
+
+This tool uses the installed Botocore parameter validator. Resource existence,
+service-side rules (including some enum and range constraints), and emulator
+implementation require an actual call. For a repeatable, multi-step test use
+[SDK contracts](CONTRACT_TESTING.md).
+
 ### Dedicated MCP evidence tool
 
 ~~~text

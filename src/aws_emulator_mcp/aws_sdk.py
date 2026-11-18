@@ -240,20 +240,25 @@ def main(argv=None):
 if __name__ == "__main__":
     raise SystemExit(main())
 
+def check_parameters(parameters):
+    from aws_emulator_mcp import server as m
+    if not isinstance(parameters, dict):
+        raise m.LocalError("AWS SDK parameters must be a JSON object")
+    try:
+        encoded = json.dumps(parameters, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError, RecursionError) as exc:
+        raise m.LocalError("Invalid JSON SDK parameters") from exc
+    if len(encoded) > MAX_INPUT_BYTES:
+        raise m.LocalError("AWS SDK request exceeds 64 KiB")
+
+
 def invoke(service, operation, parameters=None):
     m, _, client, BotoCoreError, ClientError = _client(service)
     if not isinstance(operation, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9]{0,80}", operation):
         raise m.LocalError("Invalid AWS SDK operation name")
     if parameters is None:
         parameters = {}
-    if not isinstance(parameters, dict):
-        raise m.LocalError("AWS SDK parameters must be a JSON object")
-    try:
-        encoded = json.dumps(parameters, allow_nan=False).encode("utf-8")
-    except (TypeError, ValueError) as exc:
-        raise m.LocalError("Invalid JSON SDK parameters") from exc
-    if len(encoded) > MAX_INPUT_BYTES:
-        raise m.LocalError("AWS SDK request exceeds 64 KiB")
+    check_parameters(parameters)
     names = client.meta.method_to_api_mapping
     methods = {op_name: method for method, op_name in names.items()}
     if operation not in methods:
@@ -275,4 +280,15 @@ def invoke(service, operation, parameters=None):
         code = str(error.get("Code", "EmulatorError"))[:80]
         raise m.LocalError("Emulated AWS API error (" + code + "); operation not necessarily implemented") from exc
     except BotoCoreError as exc:
+        if type(exc).__name__ == "ParamValidationError":
+            from .sdk_preview import check_input
+            shape = client.meta.service_model.operation_model(operation).input_shape
+            report = check_input(parameters, shape)
+            details = ", ".join(
+                "{}: {}{}".format(issue["path"] or "input", issue["reason"],
+                                  " (" + issue["modelType"] + ")" if "modelType" in issue else "")
+                for issue in report["issues"]
+            )
+            raise m.LocalError("AWS SDK rejected the parameters (ParamValidationError). "
+                               + details + ". Inspect the input with aws_sdk_preview.") from exc
         raise m.LocalError("AWS SDK rejected the local request (" + type(exc).__name__ + ")") from exc

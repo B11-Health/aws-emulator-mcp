@@ -71,6 +71,10 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
+      - name: Check SDK request previews against the Docker lab's pinned models
+        run: |
+          python -m pip install --disable-pip-version-check botocore==1.44.2
+          python -m unittest discover -s tests -p test_sdk_preview.py -v
       - name: Official Python SDK v2.3.0 interop, both protocol eras
         run: |
           python -m pip install --disable-pip-version-check mcp==2.3.0

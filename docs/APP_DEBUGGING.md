@@ -65,7 +65,7 @@ then give it this task:
 The two additional Docker-only MCP tools are `app_debug_catalog`
 (read-only source and task description) and `app_debug_run`
 (execute packaged `buggy`, `fixed` or `compare`).
-The native 29-tool adapter remains unchanged; isolated Docker has **38 total**, including two contract-testing tools.
+The native 29-tool adapter remains unchanged; the Docker adapter also includes two contract-testing tools.
 
 ## Inspect and apply the actual patch
 

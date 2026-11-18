@@ -338,6 +338,17 @@ def verify():
         }}),
         msg(28, "failure_lab_run", {"scenario": "partial-compare"}),
         msg(40, "contract_guide", {"clientMethods": ["sqs.get_queue_url", "sqs.send_message", "lambda.invoke"]}),
+        msg(29, "aws_sdk_preview", {"service": "s3", "operation": "CreateBucket",
+                                    "parameters": {"Bucket": bucket}}),
+        msg(30, "aws_sdk_invoke", {"service": "s3", "operation": "ListBuckets"}),
+        msg(31, "aws_sdk_preview", {"service": "dynamodb", "operation": "PutItem",
+                                    "parameters": {"TableName": "example",
+                                                   "Item": {"private-field": {"S": 42}}}}),
+        msg(32, "aws_sdk_invoke", {"service": "dynamodb", "operation": "PutItem",
+                                   "parameters": {"TableName": "example",
+                                                  "Item": {"private-field": {"S": 42}}}}),
+        msg(33, "aws_sdk_preview", {"service": "dynamodb", "operation": "GetItem",
+                                    "direction": "output", "path": "Item.*.L.*.S"}),
     ]
     payload = "".join(json.dumps(c, separators=(",", ":")) + "\n" for c in calls)
     r = run("mcp", payload, timeout=180)
@@ -367,12 +378,25 @@ def verify():
     assert control["assertionChallenge"]["status"] == "detected"
     assert not control["applicationFixVerified"]
     print("CONTRACT_ASSERTION_CHALLENGE_MCP_PASS", control["baseline"]["emulatorVersion"], flush=True)
-    assert len(tools) == 38
+    assert len(tools) == 39
     assert {"aws_sdk_discover", "aws_sdk_invoke", "aws_sdk_coverage",
             "emulator_order_demo", "lab_catalog", "lab_run",
             "app_debug_catalog", "app_debug_run",
             "contract_guide", "contract_run",
             "failure_lab_catalog", "failure_lab_run"} <= names
+    preview_tool = next(t for t in tools if t["name"] == "aws_sdk_preview")
+    assert preview_tool["annotations"]["readOnlyHint"] and not preview_tool["annotations"]["destructiveHint"]
+    preview = content(rows[29])
+    assert preview["validation"]["valid"] and not preview["operationExecuted"]
+    assert bucket not in [b["Name"] for b in content(rows[30])["result"]["Buckets"]]
+    invalid = rows[31]["result"]
+    assert invalid["isError"] and "private-field" not in invalid["content"][0]["text"]
+    diagnostics = json.loads(invalid["content"][0]["text"])["validation"]
+    assert diagnostics["issues"] == [{"path": "Item.*.S", "reason": "invalid type", "modelType": "string"}]
+    rejected = rows[32]["result"]
+    assert rejected["isError"] and "Item.*.S" in rejected["content"][0]["text"]
+    assert "private-field" not in rejected["content"][0]["text"]
+    assert content(rows[33])["schema"]["type"] == "string"
     assert content(rows[2])["modeledOperationCount"] >= 100
     assert content(rows[3])["passed"] and content(rows[4])["passed"]
     for i in range(5, 11):
