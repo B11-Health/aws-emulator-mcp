@@ -264,6 +264,25 @@ jobs:
         run: |
           export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
           python3 tests/docker_bundle_smoke.py
+      - name: Verify packed CLI read-only preflight matches the just-built signed image
+        run: |
+          mkdir -p reports
+          node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs preflight --json > reports/ci_preflight.json
+          python3 - <<'PY_END'
+          import json
+          from pathlib import Path
+          result=json.loads(Path("reports/ci_preflight.json").read_text(encoding="utf8"))
+          assert result["emulatorReady"] is True
+          assert result["imageCached"] is True
+          assert result["imageSourceStatus"] == "matched"
+          assert result["imageReusable"] is True
+          assert result["hostWorkspaceDisk"]["dockerDataCapacityVerified"] is False
+          data_root=result.get("hostVisibleDockerRootDisk")
+          if data_root is not None:
+              assert data_root["dockerDaemonNamespaceVerified"] is False
+          assert "/var/lib/docker" not in json.dumps(result)
+          print("DOCKER_READ_ONLY_PREFLIGHT_MATCH_PASS")
+          PY_END
       - name: Publish actual read-only coverage results in the CI summary
         run: |
           mkdir -p reports
