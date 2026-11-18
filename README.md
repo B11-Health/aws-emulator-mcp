@@ -139,11 +139,20 @@ node bin/aws-emulator-mcp.mjs architecture demo
 
 `preflight` checks Node.js, local Docker context, **Linux-container mode** and daemon, and whether the
 versioned image is cached. **It never builds or launches Docker containers.**
-Without Docker, Architecture Studio still works. A successful preflight is
-not a disk-capacity check, image-source verification or proof of emulator API coverage.
+Without Docker, Architecture Studio still works. A successful preflight does
+**not** prove emulator API coverage or actual Docker Desktop/VM disk capacity.
 Docker-backed commands in the current source checkout verify a build-input
 fingerprint before image reuse and rebuild stale cached bundles. This prevents
-same-tag checkout collisions; it is not a security signature. [Setup details](docs/ONBOARDING.md#check-prerequisites-before-building-the-image).
+same-tag checkout collisions; it is not a security signature.
+
+**New on master (not beta.15):** when a rebuild is needed and the Linux
+host-visible Docker data root reports less than 3 GiB free, `preflight`
+flags an advisory `imageBuildSpace.status="critical"` and recommends the
+read-only `docker system df` command **before** the signed image build.
+The launcher displays the same warning when it actually starts a build.
+It never automatically prunes images or deletes Docker volumes. This is a
+conservative host-side warning, not a verified Docker daemon capacity test.
+[Setup and disk limits](docs/DOCKER_NPM_BETA.md#when-a-new-signed-docker-image-needs-more-disk-space).
 
 **Generate all seven synchronized artifacts yourself** (Node.js 20+, Git
 and npm; Docker is not needed for generation):

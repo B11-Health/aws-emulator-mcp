@@ -9,7 +9,7 @@ import path from 'node:path';
 import { existsSync, readFileSync, lstatSync } from 'node:fs';
 import { stderr, stdout, execPath, exit } from 'node:process';
 import { compareHandlerEvidence, comparisonMarkdown } from '../scripts/byo_compare.mjs';
-import { inspectPreflight, printPreflight } from '../scripts/preflight.mjs';
+import { inspectPreflight, printPreflight, buildSpaceWarning } from '../scripts/preflight.mjs';
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge } from '../scripts/project_check.mjs';
@@ -138,8 +138,11 @@ async function buildImage() {
       !existsSync(path.join(ROOT, 'scripts', 'install_wsl.sh'))) {
     fail('Bundled Docker source missing; reinstall from a verified source release.');
   }
-  stderr.write('AWS Emulator MCP: building a local image with the signed official AWS Emulator.\n');
   const digest = imageSourceDigest(ROOT);
+  const readiness = inspectPreflight({image: IMAGE, expectedImageDigest: () => digest});
+  const storageWarning = buildSpaceWarning(readiness);
+  if (storageWarning) stderr.write('AWS Emulator MCP: BUILD RISK: ' + storageWarning + '\n');
+  stderr.write('AWS Emulator MCP: building a local image with the signed official AWS Emulator.\n');
   const child = spawn('docker', ['build', '--pull', '--build-arg',
     'AWS_MCP_SOURCE_SHA256=' + digest, '-t', IMAGE, '-f', 'docker/Dockerfile', ROOT], {
     stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false
@@ -149,7 +152,7 @@ async function buildImage() {
     child.on('error', reject);
     child.on('close', value => resolve(value ?? 1));
   });
-  if (code !== 0) fail('Image build failed; check Docker space and AWS signature/download.', code);
+  if (code !== 0) fail('Image build failed; check signed download, Docker storage and the preflight capacity advisory. No automatic cleanup was performed.', code);
 }
 function renderReport(command, result) {
   const green = text => stdout.isTTY ? '\x1b[32m' + text + '\x1b[0m' : text;
