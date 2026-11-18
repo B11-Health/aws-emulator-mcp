@@ -16,7 +16,7 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#missions">Demos</a><a href="#install">Try offline</a><a href="#connect">Connect</a><a href="#evidence">Evidence</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
+<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#missions">Demos</a><a href="#install">Try offline</a><a href="#connect">Connect</a><a href="#evidence">Evidence</a><a href="#community">Community</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
 <main id="main">
 <section class="hero wrap" id="top">
  <div class="hero-copy">
@@ -172,6 +172,54 @@ node bin/aws-emulator-mcp.mjs app-debug compare --json</code></pre><button type=
    <div class="faq-answer"><p><strong>Use the native SDK/CLI when it is simpler.</strong> The MCP layer adds value when a coding assistant needs a narrow, auditable tool interface for reproducing an order-processing bug, comparing two trusted local handlers, inspecting cleanup assertions, or reviewing an infrastructure blueprint. The adapter does not deploy CloudFormation to AWS or make unsupported emulator services work.</p>
    <p>See the <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/docs/WHY_MCP.md">honest comparison</a>, then try one concrete example. We welcome a <a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">sanitized first-run report</a>, especially if the native tools serve you better.</p></div>
   </details>
+ </div>
+</section>
+<section class="section wrap" id="community" aria-labelledby="community-title">
+ <div class="section-header">
+  <p class="eyebrow">07 / BUILD IN PUBLIC</p>
+  <h2 id="community-title">The next improvement could be yours.</h2>
+  <p>We're opening the project to independent testers, accessibility reviewers, and engineers who want to challenge our claims. A failure you can reproduce is a valuable contribution. No AWS account or direct repository write access is required.</p>
+ </div>
+ <div class="community-note">
+  <strong>Early participation, not proven adoption.</strong>
+  A developer has volunteered for our <a href="https://github.com/B11-Health/aws-emulator-mcp/issues/8">macOS/Copilot first-run check</a>. Results are still pending. We want independent evidence before claiming this works for everyone.
+ </div>
+ <h3 class="community-subtitle">Choose one real contribution</h3>
+ <div class="community-grid">
+  <a class="community-task" href="https://github.com/B11-Health/aws-emulator-mcp/issues/7">
+   <span class="community-task-type">WINDOWS / FIRST RUN</span>
+   <strong>Try the no-Docker setup</strong>
+   <span>Run the beta.15 offline trial, then describe where Windows onboarding becomes confusing.</span>
+   <span class="community-link">Open task #7 ↗</span>
+  </a>
+  <a class="community-task" href="https://github.com/B11-Health/aws-emulator-mcp/issues/50">
+   <span class="community-task-type">LINUX / DOCKER</span>
+   <strong>Test the first real API call</strong>
+   <span>Measure the signed image build and reproduce a synthetic S3, DynamoDB, SQS workflow.</span>
+   <span class="community-link">Open task #50 ↗</span>
+  </a>
+  <a class="community-task" href="https://github.com/B11-Health/aws-emulator-mcp/issues/51">
+   <span class="community-task-type">CLAUDE DESKTOP / PREVIEW</span>
+   <strong>Review an unsigned MCP bundle</strong>
+   <span>Inspect the permissions and test installation. Report the first actual tool result—or blocker.</span>
+   <span class="community-link">Open task #51 ↗</span>
+  </a>
+  <a class="community-task" href="https://github.com/B11-Health/aws-emulator-mcp/issues/52">
+   <span class="community-task-type">ACCESSIBILITY / UX</span>
+   <strong>Make the demo easier to use</strong>
+   <span>Check the tabs, captions, keyboard focus and mobile layout with real assistive tools.</span>
+   <span class="community-link">Open task #52 ↗</span>
+  </a>
+ </div>
+ <div class="community-footer">
+  <div>
+   <h3>How to join</h3>
+   <p>Pick an unassigned issue, comment with the step you can test, and share a sanitized result. Forks and PRs are welcome but optional for testing. No direct write permissions are needed.</p>
+  </div>
+  <div class="community-actions">
+   <a class="button primary" href="https://github.com/B11-Health/aws-emulator-mcp/blob/master/CONTRIBUTING.md">Contributor guide ↗</a>
+   <a class="button outline" href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=independent_first_run.yml">Report a first run ↗</a>
+  </div>
  </div>
 </section>
 </main>

@@ -202,3 +202,22 @@ test('community conduct and support policies route issues and protect private re
  assert.match(chooser,/Help with setup and contribution routes/);
  assert.doesNotMatch(coc+support+security,/security@b11-health|support@b11-health/i);
 });
+
+
+test('public community hub routes newcomers to real scoped issues without inflated adoption claims',()=>{
+ const html=read('index.html');
+ const section=html.split('<section class="section wrap" id="community"')[1];
+ assert.ok(section,'community landmark missing');
+ const hub=section.split('</section>')[0];
+ assert.equal((hub.match(/class="community-task"/g)||[]).length,4);
+ for(const issue of [7,50,51,52])assert.match(hub,new RegExp('issues/'+issue+'(?:["/])'));
+ assert.match(hub,/issues\/8/);
+ assert.match(hub,/Results are still pending/);
+ assert.match(hub,/Early participation, not proven adoption/);
+ assert.match(hub,/direct repository write access is required/i);
+ assert.match(hub,/independent_first_run\.yml/);
+ assert.match(hub,/CONTRIBUTING\.md/);
+ assert.match(html,/href="#community">Community/);
+ assert.match(readFileSync(path.join(ROOT,'README.md'),'utf8'),/aws-emulator-mcp\/#community/);
+ assert.doesNotMatch(hub,/thousands of users|AWS-certified|enterprise ready|official AWS extension/i);
+});
