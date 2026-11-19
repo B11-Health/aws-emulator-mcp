@@ -184,3 +184,110 @@ test('forged identity flags cannot upgrade guided evidence to verified account',
    assert.throws(()=>createGapReproCapsule(report),/Unsupported or inconsistent/);
  }
 });
+
+test('comparison rejects forged green regression with contradictory expected SDK attempts',()=>{
+ const r=structuredClone(sqs.comparison);
+ for(const side of [r.before,r.after])for(const op of side.sdkCalls){op.attempts=0;op.successes=0;}
+ // The summarized runner still claims two observed attempts. Never trust that
+ // classification over the SDK call counters.
+ assert.throws(()=>createGapReproCapsule(r),/Unsupported or inconsistent/);
+});
+
+test('comparison requires successful expected SDK operations AFTER fix, not just attempts',()=>{
+ const r=structuredClone(sqs.comparison);
+ for(const op of r.after.sdkCalls)op.successes=0;
+ assert.throws(()=>createGapReproCapsule(r),/Unsupported or inconsistent/);
+ const passed=structuredClone(sqs.comparison);
+ passed.before.expectedCalls[0].observed=0;
+ assert.throws(()=>createGapReproCapsule(passed),/Unsupported or inconsistent/);
+ const missing=structuredClone(sqs.comparison);
+ delete missing.after.expectedCalls;
+ assert.throws(()=>createGapReproCapsule(missing),/Unsupported or inconsistent/);
+});
+
+test('valid injected before-call retries preserve attempt-pass despite zero baseline successes',()=>{
+ const historical=load('docs/evidence/app-case-sqs-retry-aws-emulator-1.0.508.json');
+ const before=historical.comparison.before;
+ assert.equal(before.sdkCalls[0].attempts,1);
+ assert.equal(before.sdkCalls[0].successes,0);
+ assert.equal(before.expectedCalls[0].passed,true);
+ assert.equal(createGapReproCapsule(historical.comparison).interpretation.classification,
+   'application_regression_demonstrated');
+ const raw=load('docs/evidence/app-case-sqs-retry-aws-emulator-1.0.506.json');
+ assert.equal(raw.before.expectedCalls[0].passed,true);
+ assert.equal(raw.before.sdkCalls[0].successes,0);
+ const capsule=createGapReproCapsule(raw.before);
+ assert.equal(capsule.interpretation.emulatorIncompatibilityEstablished,false);
+ assert.equal(capsule.target.observedSdkCalls[0].successes,0);
+ assert.equal(createGapReproCapsule(s3.comparison).target.handlerOperation,'s3.PutObject');
+});
+
+test('guided successfulExpectedOperations cannot override zero SDK successes',()=>{
+ for(const flip of [
+  r=>{r.proof.sdkCalls[0].successes=0;},
+  r=>{r.proof.sdkCalls[0].attempts=0;r.proof.sdkCalls[0].successes=0;},
+  r=>{r.successfulExpectedOperations=false;},
+  r=>{r.proof.expectedCalls[0].observed=0;},
+  r=>{r.proof.expectedCalls[0].min=0;},
+ ]){
+  const r=structuredClone(guided.negativeControl);flip(r);
+  assert.throws(()=>createGapReproCapsule(r),/Unsupported or inconsistent/);
+ }
+});
+
+test('raw and summary expected-count evidence rejects contradictions, preserves red baseline',()=>{
+ for(const flip of [
+  r=>{r.expectedCalls[0].min=3;r.expectedCalls[0].max=4;},
+  r=>{r.expectedCalls[0].min=3;r.expectedCalls[0].max=2;},
+  r=>{r.expectedCalls[0].passed=false;},
+  r=>{r.expectedCalls.push(structuredClone(r.expectedCalls[0]));},
+  r=>{r.expectedCalls[0].successes=999;},
+ ]){
+  const r=structuredClone(sqs.before);flip(r);
+  assert.throws(()=>createGapReproCapsule(r),/Unsupported or inconsistent/);
+ }
+});
+
+test('unknown or conflicting assertion service cannot become unrelated handler attribution',()=>{
+ const conflicting=structuredClone(guided.negativeControl);
+ conflicting.proof.checks[0].assertions[0].path='Messages.0.Body';
+ const c=createGapReproCapsule(conflicting);
+ assert.equal(c.target.handlerOperation,null);
+ assert.equal(c.target.independentReadOperation,null);
+ assert.equal(c.target.failedAssertions[0].pathShape,'Messages.0.Body');
+ assert.equal(c.interpretation.emulatorIncompatibilityEstablished,false);
+ const unknown=structuredClone(guided.negativeControl);
+ unknown.proof.checks[0].assertions[0].path='SECRET_PRIVATE_ASSERTION';
+ const u=createGapReproCapsule(unknown);
+ assert.equal(u.target.handlerOperation,null);
+ assert.equal(u.target.failedAssertions[0].pathShape,'<redacted-assertion-path>');
+});
+
+test('docs require PowerShell 7+ UTF-8 without BOM and do not claim exact exported bytes',()=>{
+ const doc=readFileSync('docs/GAP_REPRO_CAPSULE.md','utf8');
+ assert.match(doc,/PowerShell 7\+/);
+ assert.match(doc,/Set-Content -LiteralPath .* -Encoding utf8NoBOM/);
+ assert.match(doc,/Windows PowerShell 5\.1/);
+ assert.match(doc,/UTF-16LE/);
+ assert.match(doc,/do \*\*not\*\* claim byte-for-byte identity/);
+ assert.match(doc,/min.*max.*passed/s);
+});
+
+test('forged hash identities reject mismatches but never pretend to attest files',()=>{
+ for(const flip of [
+  r=>{r.sourceSha256='a'.repeat(64);},
+  r=>{r.caseSha256='not-a-hash';},
+ ]){
+  const r=structuredClone(guided.negativeControl);flip(r);
+  assert.throws(()=>createGapReproCapsule(r),/Unsupported or inconsistent/);
+ }
+ const collision=structuredClone(sqs.comparison);
+ collision.after.sourceSha256=collision.before.sourceSha256;
+ assert.throws(()=>createGapReproCapsule(collision),/Unsupported or inconsistent/);
+ const r=structuredClone(sqs.before);
+ r.sourceSha256='a'.repeat(64); // No original source is supplied, so shape is all we can check.
+ const capsule=createGapReproCapsule(r);
+ assert.equal(capsule.reportConfidence,'report_fields_checked_not_independently_attested');
+ assert.equal(capsule.identities.sourceSha256,'a'.repeat(64));
+ assert.equal(capsule.emulator.versionIndependentlyAttested,false);
+});

@@ -78,6 +78,41 @@ function calls(rows){
     return {...op,attempts:c.attempts,successes:c.successes};
   });
 }
+/**
+ * The raw runner reports min/max; app-case-compare and app-guide deliberately
+ * strip those ranges. Match counters exactly in all formats, but never invent
+ * a missing range in a summary. Count pass is distinct from SDK success:
+ * synthetic before-call faults can count an attempt without a successful API.
+ */
+function expectedCallsAgainstSdk(rows,sdkCalls,{raw=false}={}){
+  if(!Array.isArray(rows)||rows.length<1||rows.length>8) malformed();
+  const shape=raw?'max,min,observed,operation,passed,service':
+    'observed,operation,passed,service';
+  const seen=new Set();
+  let countPassed=true,successful=true;
+  for(const row of rows){
+    if(!object(row)||Object.keys(row).sort().join(',')!==shape||
+       !integer(row.observed,1000)||!bool(row.passed))malformed();
+    safeOperation(row.service,row.operation);
+    const key=row.service+'.'+row.operation;
+    if(seen.has(key))malformed();seen.add(key);
+    const call=sdkCalls.find(c=>c.service===row.service&&c.operation===row.operation);
+    const attempts=call?.attempts??0;
+    if(row.observed!==attempts)malformed();
+    if(raw){
+      if(!integer(row.min,12)||!integer(row.max,12)||row.min>row.max||
+         row.passed!==(row.min<=attempts&&attempts<=row.max))malformed();
+    }else if(row.passed&&attempts===0){
+      // A summarized 'pass' has no retained min/max to corroborate an
+      // observed zero; do not credit an unobserved operation as proven.
+      malformed();
+    }
+    countPassed&&=row.passed;
+    successful&&=(call?.successes??0)>0;
+  }
+  return {countPassed,successful};
+}
+
 const flatFailed=checks=>checks.flatMap(c=>c.assertions.filter(a=>a.observed==='fail'));
 const firstFault=(checks,stage)=>{
   const record=checks.find(c=>!c.passed);
@@ -90,10 +125,13 @@ function classify({setup,checks,cleanup,applicationErrors=false,expectedCallsPas
                    comparisonFixed=false}){
   if(setup.some(x=>!x.passed))return 'setup_or_environment_failure';
   if(applicationErrors)return 'application_exception_observed';
+  // Absent successful required writes, a standalone failed read does not
+  // prove the handler's expected state was ever written. Deliberate faulted
+  // before-runs remain legitimate when the full comparison has been checked.
+  if(!expectedCallsPass&&!comparisonFixed)return 'required_sdk_write_not_observed';
   if(checks.some(x=>x.assertions.some(a=>a.observed==='fail')))
     return comparisonFixed?'application_regression_demonstrated':'independent_state_assertion_failed';
   if(checks.some(x=>!x.passed))return 'independent_sdk_read_failed';
-  if(!expectedCallsPass)return 'required_sdk_write_not_observed';
   if(cleanup.some(x=>!x.passed))return 'cleanup_failure';
   return 'unclassified_local_failure';
 }
@@ -109,19 +147,7 @@ function rawReport(report){
   const checks=observedStages(report.checks,'checks',{raw:true});
   const cleanup=observedStages(report.cleanup,'cleanup',{raw:true});
   const sdkCalls=calls(report.sdkCalls);
-  if(!Array.isArray(report.expectedCalls)||report.expectedCalls.length<1||
-     report.expectedCalls.length>8) malformed();
-  const expectedCalls=report.expectedCalls.map(row=>{
-    if(!object(row)||!integer(row.min,12)||!integer(row.max,12)||row.min>row.max||
-       !integer(row.observed,1000)||!bool(row.passed)) malformed();
-    safeOperation(row.service,row.operation);
-    const seen=sdkCalls.find(c=>c.service===row.service&&c.operation===row.operation);
-    const observed=seen?.attempts||0;
-    if(row.observed!==observed||row.passed!==(observed>=row.min&&observed<=row.max))malformed();
-    return row;
-  });
-  const successfulExpected=expectedCalls.every(c=>sdkCalls.some(x=>
-    x.service===c.service&&x.operation===c.operation&&x.successes>0));
+  const expected=expectedCallsAgainstSdk(report.expectedCalls,sdkCalls,{raw:true});
   const fault=report.appFault;
   if(fault!==undefined){
     if(!object(fault)||!['before-call','after-success'].includes(fault.mode)||
@@ -132,14 +158,14 @@ function rawReport(report){
   const cleanupPassed=cleanup.every(c=>c.passed);
   const invariant=report.sourceInvoked&&!report.applicationErrors&&
     setup.every(c=>c.passed)&&checks.every(c=>c.passed)&&
-    expectedCalls.every(c=>c.passed)&&successfulExpected&&
+    expected.countPassed&&expected.successful&&
     (fault===undefined||fault.injected);
   if(report.cleanupPassed!==cleanupPassed||report.applicationInvariantPassed!==invariant||
      report.passed!==(invariant&&cleanupPassed)) malformed();
   return {format:'app_case_result',sourceSha256,caseSha256,emulatorVersion,
     accountVerifiedInReport:true, setup,checks,cleanup,sdkCalls,sourceInvoked:report.sourceInvoked,
     applicationErrors:report.applicationErrors,cleanupPassed,
-    expectedCallsPass:expectedCalls.every(c=>c.passed)&&successfulExpected,
+    expectedCallsPass:expected.countPassed&&expected.successful,
     faultMode:fault?.mode||null};
 }
 function compareReport(report){
@@ -159,11 +185,15 @@ function compareReport(report){
     const checks=observedStages(side.checks,'checks');
     const cleanup=observedStages(side.cleanup,'cleanup');
     const sdkCalls=calls(side.sdkCalls);
-    if(side.cleanupPassed!==cleanup.every(c=>c.passed)||
+    const expected=expectedCallsAgainstSdk(side.expectedCalls,sdkCalls);
+    if((!side.invoked&&sdkCalls.length)||
+       side.cleanupPassed!==cleanup.every(c=>c.passed)||
        side.passed&&(side.applicationErrors||!side.invoked||!side.cleanupPassed||
-        !setup.every(x=>x.passed)||!checks.every(x=>x.passed)))malformed();
+        !setup.every(x=>x.passed)||!checks.every(x=>x.passed)||
+        !expected.countPassed||!expected.successful))malformed();
     return {sourceSha256:side.sourceSha256,setup,checks,cleanup,sdkCalls,
       cleanupPassed:side.cleanupPassed,invoked:side.invoked,applicationErrors:side.applicationErrors,
+      expectedCallsPassed:expected.countPassed,expectedCallsSucceeded:expected.successful,
       passed:side.passed};
   };
   const before=cleanSide(report.before),after=cleanSide(report.after);
@@ -172,6 +202,14 @@ function compareReport(report){
   const match=before.checks.some((c,index)=>report.before.checks[index].id===report.regression.stepId&&
     c.assertions.some(a=>a.pathSha256===createHash('sha256').update(report.regression.path||'').digest('hex')&&a.observed==='fail'));
   const fixed=report.passed&&report.bugReproduced&&report.fixVerified;
+  // Original app-case comparison semantics: the before-side attempt range
+  // passes (even when an injected before-call fault yields zero successes),
+  // but an after-side green verdict requires actual successful SDK writes.
+  if(report.bugReproduced&&(!before.invoked||before.applicationErrors||
+      !before.expectedCallsPassed||!before.cleanupPassed||before.passed||
+      !before.setup.every(x=>x.passed)))malformed();
+  if(report.fixVerified&&(!after.passed||!after.expectedCallsPassed||
+      !after.expectedCallsSucceeded))malformed();
   if(fixed&&(!match||beforeFailed.length!==1||before.passed||!after.passed||
      !before.cleanupPassed||!after.cleanupPassed||
      flatFailed(after.checks).length))malformed();
@@ -184,7 +222,8 @@ function compareReport(report){
     setup:failing.setup,checks:failing.checks,cleanup:failing.cleanup,
     sdkCalls:failing.sdkCalls,sourceInvoked:failing.invoked,
     applicationErrors:failing.applicationErrors,cleanupPassed:failing.cleanupPassed,
-    expectedCallsPass:true,comparisonFixed:fixed,
+    expectedCallsPass:failing.expectedCallsPassed&&failing.expectedCallsSucceeded,
+    comparisonFixed:fixed,
     compareSide:failing===before?'before':'after',faultMode:null};
 }
 
@@ -210,14 +249,13 @@ function guidedReport(report){
   if(proof.cleanupPassed!==cleanup.every(x=>x.passed)||
       proof.passed&&(proof.applicationErrors||!proof.invoked||!proof.cleanupPassed||
        !setup.every(x=>x.passed)||!checks.every(x=>x.passed)))malformed();
-  if(!Array.isArray(proof.expectedCalls)||proof.expectedCalls.length<1||
-      proof.expectedCalls.length>8)malformed();
-  for(const row of proof.expectedCalls){
-    if(!object(row)||!bool(row.passed)||!integer(row.observed,1000))malformed();
-    safeOperation(row.service,row.operation);
-    if(row.observed!==(sdkCalls.find(c=>c.service===row.service&&
-       c.operation===row.operation)?.attempts||0))malformed();
-  }
+  const expected=expectedCallsAgainstSdk(proof.expectedCalls,sdkCalls);
+  // app-guide reports success of required *operations*, not merely
+  // their attempts. A failed independent assertion can legitimately leave
+  // proof.passed=false while the write itself succeeded.
+  if(report.successfulExpectedOperations!==expected.successful||
+     (!proof.invoked&&sdkCalls.length)||
+     (proof.passed&&(!expected.countPassed||!expected.successful)))malformed();
   const fault=proof.appFault;
   if(fault!==undefined){
     if(!object(fault)||!['before-call','after-success'].includes(fault.mode)||
@@ -228,7 +266,8 @@ function guidedReport(report){
     emulatorVersion:version(proof.emulatorVersion),accountVerifiedInReport:'not_reported',
     setup,checks,cleanup,
     sdkCalls,sourceInvoked:proof.invoked,applicationErrors:proof.applicationErrors,
-    cleanupPassed:proof.cleanupPassed,expectedCallsPass:report.successfulExpectedOperations,
+    cleanupPassed:proof.cleanupPassed,
+    expectedCallsPass:expected.countPassed&&expected.successful,
     faultMode:fault?.mode||null};
 }
 
@@ -249,11 +288,14 @@ export function createGapReproCapsule(report){
   const derivedService=failed[0]?.pathShape?.startsWith('Messages')?'sqs':
     failed[0]?.pathShape?.startsWith('Item')?'dynamodb':
     failed[0]?.pathShape==='ContentLength'?'s3':null;
+  // Raw results have an explicit read-service. When a known structural
+  // assertion prefix conflicts with it, the report is contradictory.
+  if(primaryCheck?.service&&derivedService&&primaryCheck.service!==derivedService)malformed();
   const candidateService=primaryCheck?.service||derivedService;
-  const matching=sdkCalls.filter(c=>c.service===candidateService);
-  // Do not arbitrarily attribute an independent failed read to the first of
-  // several app operations when the report does not establish which caused it.
-  const selected=matching.length===1?matching[0]:sdkCalls.length===1?sdkCalls[0]:null;
+  const matching=candidateService?sdkCalls.filter(c=>c.service===candidateService):[];
+  // A single *unrelated* SDK call is not evidence that it caused a failed
+  // read. An ambiguous or unmatched service must remain UNKNOWN/null.
+  const selected=matching.length===1?matching[0]:null;
   const handlerOperation=selected ? selected.service+'.'+selected.operation:null;
   const failingReadOperation=primaryCheck?.service
     ? primaryCheck.service+'.'+primaryCheck.operation:null;

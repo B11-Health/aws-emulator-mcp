@@ -8,17 +8,34 @@ SDK operation was observed, which independent assertion failed, and what a
 maintainer needs to request before attempting a local replay.
 
 From the **source checkout root**, with an existing failed report saved as
-`./failed-report.json`:
+`./failed-report.json`, use an **unused local output filename** and check the
+exit status before sharing the file. The capsule is UTF-8 JSON, but its own
+file bytes are **not** used to validate the source/case hashes inside it.
+
+**Bash / zsh** (redirects native stdout to a local file):
 
 ```sh
 node "./bin/aws-emulator-mcp.mjs" gap-capsule "./failed-report.json" > "./issue-capsule.json"
+# Check that the command exited 0 before trusting or sharing the result.
 ```
 
-Windows PowerShell, one command (the shell writes only the output file):
+**PowerShell 7+ only**, explicitly write UTF-8 **without a BOM**, and never
+save the output when the CLI fails:
 
 ```powershell
-node ".\bin\aws-emulator-mcp.mjs" gap-capsule ".\failed-report.json" > ".\issue-capsule.json"
+$report = & node ".\bin\aws-emulator-mcp.mjs" gap-capsule ".\failed-report.json"
+if ($LASTEXITCODE -ne 0) { throw "gap-capsule failed; no output was saved" }
+$report | Set-Content -LiteralPath ".\issue-capsule.json" -Encoding utf8NoBOM
+Get-Content -LiteralPath ".\issue-capsule.json" -Raw -Encoding utf8 | ConvertFrom-Json | Out-Null
 ```
+
+**Do not use `>` or `Out-File` with Windows PowerShell 5.1** to produce the
+JSON capsule: its default output encoding is **UTF-16LE**, not UTF-8. Use
+PowerShell **7+** as shown, or a JSON editor configured to save UTF-8.
+PowerShell may normalize line endings; do **not** claim byte-for-byte identity
+between its output file and the CLI's stdout. The report's source/case
+SHA-256 values are copied from the input evidence and are **not** fresh
+checksums of this export or an attestation of the original files.
 
 The input is a **local regular JSON report** (maximum 256 KiB, not a symlink),
 not a Python script or case definition. Supported inputs:
@@ -57,6 +74,15 @@ SHA-256 identities but **cannot supply source files or a case JSON**; the
 maintainer must obtain reviewed synthetic attachments and replace the filename
 placeholders. Therefore the command is a precise local *template*, not a
 promise that unprovided inputs can be reproduced automatically.
+
+The exporter checks expected-call attempt counts against the observed SDK
+calls. For raw reports it additionally reconciles `min`, `max` and `passed`;
+comparison and guided summaries do **not** contain those original ranges, so
+it cannot reconstruct or independently attest them. A passing expected-call
+**attempt count** does not mean the SDK operation succeeded: zero successful
+calls are permitted in a deliberate, failed before-call fault baseline but
+cannot support a green fixed-app result or a guided successful-operations
+claim. Conflicting assertion and handler services are left unattributed.
 
 A reported failure may be caused by application logic, incorrect assumptions,
 unsupported emulator behavior, setup failure, or test design. A passing
