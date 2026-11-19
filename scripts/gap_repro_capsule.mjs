@@ -168,6 +168,46 @@ function rawReport(report){
     expectedCallsPass:expected.countPassed&&expected.successful,
     faultMode:fault?.mode||null};
 }
+/** Recheck the limited fault fields preserved by app-case-compare.
+ * This checks report consistency; it does NOT authenticate a fault against
+ * original application source or independently attest emulator execution.
+ */
+function comparisonFault(side,sdkCalls){
+  const fault=side.appFault;
+  if(fault===undefined)return null;
+  if(!object(fault)||Object.keys(fault).sort().join(',')!==
+      'injected,mode,occurrence,operation,sentToEmulator,service'||
+     !['before-call','after-success'].includes(fault.mode)||
+     !integer(fault.occurrence,1000)||fault.occurrence<1||
+     !bool(fault.injected)||!bool(fault.sentToEmulator)||
+     fault.sentToEmulator!==(fault.injected&&fault.mode==='after-success'))malformed();
+  safeOperation(fault.service,fault.operation);
+  const call=sdkCalls.find(c=>c.service===fault.service&&c.operation===fault.operation);
+  const attempts=call?.attempts??0,successes=call?.successes??0;
+  if(fault.injected!== (attempts>=fault.occurrence)||
+     (fault.injected&&fault.mode==='before-call'&&successes>=attempts)||
+     (fault.injected&&fault.mode==='after-success'&&successes<1))malformed();
+  return fault;
+}
+
+/** Both summaries describe a single reviewed case: the original verifier
+ * runs both revisions against the same ordered independent readback plan.
+ * Requiring the named regression alone is insufficient if it was replaced
+ * by an unrelated green postcondition in the fixed run.
+ */
+function sameComparisonCheckPlan(before,after){
+  if(before.length!==after.length)return false;
+  const seen=new Set();
+  return before.every((step,index)=>{
+    const checked=after[index];
+    if(seen.has(step.id)||step.id!==checked?.id||
+       !Array.isArray(step.assertions)||!Array.isArray(checked?.assertions)||
+       step.assertions.length!==checked.assertions.length)return false;
+    seen.add(step.id);
+    return step.assertions.every((assertion,i)=>assertion.path===checked.assertions[i]?.path);
+  });
+}
+
 function compareReport(report){
   if(report.schemaVersion!==1||report.mode!=='local_application_before_after'||
      report.productionAwsValidated!==false||report.applicationBehaviorTested!==true||
@@ -186,6 +226,7 @@ function compareReport(report){
     const cleanup=observedStages(side.cleanup,'cleanup');
     const sdkCalls=calls(side.sdkCalls);
     const expected=expectedCallsAgainstSdk(side.expectedCalls,sdkCalls);
+    const fault=comparisonFault(side,sdkCalls);
     if((!side.invoked&&sdkCalls.length)||
        side.cleanupPassed!==cleanup.every(c=>c.passed)||
        side.passed&&(side.applicationErrors||!side.invoked||!side.cleanupPassed||
@@ -194,7 +235,7 @@ function compareReport(report){
     return {sourceSha256:side.sourceSha256,setup,checks,cleanup,sdkCalls,
       cleanupPassed:side.cleanupPassed,invoked:side.invoked,applicationErrors:side.applicationErrors,
       expectedCallsPassed:expected.countPassed,expectedCallsSucceeded:expected.successful,
-      passed:side.passed};
+      expectedOperations:side.expectedCalls,fault,passed:side.passed};
   };
   const before=cleanSide(report.before),after=cleanSide(report.after);
   if(before.sourceSha256===after.sourceSha256)malformed();
@@ -202,6 +243,29 @@ function compareReport(report){
   const match=before.checks.some((c,index)=>report.before.checks[index].id===report.regression.stepId&&
     c.assertions.some(a=>a.pathSha256===createHash('sha256').update(report.regression.path||'').digest('hex')&&a.observed==='fail'));
   const fixed=report.passed&&report.bugReproduced&&report.fixVerified;
+  if(report.bugReproduced){
+    // Missing successful writes are explainable only by an explicitly
+    // recorded, consistently shaped injected before-call fault for that
+    // very operation. Never silently treat an unexplained SDK failure as
+    // a demonstrated *application* regression.
+    for(const row of before.expectedOperations){
+      const observed=before.sdkCalls.find(c=>c.service===row.service&&c.operation===row.operation);
+      if((observed?.successes??0)===0 &&
+         (!before.fault||before.fault.mode!=='before-call'||
+          before.fault.injected!==true||before.fault.sentToEmulator!==false||
+          before.fault.service!==row.service||before.fault.operation!==row.operation))malformed();
+    }
+    // The single declarative case supplies the same fault configuration to
+    // both revisions. A missing or altered after-side record cannot verify
+    // an injected-fault regression, even when its expected SDK call succeeds.
+    if(Boolean(before.fault)!==Boolean(after.fault))malformed();
+    if(before.fault){
+      for(const field of ['service','operation','mode','occurrence']){
+        if(before.fault[field]!==after.fault[field])malformed();
+      }
+      if(!before.fault.injected||!after.fault.injected)malformed();
+    }
+  }
   // Original app-case comparison semantics: the before-side attempt range
   // passes (even when an injected before-call fault yields zero successes),
   // but an after-side green verdict requires actual successful SDK writes.
@@ -210,8 +274,13 @@ function compareReport(report){
       !before.setup.every(x=>x.passed)))malformed();
   if(report.fixVerified&&(!after.passed||!after.expectedCallsPassed||
       !after.expectedCallsSucceeded))malformed();
+  const namedAfter=report.after.checks.filter(c=>c.id===report.regression.stepId);
+  const namedAssertions=namedAfter.length===1 ?
+    namedAfter[0].assertions.filter(a=>a.path===report.regression.path):[];
   if(fixed&&(!match||beforeFailed.length!==1||before.passed||!after.passed||
      !before.cleanupPassed||!after.cleanupPassed||
+     !sameComparisonCheckPlan(report.before.checks,report.after.checks)||
+     namedAssertions.length!==1||namedAssertions[0].passed!==true||
      flatFailed(after.checks).length))malformed();
   if(report.passed!==fixed)malformed();
   const failing=before.passed?after:before;
