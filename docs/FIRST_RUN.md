@@ -175,6 +175,16 @@ tested. Once the check passes, restart/connect your actual desktop client and
 request `emulator_doctor`. Inspect and report **that client's actual tool
 reply**. The only verified GUI result comes from the GUI, not this check.
 
+### Failed preflight or connect-check? Read the saved report without probing again
+
+The optional round-four `rescue` command reads a **previously captured**
+`preflight --json` or `connect-check --json` report and generates up to three
+platform-aware manual next actions. It never invokes Docker or AWS and never
+executes a suggested command. See [saved-report rescue instructions](REPORT_RESCUE.md)
+for quoting paths with spaces, remote-file rejection, exact 3 GiB/10 GiB
+advisories, and explicit signed-build opt-in. It is **not** the `onboard`
+architecture-only trial or evidence of a desktop-client connection.
+
 ## 3. How do I know I tested my application?
 
 The offline first win establishes **only** that the bundled local

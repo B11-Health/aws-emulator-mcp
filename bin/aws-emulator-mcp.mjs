@@ -15,6 +15,7 @@ import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onboard.mjs';
 import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
+import {readLocalReport, interpretReport, formatRescue} from '../scripts/report_rescue.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
 import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, buildProofDraftPair, writeProofDraftPairExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
@@ -49,6 +50,7 @@ Commands:
   project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
   connect-check [--json]  Explicit local MCP handshake and read-only tool reply (prebuilt image only)
+  rescue REPORT.json [--json]  OFFLINE failure guidance from saved preflight/connect-check JSON (no probes)
   official-session [--port 9297] [--identity] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -819,6 +821,30 @@ async function main() {
     stdout.write(args[0]==='--json' ? JSON.stringify(report,null,2)+'\n'
       : formatMcpConnection(report));
     if (!report.passed) process.exitCode=1;
+    return;
+  }
+  if (command === 'rescue') {
+    if(args.length<1 || args.length>2 || (args.length===2 && args[1]!=='--json') ||
+        args[0]==='--json')
+      fail('Usage: aws-emulator-mcp rescue LOCAL_REPORT.json [--json]', 2);
+    // Only the saved file is read. No Docker/AWS subprocesses or settings changes.
+    let interpretation;
+    try {
+      const report=readLocalReport(args[0]);
+      const fromCheckout=path.resolve(process.cwd())===ROOT &&
+        !ROOT.split(path.sep).includes('node_modules');
+      const localPackage=!fromCheckout &&
+        existsSync(path.join(process.cwd(),'node_modules','aws-emulator-mcp','package.json'));
+      const invocation=fromCheckout?'checkout':localPackage ?
+        (process.platform==='win32'?'local-package-win32':'local-package-posix') : 'global';
+      interpretation=interpretReport(report,{invocation});
+    } catch {
+      fail('Could not interpret saved report: select a regular local .json file created by preflight or connect-check; unsupported or unsafe reports are refused.', 2);
+    }
+    stdout.write(args[1]==='--json'? JSON.stringify(interpretation,null,2)+'\n' :
+      formatRescue(interpretation));
+    // A successfully INTERPRETED failure exits zero; do not claim the underlying
+    // preflight, MCP tool call or desktop GUI succeeded.
     return;
   }
   if (command === 'preflight') {
