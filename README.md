@@ -135,6 +135,8 @@ never imports your code or starts Docker.
 
 [**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
 
+**Offline issue handoff:** `node bin/aws-emulator-mcp.mjs gap-capsule "./failed-report.json"` exports a [redacted reproduction capsule](docs/GAP_REPRO_CAPSULE.md) from a previously saved failed local app-case report, without Docker, AWS, credentials, or executing code. This is triage evidence, not a confirmed emulator incompatibility.
+
 The feature is a **draft**, not the pinned beta.15 release.
 ## Share bounded app-proof evidence with independent agent evaluators
 

@@ -17,6 +17,7 @@ import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onbo
 import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
+import {createGapReproCapsule,readGapReport} from '../scripts/gap_repro_capsule.mjs';
 import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, buildProofDraftPair, writeProofDraftPairExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -73,6 +74,7 @@ Commands:
   app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
   app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
                    Explicit local-only code execution; never callable through MCP/PR Actions
+  gap-capsule <failed-report.json>  Offline redacted JSON triage from an existing report; NO app/Docker/AWS execution
   app-verify <file> Verify YOUR trusted Python order handler in local Docker
   app-compare <before.py> <after.py>  Reproduce a bug and verify your own fix
                    JSON or PR-ready Markdown evidence; trusted local files only
@@ -575,6 +577,14 @@ function runPythonReadOnly(scriptName, args) {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'gap-capsule') {
+    if (args.length!==1) fail('Usage: aws-emulator-mcp gap-capsule <local-failed-report.json>',2);
+    let result;
+    try {result=createGapReproCapsule(readGapReport(args[0]));}
+    catch {fail('Invalid or unsupported local app-case report; no capsule produced',2);}
+    stdout.write(JSON.stringify(result,null,2)+'\n');
+    return;
+  }
   if (command === 'app-guide') {
     let options;
     try { options = parseAppGuideArgs(args); }
