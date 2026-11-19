@@ -15,6 +15,8 @@ import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onboard.mjs';
 import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
+import {dockerChildEnv} from '../scripts/mcp_connection_check.mjs';
+import {inspectMcpStartup} from '../scripts/mcp_startup.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
 import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, buildProofDraftPair, writeProofDraftPairExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
@@ -128,14 +130,17 @@ function imageExists({warnRebuild=true}={}) {
   }
   return observed.status === 0 && observed.stdout.trim() === expected;
 }
-function dockerArgs(mode, extra = []) {
+function dockerArgs(mode, extra = [], image = IMAGE) {
   return ['run', '--rm', '-i', '--pull', 'never', '--network', 'none',
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-    '--pids-limit', '256', '--memory', '2g', IMAGE, mode, ...extra];
+    '--pids-limit', '256', '--memory', '2g', image, mode, ...extra];
 }
-function runDocker(args) {
+function runDocker(args,{pinned=false}={}) {
   return new Promise((resolve, reject) => {
-    const child = spawn('docker', args, { stdio: 'inherit', windowsHide: true, shell: false });
+    const child = spawn('docker', args, {
+      stdio:'inherit',windowsHide:true,shell:false,
+      env:pinned?dockerChildEnv(process.env,true):process.env
+    });
     child.on('error', reject);
     child.on('close', code => resolve(code ?? 1));
     for (const sig of ['SIGTERM', 'SIGINT']) {
@@ -1136,20 +1141,26 @@ async function main() {
       (args.length && !(wantsJson && !['build', 'mcp'].includes(command)))) {
     fail('Unknown command/arguments. Run: aws-emulator-mcp help', 2);
   }
-  requireDocker();
-  // A desktop MCP client can start this process during ordinary application
-  // launch. It must never surprise the developer with a large download/build.
-  // Unlike explicit Docker-backed CLI experiments, MCP startup is fail-closed.
+  // A desktop MCP client may start this automatically at GUI launch.
+  // Validate and pin the local daemon and immutable image WITHOUT building or
+  // pulling. Do not confuse successfully starting stdio with a verified GUI.
   if (command === 'mcp') {
-    if (!imageExists({warnRebuild:false})) {
-      fail('MCP image missing, stale or unverified; no image build was attempted. ' +
-        'Run preflight --json, review Docker storage, then explicitly run build ' +
-        'before reconnecting your MCP client. Never send AWS credentials.', 1);
+    let verified=null;
+    try {verified=inspectMcpStartup({expectedImageDigest:imageSourceDigest(ROOT)});}
+    catch { /* Incomplete or unsafe local image inputs fail closed. */ }
+    if(!verified?.ready) {
+      fail('MCP image or local Linux Docker daemon missing, stale or unverified; ' +
+        'no image build was attempted. Run preflight --json, review Docker storage, ' +
+        'then explicitly run build before reconnecting your MCP client. ' +
+        'Never send AWS credentials.',1);
     }
-    const code = await runDocker(dockerArgs(command));
-    if (code !== 0) fail('MCP server exited (exit ' + code + ')', code);
+    const code=await runDocker(
+      ['--host',verified.endpoint,...dockerArgs('mcp',[],verified.imageId)],
+      {pinned:true});
+    if(code!==0)fail('MCP server exited (exit '+code+')',code);
     return;
   }
+  requireDocker();
   if (command === 'build' || !imageExists()) await buildImage();
   if (command === 'build') return;
   if (!wantsJson) stderr.write('AWS Emulator MCP: running verified local ' + command + '...\n');
