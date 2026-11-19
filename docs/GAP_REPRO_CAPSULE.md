@@ -82,7 +82,16 @@ it cannot reconstruct or independently attest them. A passing expected-call
 **attempt count** does not mean the SDK operation succeeded: zero successful
 calls are permitted in a deliberate, failed before-call fault baseline but
 cannot support a green fixed-app result or a guided successful-operations
-claim. Conflicting assertion and handler services are left unattributed.
+claim. For a demonstrated before/after regression, both summaries must
+preserve the **same ordered independent check IDs and assertion paths**; the
+named failed before-side assertion must exist and pass after the fix. A
+zero-success before-side operation is acceptable only when matching,
+internally consistent **injected before-call fault metadata** appears in the
+comparison, with the same fault configuration on both revisions. Removing or
+contradicting that evidence fails closed. Such checks detect contradictory
+report fields; they do **not** independently attest the injected fault,
+source bytes, emulator identity or AWS production behavior. Conflicting
+assertion and handler services are left unattributed.
 
 A reported failure may be caused by application logic, incorrect assumptions,
 unsupported emulator behavior, setup failure, or test design. A passing

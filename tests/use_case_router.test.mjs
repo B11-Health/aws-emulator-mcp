@@ -76,7 +76,7 @@ function inspect(source=html){
       if(row.code.includes('\n') || row.code.includes('\r') || row.code.startsWith('cd '))
         problems.push('multiline or cd paste risk '+key);
     }
-    if(cmd.get(id(goal,'clone'))?.code!=='git clone --depth 1 --branch '+spec.branch+' '+REPO+' '+spec.dir)
+    if(cmd.get(id(goal,'clone'))?.code!=='git clone --config core.autocrlf=false --depth 1 --branch '+spec.branch+' '+REPO+' '+spec.dir)
       problems.push('wrong branch/tag clone '+goal);
     if(cmd.get(id(goal,'verify'))?.code!=='git -C '+spec.dir+' rev-parse HEAD')
       problems.push('wrong verification checkout '+goal);
@@ -91,11 +91,19 @@ function inspect(source=html){
       }
       for(const required of [
         "d='"+spec.dir+"'","h='"+spec.sha+"'",
-        "g(['rev-parse','HEAD'])!==h",
-        "g(['rev-parse','--show-toplevel'])",
-        "g(['status','--porcelain','--untracked-files=all'])!==''",
-        "p.resolve(d,'bin/aws-emulator-mcp.mjs')",
-        "{cwd:p.resolve(d),stdio:'inherit'}",
+        "t(['rev-parse','HEAD'])!==h",
+        "p.resolve(t(['rev-parse','--show-toplevel']))!==root",
+        "t(['status','--porcelain','--untracked-files=all'])",
+        "z(['ls-tree','-rz','HEAD'])",
+        "z(['ls-files','--stage','-z'])",
+        "z(['ls-files','-v','-z'])",
+        "z(['ls-files','--others','-z'])",
+        "fl.startsWith('H ')",
+        "f.lstatSync(file).isSymbolicLink()",
+        "q.createHash('sha1')",
+        "digest!==m[2]",
+        "p.join(root,'bin/aws-emulator-mcp.mjs')",
+        "{cwd:root,stdio:'inherit',env:e}",
         "'Refusing unverified checkout: '"
       ])if(!code.includes(required)) problems.push('missing runtime protection '+key+' '+required);
       if(!code.includes(args.join(',')))problems.push('wrong version-specific command '+key);
@@ -158,7 +166,7 @@ test('branch/tag pins and version-specific arguments are enforced inside one-lin
   for(const [goal,spec] of Object.entries(goals)){
     const c=snippets();
     assert.equal(c.get(id(goal,'clone')).code,
-      'git clone --depth 1 --branch '+spec.branch+' '+REPO+' '+spec.dir);
+      'git clone --config core.autocrlf=false --depth 1 --branch '+spec.branch+' '+REPO+' '+spec.dir);
     assert.equal(c.get(id(goal,'verify')).code,'git -C '+spec.dir+' rev-parse HEAD');
     guardScript(c.get(id(goal,'run')).code);
   }
@@ -173,13 +181,12 @@ test('negative static QA rejects branch changes, unguarded commands and removed 
   const cases=[
     ['--branch '+R3+' '+REPO+' aws-mcp-api','--branch '+BETA+' '+REPO+' aws-mcp-api','wrong branch/tag'],
     ["h='"+R3_SHA+"'","h='"+BETA_SHA+"'","missing runtime protection"],
-    ["g(['status','--porcelain','--untracked-files=all'])!==''",
-     "g(['status','--porcelain','--untracked-files=all'])==='x'",
-     'missing runtime protection'],
-    ["g(['rev-parse','--show-toplevel'])","g(['rev-parse','--git-dir'])",
-     'missing runtime protection'],
-    ['node -e "const c=require','node bin/aws-emulator-mcp.mjs config copilot',
-     'unguarded node execution'],
+    ["t(['rev-parse','HEAD'])!==h","t(['rev-parse','HEAD'])===h",'missing runtime protection'],
+    ["z(['ls-files','-v','-z'])","z(['ls-files','--others','-z'])",'missing runtime protection'],
+    ["q.createHash('sha1')","q.createHash('md5')",'missing runtime protection'],
+    ["digest!==m[2]","digest===m[2]",'missing runtime protection'],
+    ["f.lstatSync(file).isSymbolicLink()","f.lstatSync(file).isFile()", 'missing runtime protection'],
+    ['node -e "const c=require','node bin/aws-emulator-mcp.mjs config copilot','unguarded node execution'],
     ['can automatically download/build','cannot build','optional signed build warning'],
     ['not yet a published update','is already public','preview disclaimer missing'],
   ];

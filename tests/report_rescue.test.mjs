@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync,symlinkSync,mkdirSync,chmodSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -24,7 +24,8 @@ function fakePreflight({platform='linux',nodeVersion='22.0.0',state='missing-ima
       return {status:state==='no-daemon'?1:0,stdout:state==='windows-containers'?'windows|25.0.16':'linux|25.0.16'};
     }
     if(args[0]==='image'){
-      if(args.at(-1).includes('Config.Labels'))return {status:0,stdout:state==='stale-image'?'b'.repeat(64):SOURCE};
+      if(args.at(-1).includes('Config.Labels'))return state==='unverified-image'
+        ? {status:1,stdout:''} : {status:0,stdout:state==='stale-image'?'b'.repeat(64):SOURCE};
       return {status:state==='missing-image'?1:0,stdout:'sha256:'+'c'.repeat(64)};
     }
     throw Error('unknown synthetic probe');
@@ -223,6 +224,64 @@ test('saved preflight rejects failed rows with empty reasons for Node, Docker or
   for(const {report} of cases) assertBoundedAndStatic(interpretReport(report));
 });
 
+test('real preflight image-cache states agree with image row: missing, stale, unverified, matched and unchecked',()=>{
+  const states=[
+    ['missing-image',false,null,'not-checked',false],
+    ['stale-image',true,false,'mismatched',false],
+    ['unverified-image',true,false,'unverified',false],
+    ['matching-image',true,true,'matched',true]
+  ];
+  for(const [state,cached,reusable,sourceStatus,passed] of states){
+    const {report}=fakePreflight({state});
+    assert.equal(report.imageCached,cached,state);
+    assert.equal(report.imageReusable,reusable,state);
+    assert.equal(report.imageSourceStatus,sourceStatus,state);
+    assert.equal(report.checks.image.passed,passed,state);
+    assertBoundedAndStatic(interpretReport(report));
+  }
+  // A real CLI may check a cached image without a source digest callback.
+  const unchecked=fakePreflight({state:'matching-image'}).report;
+  unchecked.imageReusable=null;
+  unchecked.imageSourceStatus='not-checked';
+  unchecked.imageBuildSpace={...unchecked.imageBuildSpace,buildExpected:null,status:'unknown'};
+  assert.equal(unchecked.checks.image.passed,true);
+  assertBoundedAndStatic(interpretReport(unchecked));
+  // When Docker fails, preflight never creates an image row at all.
+  const disconnected=fakePreflight({state:'no-daemon'}).report;
+  assert.equal(Object.hasOwn(disconnected.checks,'image'),false);
+  assertBoundedAndStatic(interpretReport(disconnected));
+});
+
+test('image row must equal the top-level cache and source verification, not just have an allowed reason',()=>{
+  const matched=fakePreflight({state:'matching-image'}).report;
+  const stale=fakePreflight({state:'stale-image'}).report;
+  const missing=fakePreflight({state:'missing-image'}).report;
+  const checkedNoDigest=structuredClone(matched);
+  checkedNoDigest.imageReusable=null;
+  checkedNoDigest.imageSourceStatus='not-checked';
+  checkedNoDigest.imageBuildSpace={...checkedNoDigest.imageBuildSpace,buildExpected:null,status:'unknown'};
+  const attempts=[
+    // Exact PR #91 false-green: a *failed* image check and apparent matched cache.
+    {...matched,checks:{...matched.checks,image:{...stale.checks.image}}},
+    // A missing-tag report cannot carry an image check marked successful.
+    {...missing,checks:{...missing.checks,image:{passed:true,reason:''}}},
+    // A stale source label cannot carry a successful image check either.
+    {...stale,checks:{...stale.checks,image:{passed:true,reason:''}}},
+    // A cached-but-unchecked label cannot be described as a verified mismatch.
+    {...checkedNoDigest,checks:{...checkedNoDigest.checks,image:{...stale.checks.image}}},
+    // Cached:false and reusable:false is not emitted by the real preflight.
+    {...missing,imageReusable:false},
+    // No Docker context means no image row and no cache claim.
+    {...fakePreflight({state:'no-daemon'}).report,imageReusable:false},
+    // Cached:true and not-checked source cannot be marked source-matched.
+    {...checkedNoDigest,imageSourceStatus:'matched'}
+  ];
+  for(const [i,r] of attempts.entries()){
+    assert.throws(()=>parseReport(r),/invalid|contradictory/,String(i));
+    assert.throws(()=>interpretReport(r),/invalid|contradictory/,String(i));
+  }
+});
+
 test('NTFS alternate streams and all Windows reserved device names are rejected on every host, without opening paths',()=>{
   const hosts=['win32','linux','darwin'];
   const deviceNames=[
@@ -261,22 +320,140 @@ test('safe Windows drive-absolute paths and ordinary filenames with spaces remai
     assert.equal(safeReportPath('./safe folder/report.json',{platform}),true,platform);
 });
 
-test('README, FIRST_RUN and rescue guide require R4 integrated branch and exclude beta15 for rescue',()=>{
+test('R4 rescue docs require current remote ref and explicit PR #91 review; never default to old audit SHA',()=>{
   const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8');
   const firstRun=readFileSync(new URL('../docs/FIRST_RUN.md',import.meta.url),'utf8');
   const guide=readFileSync(new URL('../docs/REPORT_RESCUE.md',import.meta.url),'utf8');
-  const readmeRescue=readme.split('**Failed preflight or connect-check? Use the R4 integrated preview')[1]?.split('## Help build and test it')[0];
+  const readmeRescue=readme.split('**Failed preflight or connect-check? Use the current R4 integrated preview')[1]?.split('## Help build and test it')[0];
   const firstRunRescue=firstRun.split('### Failed preflight or connect-check? Read the saved report without probing again')[1]?.split('## 3.')[0];
-  assert.ok(readmeRescue && firstRunRescue,'both entrypoints must explain rescue');
-  const exact='git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4';
+  assert.ok(readmeRescue && firstRunRescue,'both entrypoints must explain R4 rescue');
+  const branch='release/agent-team-preview-r4-20261118';
+  const ref='refs/heads/'+branch;
+  const previousAudit='df27c5262da9b2f36b99c079959676710e05c422';
   for(const doc of [readmeRescue,firstRunRescue,guide]){
-    assert.ok(doc.includes(exact),'must clone the R4 branch containing rescue');
-    assert.ok(doc.includes('v0.4.0-beta.15'),'must rule out the released beta15');
-    assert.ok(!doc.includes('git clone --depth 1 --branch release/agent-team-preview-r3-20261118'),
-      'R3 checkout must not be presented as containing rescue');
+    assert.ok(doc.includes(branch),'missing correct R4 branch');
+    assert.ok(doc.includes(ref),'must resolve dynamic R4 remote branch ref');
+    assert.ok(doc.includes('v0.4.0-beta.15'),'must rule out beta15 published package');
+    assert.ok(doc.includes('pull/91'),'must direct users to independently review PR #91');
+    assert.ok(doc.includes('STOP'),'must explicitly fail closed');
+    assert.ok(!doc.includes(previousAudit),'MUST NOT default to a vulnerable old audit SHA');
+    assert.doesNotMatch(doc,/git (?:switch|checkout) --detach [0-9a-f]{40}/,
+      'must not force older checkout when branch advances');
   }
-  assert.match(readmeRescue,/quoted absolute local path/);
+  assert.match(readmeRescue,/git ls-remote https:\/\/github\.com\/B11-Health\/aws-emulator-mcp\.git/);
+  assert.match(firstRunRescue,/git ls-remote https:\/\/github\.com\/B11-Health\/aws-emulator-mcp\.git/);
+  assert.match(guide,/git ls-remote --exit-code/);
+  assert.match(guide,/Read-Host 'Type the full PR #91 SHA/);
+  assert.match(guide,/IFS= read -r reviewed/);
+  assert.match(readmeRescue,/Quote local report paths/);
   assert.match(firstRunRescue,/already saved/);
+});
+
+test('R4 copyable shell steps use fail-stop clone and recheck remote SHA, origin, root and tracked files before Node',()=>{
+  const guide=readFileSync(new URL('../docs/REPORT_RESCUE.md',import.meta.url),'utf8');
+  const shBlocks=[...guide.matchAll(/```sh\n([\s\S]*?)\n```/g)].map(m=>m[1]);
+  const psBlocks=[...guide.matchAll(/```powershell\n([\s\S]*?)\n```/g)].map(m=>m[1]);
+  assert.equal(shBlocks.length,2,'POSIX clone and guarded run steps only');
+  assert.equal(psBlocks.length,2,'PowerShell clone and guarded run steps only');
+  for(const script of shBlocks){
+    const parsed=spawnSync('sh',['-n'],{input:script,encoding:'utf8',timeout:6000});
+    assert.equal(parsed.status,0,parsed.stderr);
+  }
+  assert.match(shBlocks[0],/test ! -e "\$repo"/);
+  assert.match(shBlocks[0],/git clone --depth 1 --branch/);
+  assert.doesNotMatch(shBlocks[0],/\bnode\b/,'clone may never execute project source');
+  assert.match(shBlocks[1],/rev-parse --show-toplevel/);
+  assert.match(shBlocks[1],/remote get-url origin/);
+  assert.match(shBlocks[1],/grep -Fq 'function imageRowMatchesState\(r\)'/);
+  assert.match(shBlocks[1],/status --porcelain --untracked-files=no/);
+  assert.equal((shBlocks[1].match(/git ls-remote --exit-code/g)||[]).length,2,
+    'recheck R4 remote after human review');
+  assert.match(shBlocks[1],/test "\$remote_sha" = "\$head"/);
+  assert.match(shBlocks[1],/IFS= read -r reviewed/);
+  assert.match(shBlocks[1],/test "\$reviewed" = "\$head"/);
+  assert.ok(shBlocks[1].indexOf('IFS= read -r reviewed')<shBlocks[1].indexOf('node bin/'));
+  assert.match(shBlocks[1],/test -t 0/);
+  assert.match(psBlocks[0],/if \(Test-Path -LiteralPath \$repo\)/);
+  assert.match(psBlocks[0],/if \(\$LASTEXITCODE -ne 0\) \{ throw/);
+  assert.doesNotMatch(psBlocks[0],/\bnode\b/);
+  assert.match(psBlocks[1],/rev-parse --show-toplevel/);
+  assert.match(psBlocks[1],/remote get-url origin/);
+  assert.match(psBlocks[1],/Select-String -LiteralPath/);
+  assert.match(psBlocks[1],/imageRowMatchesState\(r\)/);
+  assert.match(psBlocks[1],/status --porcelain --untracked-files=no/);
+  assert.equal((psBlocks[1].match(/git ls-remote --exit-code/g)||[]).length,2);
+  assert.match(psBlocks[1],/Read-Host 'Type the full PR #91 SHA/);
+  assert.match(psBlocks[1],/if \(\$reviewed -cne \$head\) \{ throw/);
+  assert.ok(psBlocks[1].indexOf('Read-Host')<psBlocks[1].indexOf('node bin/'));
+  assert.ok(psBlocks[1].indexOf('Push-Location')<psBlocks[1].indexOf('node bin/'));
+});
+
+test('POSIX documented R4 steps reject clone failure or a branch moving beyond checkout without running Node',()=>{
+  const guide=readFileSync(new URL('../docs/REPORT_RESCUE.md',import.meta.url),'utf8');
+  const [clone,guarded]=[...guide.matchAll(/```sh\n([\s\S]*?)\n```/g)].map(m=>m[1]);
+  const dir=mkdtempSync(path.join(tmpdir(),'r4 moving head safety '));
+  try {
+    const bin=path.join(dir,'inert-bin');
+    mkdirSync(bin);
+    const repo=path.join(dir,'aws-emulator-mcp-r4');
+    const invoked=path.join(dir,'DID_RUN_NODE');
+    const called=path.join(dir,'DID_RUN_CLONE');
+    const fakeGit=path.join(bin,'git');
+    const fakeNode=path.join(bin,'node');
+    const localSha='a'.repeat(40),newRemoteSha='b'.repeat(40);
+    writeFileSync(fakeGit,`#!/bin/sh
+if [ "$1" = "clone" ]; then printf 'clone\\n' >> "$FAKE_CLONE_MARKER"; exit 1; fi
+if [ "$1" = "-C" ]; then
+  shift 2
+  if [ "$1" = "rev-parse" ] && [ "$2" = "--show-toplevel" ]; then printf '%s\\n' "$FAKE_ROOT"; exit 0; fi
+  if [ "$1" = "rev-parse" ]; then printf '%s\\n' "$FAKE_LOCAL_SHA"; exit 0; fi
+  if [ "$1" = "remote" ]; then printf 'https://github.com/B11-Health/aws-emulator-mcp.git\\n'; exit 0; fi
+  if [ "$1" = "status" ]; then exit 0; fi
+fi
+if [ "$1" = "ls-remote" ]; then printf '%s\\t%s\\n' "$FAKE_REMOTE_SHA" 'refs/heads/release/agent-team-preview-r4-20261118'; exit 0; fi
+exit 97
+`);
+    writeFileSync(fakeNode,`#!/bin/sh\nprintf 'UNEXPECTED_NODE\\n' >> "$FAKE_NODE_MARKER"\nexit 0\n`);
+    chmodSync(fakeGit,0o755);chmodSync(fakeNode,0o755);
+    const env={...process.env,PATH:bin+':/usr/bin:/bin',FAKE_ROOT:repo,
+      FAKE_CLONE_MARKER:called,FAKE_NODE_MARKER:invoked,
+      FAKE_LOCAL_SHA:localSha,FAKE_REMOTE_SHA:newRemoteSha};
+    // Clone failure with an absent directory does not produce a checkout.
+    const cloneFailed=spawnSync('sh',['-c',clone],{cwd:dir,env,encoding:'utf8',timeout:6000});
+    assert.notEqual(cloneFailed.status,0);
+    assert.equal(existsSync(invoked),false,'clone failure must not call Node');
+    // A pre-existing stale checkout cannot be cloned into and must not run Node.
+    mkdirSync(repo);
+    const source=path.join(repo,'scripts');
+    mkdirSync(source);
+    writeFileSync(path.join(source,'report_rescue.mjs'),'function imageRowMatchesState(r) { return true; }\n');
+    const existing=spawnSync('sh',['-c',clone],{cwd:dir,env,encoding:'utf8',timeout:6000});
+    assert.notEqual(existing.status,0);
+    assert.equal(existsSync(invoked),false);
+    // Simulate an old checkout and a NEW remote branch HEAD. No real git or
+    // application is executed: fake git supplies two inert SHA strings.
+    const stale=spawnSync('sh',['-c',guarded],{cwd:dir,env,encoding:'utf8',timeout:6000});
+    assert.notEqual(stale.status,0);
+    assert.match(stale.stderr,/STOP: checkout differs from current R4 remote HEAD/);
+    assert.equal(existsSync(invoked),false,'never use old code after branch advances');
+    // The old source must be rejected even if its SHA matches remote.
+    writeFileSync(path.join(source,'report_rescue.mjs'),'// no corrected image guard\n');
+    const oldSource=spawnSync('sh',['-c',guarded],{
+      cwd:dir,env:{...env,FAKE_REMOTE_SHA:localSha},encoding:'utf8',timeout:6000
+    });
+    assert.notEqual(oldSource.status,0);
+    assert.match(oldSource.stderr,/STOP: old R4 interpreter lacks image-state fix/);
+    assert.equal(existsSync(invoked),false);
+    writeFileSync(path.join(source,'report_rescue.mjs'),'function imageRowMatchesState(r) { return true; }\n');
+    // Even a currently matching remote does not silently approve execution;
+    // without an interactive human PR review, the gate stops before Node.
+    const noninteractive=spawnSync('sh',['-c',guarded],{
+      cwd:dir,env:{...env,FAKE_REMOTE_SHA:localSha},encoding:'utf8',timeout:6000
+    });
+    assert.notEqual(noninteractive.status,0);
+    assert.match(noninteractive.stderr,/STOP: interactive review required/);
+    assert.equal(existsSync(invoked),false);
+  } finally {rmSync(dir,{recursive:true,force:true});}
 });
 
 test('report selector accepts local paths with spaces and Windows drive paths; rejects URLs, UNC, devices and traversal',()=>{

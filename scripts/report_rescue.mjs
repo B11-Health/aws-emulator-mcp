@@ -88,6 +88,35 @@ function buildSpace(v) {
         v.hostVisibleDockerRootFreeGiB>=10) : true);
 }
 
+/** Every preflight image row describes the SAME cache/fingerprint state.
+ * Trust neither a top-level cache flag nor a contradictory check result in
+ * isolation. These combinations are taken from inspectPreflight itself:
+ * no daemon, missing tag, cached-unchecked, matched, stale and unverified.
+ */
+function imageRowMatchesState(r) {
+  const hasImageRow=Object.hasOwn(r.checks,'image');
+  if(r.imageCached===null) {
+    return !hasImageRow && r.imageReusable===null &&
+      r.imageSourceStatus==='not-checked';
+  }
+  if(!hasImageRow) return false;
+  const image=r.checks.image;
+  if(r.imageCached===false) {
+    return r.imageReusable===null && r.imageSourceStatus==='not-checked' &&
+      image.passed===false &&
+      image.reason==='First emulator command will build the signed image; requires download and substantial disk space';
+  }
+  if(r.imageReusable===true) {
+    return r.imageSourceStatus==='matched' && image.passed===true && image.reason==='';
+  }
+  if(r.imageReusable===false) {
+    return (r.imageSourceStatus==='mismatched' || r.imageSourceStatus==='unverified') &&
+      image.passed===false &&
+      image.reason==='Cached image source mismatch or unverified; the next emulator command will rebuild the signed local image';
+  }
+  return r.imageReusable===null && r.imageSourceStatus==='not-checked' &&
+    image.passed===true && image.reason==='';
+}
 function validatePreflight(r) {
   if(!valid(r,PREFLIGHT_KEYS,[...PREFLIGHT_KEYS]) || r.schemaVersion!==1 ||
      !oneOf(r.platform,['win32','darwin','linux']) ||
@@ -112,7 +141,7 @@ function validatePreflight(r) {
      r.checks.node.passed !== (r.nodeMajor!==null && r.nodeMajor>=20) ||
      r.emulatorReady!==(r.checks.node.passed && r.checks.docker.passed) ||
      r.checks.docker.passed !== (r.dockerVersion!==null) ||
-     Object.hasOwn(r.checks,'image') !== (r.imageCached!==null) ||
+     !imageRowMatchesState(r) ||
      r.imageBuildSpace.buildExpected !== expectedBuild ||
      (r.imageReusable===true && (r.imageCached!==true || r.imageSourceStatus!=='matched')) ||
      (r.imageSourceStatus==='matched' && r.imageReusable!==true) ||

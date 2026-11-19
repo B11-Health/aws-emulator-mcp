@@ -271,6 +271,9 @@ test('docs require PowerShell 7+ UTF-8 without BOM and do not claim exact export
  assert.match(doc,/UTF-16LE/);
  assert.match(doc,/do \*\*not\*\* claim byte-for-byte identity/);
  assert.match(doc,/min.*max.*passed/s);
+ assert.match(doc,/same ordered independent check IDs and assertion paths/);
+ assert.match(doc,/injected before-call fault metadata/);
+ assert.match(doc,/do \*\*not\*\* independently attest/);
 });
 
 test('forged hash identities reject mismatches but never pretend to attest files',()=>{
@@ -290,4 +293,64 @@ test('forged hash identities reject mismatches but never pretend to attest files
  assert.equal(capsule.reportConfidence,'report_fields_checked_not_independently_attested');
  assert.equal(capsule.identities.sourceSha256,'a'.repeat(64));
  assert.equal(capsule.emulator.versionIndependentlyAttested,false);
+});
+
+test('green comparison requires the same named regression check and assertion path after the fix',()=>{
+ const original=structuredClone(sqs.comparison);
+ const baseline=createGapReproCapsule(original);
+ assert.equal(baseline.interpretation.classification,'application_regression_demonstrated');
+ assert.equal(baseline.interpretation.emulatorIncompatibilityEstablished,false);
+ for(const mutate of [
+   r=>{r.after.checks.find(c=>c.id===r.regression.stepId).id='renamed-postcondition';},
+   r=>{r.after.checks.find(c=>c.id===r.regression.stepId).assertions[1].path='Messages.7';},
+   r=>{r.after.checks=r.after.checks.filter(c=>c.id!==r.regression.stepId);},
+   r=>{r.after.checks.find(c=>c.id===r.regression.stepId).assertions.splice(1,1);},
+   r=>{r.after.checks.find(c=>c.id===r.regression.stepId).assertions[1].path='Messages.0.Body';},
+   r=>{r.after.checks[0].assertions[0].path='Item.other.S';},
+   r=>{r.after.checks.push(structuredClone(r.after.checks[0]));},
+ ]) {
+   const modified=structuredClone(original);mutate(modified);
+   assert.throws(()=>createGapReproCapsule(modified),/Unsupported or inconsistent/);
+ }
+});
+
+test('historical S3 and SQS comparisons retain the same observed named assertion after the fix',()=>{
+ for(const input of [sqs.comparison,s3.comparison]) {
+   const after=input.after.checks.find(c=>c.id===input.regression.stepId);
+   assert.ok(after);
+   assert.equal(after.assertions.find(a=>a.path===input.regression.path)?.passed,true);
+   const result=createGapReproCapsule(structuredClone(input));
+   assert.equal(result.interpretation.classification,'application_regression_demonstrated');
+   assert.equal(result.interpretation.emulatorIncompatibilityEstablished,false);
+ }
+});
+
+test('zero-success baseline cannot be a demonstrated regression without a consistent injected before-call fault',()=>{
+ const original=load('docs/evidence/app-case-sqs-retry-aws-emulator-1.0.508.json').comparison;
+ assert.equal(original.before.sdkCalls[0].successes,0);
+ assert.equal(original.before.appFault.mode,'before-call');
+ assert.equal(createGapReproCapsule(original).interpretation.classification,'application_regression_demonstrated');
+ for(const mutate of [
+   r=>{delete r.before.appFault;},
+   r=>{delete r.before.appFault;delete r.after.appFault;},
+   r=>{r.before.appFault.injected=false;},
+   r=>{r.before.appFault.sentToEmulator=true;},
+   r=>{r.before.appFault.mode='after-success';r.before.appFault.sentToEmulator=true;},
+   r=>{r.before.appFault.occurrence=2;},
+   r=>{r.before.appFault.occurrence=0;},
+   r=>{r.before.appFault.service='s3';r.before.appFault.operation='PutObject';},
+   r=>{r.before.appFault.operation='ReceiveMessage';},
+   r=>{r.before.appFault.injected='true';},
+   r=>{r.after.appFault.occurrence=2;},
+   r=>{delete r.after.appFault;},
+ ]) {
+   const modified=structuredClone(original);mutate(modified);
+   assert.throws(()=>createGapReproCapsule(modified),/Unsupported or inconsistent/);
+ }
+});
+
+test('unexplained zero-success before-side write cannot piggyback a normal regression',()=>{
+ const modified=structuredClone(sqs.comparison);
+ for(const c of modified.before.sdkCalls)c.successes=0;
+ assert.throws(()=>createGapReproCapsule(modified),/Unsupported or inconsistent/);
 });
