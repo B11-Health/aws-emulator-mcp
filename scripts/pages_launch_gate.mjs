@@ -179,36 +179,67 @@ export function videoPosterAssets(html, page) {
  */
 export function appProofCopyErrors(html) {
   const errors = [];
+  const ids = ['app-proof-clone','app-proof-verify','app-proof-preflight-command',
+               'app-proof-build-command','app-proof-command'];
   const blocks = {};
-  for (const id of ['app-proof-preflight-command','app-proof-build-command','app-proof-command']) {
-    const regex = new RegExp('<pre\\s+id="'+id+'"[^>]*>\\s*<code>([\\s\\S]*?)<\\/code>\\s*<\\/pre>','g');
-    const matches = [...html.matchAll(regex)];
-    if (matches.length !== 1 || !html.includes('data-copy="'+id+'"')) {
-      errors.push('APP PROOF COPY missing or ambiguous standalone block: '+id);
+  for (const id of ids) {
+    const regex=new RegExp('<pre\\s+id="'+id+'"[^>]*>\\s*<code>([\\s\\S]*?)<\\/code>\\s*<\\/pre>','g');
+    const found=[...html.matchAll(regex)];
+    if (found.length!==1 || !html.includes('data-copy="'+id+'"')) {
+      errors.push('APP PROOF COPY missing or ambiguous control: '+id);
       continue;
     }
-    blocks[id] = matches[0][1].trim();
-    if (/\\\s*\r?\n/.test(blocks[id])) {
-      errors.push('APP PROOF COPY contains nonportable shell line continuation: '+id);
+    const command=found[0][1].trim();
+    blocks[id]=command;
+    if (command.includes('\n') || command.includes('\r') ||
+        command.includes(String.fromCharCode(96)) || command.includes('$') ||
+        /^cd\s/i.test(command)) {
+      errors.push('APP PROOF COPY is not a standalone portable shell line: '+id);
     }
   }
-  const first = blocks['app-proof-preflight-command'] || '';
-  const build = blocks['app-proof-build-command'] || '';
-  const test = blocks['app-proof-command'] || '';
-  if (!/^git clone --depth 1 --branch master https:\/\/github\.com\/B11-Health\/aws-emulator-mcp\.git\r?\ncd aws-emulator-mcp\r?\nnode bin\/aws-emulator-mcp\.mjs preflight --json$/.test(first)) {
-    errors.push('APP PROOF COPY must clone and inspect read-only preflight without building');
+  const R3='d577c490f7c6d92c9ac9040913728bf700b52244';
+  const clone='git clone --config core.autocrlf=false --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-proof';
+  if (blocks['app-proof-clone'] !== clone ||
+      blocks['app-proof-verify'] !== 'git -C aws-mcp-proof rev-parse HEAD') {
+    errors.push('APP PROOF COPY must clone/verify pinned R3 without cd or master');
   }
-  if (build !== 'node bin/aws-emulator-mcp.mjs build') {
-    errors.push('APP PROOF COPY requires a separately opted-in signed image build');
+  const guarded={
+    'app-proof-preflight-command':"['preflight','--json']",
+    'app-proof-build-command':"['build']",
+    'app-proof-command':"['app-case-compare','examples/app-case/buggy.py','examples/app-case/fixed.py','examples/app-case/sqs-idempotency.json','--json']",
+  };
+  for (const [id,args] of Object.entries(guarded)) {
+    const c=blocks[id] || '';
+    if (!c.startsWith('node -e "') || !c.endsWith('"') ||
+        !c.includes("d='aws-mcp-proof',h='"+R3+"',a="+args) ||
+        !c.includes("t(['rev-parse','HEAD'])!==h") ||
+        !c.includes("e.GIT_NO_REPLACE_OBJECTS='1'") ||
+        !c.includes("'core.fsmonitor=false'") ||
+        !c.includes("z(['ls-tree','-rz','HEAD'])") ||
+        !c.includes("z(['ls-files','--stage','-z'])") ||
+        !c.includes("z(['ls-files','-v','-z'])") ||
+        !c.includes("z(['ls-files','--others','-z'])") ||
+        !c.includes("f.lstatSync(file).isSymbolicLink()") ||
+        !c.includes("q.createHash('sha1')") ||
+        !c.includes("digest!==m[2]") ||
+        !c.includes("f.readdirSync(dir)") ||
+        !c.includes("!entries.has(key)") ||
+        !c.includes("p.join(root,'bin/aws-emulator-mcp.mjs')") ||
+        !c.includes("'Refusing unverified checkout: '")) {
+      errors.push('APP PROOF COPY must verify pinned source bytes before executing: '+id);
+    }
   }
-  if (test !== 'node bin/aws-emulator-mcp.mjs app-case-compare examples/app-case/buggy.py examples/app-case/fixed.py examples/app-case/sqs-idempotency.json --json') {
-    errors.push('APP PROOF COPY requires a separate single-line trusted app comparison');
+  const sequence=ids.map(id=>html.indexOf('id="'+id+'"'));
+  if (sequence.some(n=>n===-1) ||
+      sequence.some((n,i)=>i>0 && n<=sequence[i-1])) {
+    errors.push('APP PROOF COPY must show Clone, Verify, Preflight, Build, Test in that order');
   }
   if (!html.includes('may automatically build') ||
       !html.includes('Docker Desktop VM capacity') ||
       !html.includes('trusted local Python') ||
-      !html.includes('Docker is not a sandbox for hostile code')) {
-    errors.push('APP PROOF WARNINGS must disclose possible automatic rebuild, real disk review, and trusted-source execution');
+      !html.includes('Docker is not a sandbox for hostile code') ||
+      !html.includes('same parent directory')) {
+    errors.push('APP PROOF WARNINGS must disclose storage, automatic rebuild and trusted source limitations');
   }
   if (!html.includes('Proof Explorer (available only after an approved Pages deployment)')) {
     errors.push('APP PROOF WARNINGS must not call the public Explorer live before deployment');
