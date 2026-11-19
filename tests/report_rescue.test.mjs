@@ -191,6 +191,94 @@ test('unknown, contradictory and remote-path report fields are rejected, never c
   ])assert.throws(()=>interpretReport(modified),/invalid|contradictory/);
 });
 
+test('saved preflight rejects success rows that carry a failure reason for Node, Docker or image',()=>{
+  // All fixtures come from the existing fake preflight builder. No Docker call
+  // is performed, and the tampered JSON is never interpreted as healthy.
+  const cases=[
+    {report:fakePreflight().report,check:'node',reason:'Node.js 20+ required'},
+    {report:fakePreflight().report,check:'docker',reason:'Docker CLI unavailable; install Docker Desktop or Docker Engine'},
+    {report:fakePreflight().report,check:'docker',reason:'Nonlocal DOCKER_HOST refused; select a local Unix socket or Windows named pipe'},
+    {report:fakePreflight({state:'stale-image'}).report,check:'image',reason:'Cached image source mismatch or unverified; the next emulator command will rebuild the signed local image'},
+  ];
+  for(const {report,check,reason} of cases){
+    const tampered={...report,checks:{...report.checks,[check]:{passed:true,reason}}};
+    assert.throws(()=>parseReport(tampered),/invalid|contradictory/,check);
+    assert.throws(()=>interpretReport(tampered),/invalid|contradictory/,check);
+  }
+  // The image warning with an authentic passed:false must remain accepted.
+  assertBoundedAndStatic(interpretReport(fakePreflight({state:'stale-image'}).report));
+});
+
+test('saved preflight rejects failed rows with empty reasons for Node, Docker or image',()=>{
+  const cases=[
+    {report:fakePreflight({nodeVersion:'18.20.1'}).report,check:'node'},
+    {report:fakePreflight({state:'missing-cli'}).report,check:'docker'},
+    {report:fakePreflight({state:'stale-image'}).report,check:'image'}
+  ];
+  for(const {report,check} of cases){
+    const tampered={...report,checks:{...report.checks,[check]:{passed:false,reason:''}}};
+    assert.throws(()=>interpretReport(tampered),/invalid|contradictory/,check);
+  }
+  // Authentic failures still produce actionable, bounded and safe guidance.
+  for(const {report} of cases) assertBoundedAndStatic(interpretReport(report));
+});
+
+test('NTFS alternate streams and all Windows reserved device names are rejected on every host, without opening paths',()=>{
+  const hosts=['win32','linux','darwin'];
+  const deviceNames=[
+    'NUL.json','nul.JSON','CON.json','PRN.extra.json','AUX.json',
+    'COM1.json','COM9.backup.json','LPT1.json','LPT9.report.json',
+    'conin$.json','CONOUT$.json','CLOCK$.json','COM¹.json','lpt².json',
+    'NUL .json','safe/COM3.json','safe/LPT9.backup.json'
+  ];
+  const streamNames=[
+    'report.txt:secret.json','safe/report.txt:secret.json',
+    'C:\\safe\\report.txt:secret.json','C:/safe/report.json:private.json',
+    'C:\\safe:stream\\report.json','C::\\safe\\report.json',
+    'C:relative.json'
+  ];
+  for(const platform of hosts){
+    for(const candidate of [...deviceNames,...streamNames])
+      assert.equal(safeReportPath(candidate,{platform}),false,`${platform}: ${candidate}`);
+    for(const name of ['NUL.json','AUX.extra.json','COM1.json','LPT9.json']){
+      const pathWithDevice=`C:\\safe folder\\${name}`;
+      assert.equal(safeReportPath(pathWithDevice,{platform}),false,`${platform}: ${pathWithDevice}`);
+    }
+  }
+  // All malicious strings above are checked ONLY by the path predicate;
+  // none is passed to readLocalReport, openSync, or any filesystem call.
+});
+
+test('safe Windows drive-absolute paths and ordinary filenames with spaces remain allowed',()=>{
+  for(const filename of [
+    'C:\\Users\\A Developer\\saved report.json',
+    'D:/Work Folder/subfolder/report.v2.JSON',
+    'Z:\\Files With Spaces\\ordinary report.json',
+    'safe folder/report.json','./local saved reports/report.json'
+  ])assert.equal(safeReportPath(filename,{platform:'win32'}),true,filename);
+  assert.equal(safeReportPath('C:\\Users\\A Developer\\saved report.json',{platform:'linux'}),false);
+  for(const platform of ['linux','darwin'])
+    assert.equal(safeReportPath('./safe folder/report.json',{platform}),true,platform);
+});
+
+test('README, FIRST_RUN and rescue guide require R4 integrated branch and exclude beta15 for rescue',()=>{
+  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8');
+  const firstRun=readFileSync(new URL('../docs/FIRST_RUN.md',import.meta.url),'utf8');
+  const guide=readFileSync(new URL('../docs/REPORT_RESCUE.md',import.meta.url),'utf8');
+  const readmeRescue=readme.split('**Failed preflight or connect-check? Use the R4 integrated preview')[1]?.split('## Help build and test it')[0];
+  const firstRunRescue=firstRun.split('### Failed preflight or connect-check? Read the saved report without probing again')[1]?.split('## 3.')[0];
+  assert.ok(readmeRescue && firstRunRescue,'both entrypoints must explain rescue');
+  const exact='git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4';
+  for(const doc of [readmeRescue,firstRunRescue,guide]){
+    assert.ok(doc.includes(exact),'must clone the R4 branch containing rescue');
+    assert.ok(doc.includes('v0.4.0-beta.15'),'must rule out the released beta15');
+    assert.ok(!doc.includes('git clone --depth 1 --branch release/agent-team-preview-r3-20261118'),
+      'R3 checkout must not be presented as containing rescue');
+  }
+  assert.match(readmeRescue,/quoted absolute local path/);
+  assert.match(firstRunRescue,/already saved/);
+});
+
 test('report selector accepts local paths with spaces and Windows drive paths; rejects URLs, UNC, devices and traversal',()=>{
   for(const good of ['./saved reports/my preflight.json','/tmp/saved report.json'])
     assert.equal(safeReportPath(good,{platform:'linux'}),true,good);

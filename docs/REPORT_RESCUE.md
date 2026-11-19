@@ -8,9 +8,17 @@ configuration, or connect to an MCP client. It is different from `onboard`,
 which generates a new seven-artifact *architecture-only* result and may perform
 read-only Docker preflight unless `--offline` is selected.
 
-Use a checkout containing the round-four feature (not the default `master` or
-the published beta.15 CLI). If you already saved your JSON, **skip this entire
-capture step**. Otherwise select **ONE** command, never both just to use rescue.
+Use the **R4 integrated preview** containing this command (not the R3
+checkout, default `master`, or published `v0.4.0-beta.15` release):
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4
+cd aws-emulator-mcp-r4
+```
+
+If you **already saved your JSON**, skip the entire capture step below.
+Otherwise select **ONE** command, never both just to use rescue. Pass its
+quoted absolute local path to `rescue` if the report is outside this checkout.
 
 To capture a failing **preflight** (read-only local Docker/Node checks; no build):
 

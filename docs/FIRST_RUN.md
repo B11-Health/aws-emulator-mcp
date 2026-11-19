@@ -177,13 +177,26 @@ reply**. The only verified GUI result comes from the GUI, not this check.
 
 ### Failed preflight or connect-check? Read the saved report without probing again
 
-The optional round-four `rescue` command reads a **previously captured**
-`preflight --json` or `connect-check --json` report and generates up to three
+The optional round-four `rescue` command is **not available** in the R3
+checkout shown above, the default `master`, or the released `v0.4.0-beta.15`.
+Use the **R4 integrated preview** branch containing the new interpreter:
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4
+cd aws-emulator-mcp-r4
+node bin/aws-emulator-mcp.mjs rescue "./preflight-report.json"
+```
+
+This example expects an **already saved** `preflight-report.json` in the R4
+checkout. If it lives elsewhere, replace the quoted report filename with the
+quoted **absolute local path** to that file (spaces are supported). Do not
+re-run `preflight` merely to interpret an existing report. The interpreter also
+accepts a saved `connect-check --json` file and produces at most three
 platform-aware manual next actions. It never invokes Docker or AWS and never
 executes a suggested command. See [saved-report rescue instructions](REPORT_RESCUE.md)
-for quoting paths with spaces, remote-file rejection, exact 3 GiB/10 GiB
-advisories, and explicit signed-build opt-in. It is **not** the `onboard`
-architecture-only trial or evidence of a desktop-client connection.
+for unsafe-path rejection, exact 3 GiB/10 GiB advisories, and explicit
+signed-build opt-in. It is **not** the `onboard` architecture-only trial or
+evidence of a desktop-client connection.
 
 ## 3. How do I know I tested my application?
 
