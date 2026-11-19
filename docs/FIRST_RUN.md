@@ -175,6 +175,27 @@ tested. Once the check passes, restart/connect your actual desktop client and
 request `emulator_doctor`. Inspect and report **that client's actual tool
 reply**. The only verified GUI result comes from the GUI, not this check.
 
+### Failed preflight or connect-check? Read the saved report without probing again
+
+`rescue` exists in the **R4 integrated development preview** only; it is **not** in the R3 checkout above, default `master`, or released `v0.4.0-beta.15`. R4 is **mutable**, and a previously recorded commit SHA is **not** a safe default after release-blocker fixes. No document can embed its own future release commit SHA.
+
+**Step 1 - standalone clone command; do not run project code here:**
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4
+```
+
+**Step 2 - standalone read-only revision checks, without running Node:**
+
+```sh
+git -C aws-emulator-mcp-r4 rev-parse HEAD
+git ls-remote https://github.com/B11-Health/aws-emulator-mcp.git refs/heads/release/agent-team-preview-r4-20261118
+```
+
+If clone fails or HEAD differs from the **current** branch SHA, **STOP**. Independently review [PR #91](https://github.com/B11-Health/aws-emulator-mcp/pull/91) and confirm its current integration HEAD matches the branch and checkout before executing any source. If PR #91 points elsewhere, stop and request updated reviewed instructions. The [fully gated shell-specific flow](REPORT_RESCUE.md#safe-r4-clone-verify-and-rescue) also verifies the Git origin, repository root, and clean tracked files, then requires you to type the exact reviewed SHA. It refuses to run Node from a stale checkout even if the branch advances during review.
+
+With that flow, the interpreter consumes **already saved** preflight/connect-check JSON and provides up to three manual actions. It makes no Docker or AWS calls, installs nothing, and never changes settings. The conservative 3 GiB / 10 GiB host disk thresholds are not verified Docker VM capacity; a signed-image build remains a separate opt-in. A terminal MCP handshake never proves a desktop GUI or real AWS API test.
+
 ## 3. How do I know I tested my application?
 
 The offline first win establishes **only** that the bundled local

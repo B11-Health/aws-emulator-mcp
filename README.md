@@ -98,6 +98,25 @@ node bin/aws-emulator-mcp.mjs connect-check --json
 
 `connect-check` never builds/pulls Docker images or edits client settings. It **fails closed** until an existing Linux Docker image matches the current source fingerprint, its local daemon endpoint and immutable image ID are reverified, and the read-only MCP `emulator_status` tool returns an exact healthy lowercase `body: "ok"` from loopback. It is a terminal-only handshake, **not** an AWS API test or proof that Claude Desktop/Copilot has connected. Review Docker storage and explicitly build the signed emulator separately if required; the `mcp` launcher can build on client startup if not prepared. [Step-by-step first-reply check](docs/FIRST_RUN.md#before-your-first-mcp-reply-explicitly-check-the-local-connection-round-3-draft) and [desktop safety guide](docs/DESKTOP_INSTALL.md).
 
+**Failed preflight or connect-check? Use the current R4 integrated preview, not R3 or released beta.15.** The `rescue` interpreter is **not** in the published `v0.4.0-beta.15` package or default `master`. The R4 branch **can move**: do not pin an older commit from a previous review as if it contained the latest fixes.
+
+**Step 1 - copy this standalone clone command (no Node):**
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4
+```
+
+**Step 2 - inspect the checkout and fresh remote HEAD as separate commands (no Node):**
+
+```sh
+git -C aws-emulator-mcp-r4 rev-parse HEAD
+git ls-remote https://github.com/B11-Health/aws-emulator-mcp.git refs/heads/release/agent-team-preview-r4-20261118
+```
+
+If cloning failed, the destination existed, the checkout HEAD differs from the **current** R4 remote SHA, or you cannot independently review that same SHA as the **current [PR #91](https://github.com/B11-Health/aws-emulator-mcp/pull/91) integration head**, **STOP**. Git revision equality alone does not establish code safety. **Never run Node from a failed or stale clone.** Use the [fail-stop Bash/macOS/Linux and Windows PowerShell blocks](docs/REPORT_RESCUE.md#safe-r4-clone-verify-and-rescue), including Git origin/root/cleanliness checks and explicit user confirmation, before interpreting an already saved report.
+
+`rescue` produces 1-3 manual recovery actions from a saved local `preflight --json` or `connect-check --json` file **without executing Docker, AWS calls, downloads or configuration changes**. It never reproduces report-supplied commands or credentials. Quote local report paths containing spaces. [Disk and signed-build warnings](docs/REPORT_RESCUE.md).
+
 ## Help build and test it
 
 **Outside contributors welcome.** You do not need repository write access
