@@ -173,6 +173,8 @@ never imports your code or starts Docker.
 
 [**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
 
+[**Rehearse the receipt proof from an external workspace**](docs/EXTERNAL_APP_PILOT.md): stage a maintained UTF-8 receipt handler outside this checkout and compare the buggy and corrected sources against one reviewed byte-length assertion. The [independent-developer evaluation protocol](docs/pilots/EXTERNAL_APP_PILOT_EVALUATION.md) keeps future participant results separate from this maintained example.
+
 **Offline issue handoff:** `node bin/aws-emulator-mcp.mjs gap-capsule "./failed-report.json"` exports a [redacted reproduction capsule](docs/GAP_REPRO_CAPSULE.md) from a previously saved failed local app-case report, without Docker, AWS, credentials, or executing code. This is triage evidence, not a confirmed emulator incompatibility.
 
 The feature is a **draft**, not the pinned beta.15 release.

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "status": "NOT_RUN",
+  "runKind": null,
+  "participantCode": null,
+  "startCounted": null,
+  "consent": {
+    "participation": null,
+    "anonymousStartRetention": null,
+    "sanitizedEvidenceSharing": null
+  },
+  "scope": {
+    "ownsAndTrustsSelectedHandler": null,
+    "sourceOutsideMcpCheckout": null,
+    "priorExposure": null,
+    "rehearsalBeforeTask": null,
+    "selectedHandlerFitsScope": null,
+    "participantAuthoredAdapter": null
+  },
+  "environment": {
+    "setupClass": null,
+    "mcpCommit": null,
+    "emulatorVersion": null,
+    "hostOsFamily": null,
+    "nodeVersion": null,
+    "pythonVersion": null
+  },
+  "timing": {
+    "setupCompleted": null,
+    "setupElapsedSeconds": null,
+    "proofStarted": null,
+    "proofCompleted": null,
+    "proofElapsedSeconds": null,
+    "totalElapsedSeconds": null,
+    "interruptionCodes": null
+  },
+  "assistance": {
+    "highestLevel": null,
+    "actionCodes": null
+  },
+  "outcome": {
+    "code": null,
+    "failureCodes": null,
+    "attemptCount": null,
+    "withinProposedProofTarget": null
+  },
+  "evidence": {
+    "sourceInvoked": null,
+    "expectedSdkCountsMatched": null,
+    "requiredSdkOperationsSucceeded": null,
+    "sdkOperationCounts": null,
+    "independentAssertionsPassed": null,
+    "participantExplainedInvariant": null,
+    "freshOwnedFixtures": null,
+    "cleanupPassed": null,
+    "sourceSha256": null,
+    "caseSha256": null,
+    "comparison": {
+      "differentSourceHashes": null,
+      "unchangedCaseHash": null,
+      "matchingEmulatorVersions": null,
+      "beforeOnlyNamedRegressionFailed": null,
+      "afterIndependentAssertionsPassed": null,
+      "bothCleanupsPassed": null,
+      "bugReproduced": null,
+      "fixVerified": null
+    },
+    "productionAwsValidated": null
+  },
+  "sharing": {
+    "sanitizedEvidenceReviewed": null,
+    "approvedForSharing": null
+  }
+}

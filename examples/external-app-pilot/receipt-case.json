@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "name": "external-receipt-utf8-content-length",
+  "services": ["s3"],
+  "setup": [
+    {
+      "id": "create-bucket",
+      "service": "s3",
+      "operation": "CreateBucket",
+      "parameters": {"Bucket": {"$fixture": "bucket"}}
+    }
+  ],
+  "invoke": {
+    "entrypoint": "handle",
+    "times": 1,
+    "inputs": {
+      "bucket": {"$fixture": "bucket"},
+      "key": {"$fixture": "id"},
+      "receipt": "RECEIPT R-1042\nItem: café ☕\nTotal: USD 12.50\n"
+    },
+    "expectedCalls": [
+      {"service": "s3", "operation": "PutObject", "min": 1, "max": 1}
+    ]
+  },
+  "checks": [
+    {
+      "id": "head-receipt",
+      "service": "s3",
+      "operation": "HeadObject",
+      "parameters": {
+        "Bucket": {"$fixture": "bucket"},
+        "Key": {"$fixture": "id"}
+      },
+      "expect": {"assertions": [
+        {"path": "ContentLength", "equals": 48}
+      ]}
+    }
+  ],
+  "cleanup": [
+    {
+      "id": "remove-receipt",
+      "service": "s3",
+      "operation": "DeleteObject",
+      "parameters": {
+        "Bucket": {"$fixture": "bucket"},
+        "Key": {"$fixture": "id"}
+      }
+    },
+    {
+      "id": "remove-bucket",
+      "service": "s3",
+      "operation": "DeleteBucket",
+      "parameters": {"Bucket": {"$fixture": "bucket"}}
+    }
+  ],
+  "regression": {"stepId": "head-receipt", "path": "ContentLength"}
+}
