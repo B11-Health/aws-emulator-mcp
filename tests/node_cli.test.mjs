@@ -47,6 +47,25 @@ test('round-three beginner instructions use one checkout with Claude config and 
   assert.match(firstRun,/earlier round-two checkout: that checkout has `config claude` but does not/);
 });
 
+test('README and FIRST_RUN agree with the exact lowercase MCP health body checked by source', () => {
+  const source = readFileSync(new URL('../scripts/mcp_connection_check.mjs',import.meta.url),'utf8');
+  const readme = readFileSync(new URL('../README.md',import.meta.url),'utf8');
+  const firstRun = readFileSync(new URL('../docs/FIRST_RUN.md',import.meta.url),'utf8');
+  const expected = source.match(/const HEALTH_BODY = '([^']+)';/);
+  assert.ok(expected, 'connection checker must declare one exact health body');
+  assert.equal(expected[1], 'ok', 'signed local emulator health response is lowercase');
+  assert.match(source, /status\.body!==HEALTH_BODY/, 'status body must be checked exactly');
+  for (const [name,doc] of [['README',readme],['FIRST_RUN',firstRun]]) {
+    const firstDocumented = doc.match(/`body: "([^"]+)"`/);
+    assert.ok(firstDocumented, `${name} must document the expected health body`);
+    assert.equal(firstDocumented[1], expected[1], `${name} must not describe uppercase OK as healthy`);
+  }
+  assert.doesNotMatch(readme,/exact healthy `body: "OK"` from loopback/,
+    'regression: README formerly claimed uppercase OK was healthy');
+  assert.match(firstRun,/`body: "OK"` is \*\*not\*\* enough|`body: "OK"`, or/,
+    'uppercase OK must remain documented as a rejected response');
+});
+
 test('Claude Desktop config is a paste-ready stdio entry with the real executable and package path', () => {
   const result = cli('config', 'claude');
   assert.equal(result.status, 0, result.stderr);
