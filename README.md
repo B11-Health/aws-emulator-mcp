@@ -57,7 +57,9 @@ a sanitized first-run report. This command was introduced in
 
 ## Choose what you need to do (round-four source preview)
 
-**New to AWS?** These four goals map to commands already implemented in the specified tag or preview branch. The [accessible source-only goal chooser](docs/index.html) expands each path and provides copyable commands. **It is not yet deployed to the public GitHub Pages Demo Studio**; open the checked-in `docs/index.html` file locally in your browser until the reviewed Pages release gate passes. Viewing the page performs no analytics, account calls, Docker work or application-source execution.
+**New to AWS?** These four goals map to implemented commands, but the CLI names in the table are **references, not a safe paste-and-run sequence**. Use the [source-only goal chooser](docs/index.html), which offers **separate Clone → Verify → Run buttons** for each goal. Work from the **same parent directory** for all steps. If a clone fails because the directory exists, **stop**; do not `cd` into old code. The Run button itself checks the exact pinned commit and clean checkout before it will execute any repository Node code. R3 routes require `d577c490f7c6d92c9ac9040913728bf700b52244`; the beta.15 architecture route requires tag target `12bae624be4cd9d428844dcfd17d24ea38cbc788`. These are intentionally pinned development/release versions, not the moving default branch.
+
+**The chooser is not yet deployed** to the public GitHub Pages Demo Studio; open checked-in `docs/index.html` locally until the reviewed Pages release gate passes. Viewing the page performs no analytics, account calls, Docker work or application-source execution.
 
 | Your problem | Real first command (from a checked-out repository) | Version and boundary | One next step |
 | --- | --- | --- | --- |
@@ -66,7 +68,7 @@ a sanitized first-run report. This command was introduced in
 | **“Can I design infrastructure offline?”** | `node bin/aws-emulator-mcp.mjs architecture demo` | **Release `v0.4.0-beta.15`**. Node 20+; no Docker, AWS account, SDK calls or deployment. Writes local artifacts. | Open `reports/architecture-studio/diagram.svg` and inspect what was proposed. |
 | **“Is an emulator API missing or behaving differently?”** | `node bin/aws-emulator-mcp.mjs preflight --json` | **R3 preview**. Read-only local readiness, no build. The separately opted-in `coverage s3 --json` probes a narrow read-only API and **can build a large signed image**. Review actual Docker storage first. | After approving the local Docker/image cost, run `node bin/aws-emulator-mcp.mjs coverage s3 --json` and compare the precise result with [AWS's official fidelity information](https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html) before filing a sanitized report. |
 
-For the preview paths, clone the named `release/agent-team-preview-r3-20261118` branch rather than `master`; for offline architecture, clone the immutable `v0.4.0-beta.15` tag. Exact one-line Git/Bash/PowerShell checkout commands are in the source-only chooser. **No emulator API response alone establishes AWS production parity, IAM behavior, or independent user adoption.**
+For preview paths, the chooser clones `release/agent-team-preview-r3-20261118`; for offline architecture, it clones the immutable `v0.4.0-beta.15` tag. Copy **one command per button**, compare the full SHA, then use the independently guarded one-line Run command. Never paste clone, directory change, and Node execution as one block. **No emulator API response alone establishes AWS production parity, IAM behavior, or independent user adoption.**
 
 ## See the proof in 90 seconds
 

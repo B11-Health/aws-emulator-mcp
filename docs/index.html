@@ -46,7 +46,7 @@
  <div class="section-header">
   <p class="eyebrow">FOUR DEVELOPER GOALS · STATIC PREVIEW · NO TELEMETRY</p>
   <h2 id="goals-heading">What are you trying to do?</h2>
-  <p>No AWS vocabulary needed to start. Choose a goal to see one real command path, what it checks, what it <strong>does not</strong> prove, and one next step. Every command line works independently in Bash and PowerShell; copying text never runs it. These paths are in this <strong>draft source checkout</strong> and are not yet a published update to the public Demo Studio.</p>
+  <p>No AWS vocabulary needed to start. Choose a goal to see a pinned, separately verified command path, what it checks, what it <strong>does not</strong> prove, and one next step. Run all steps from the same parent directory. Copy one step at a time in Bash or PowerShell. Never paste a Clone, Verify, and Run sequence together: Git may refuse an existing directory. The Run buttons check the exact pinned commit and clean checkout themselves before launching repository code. Copying text never executes it. These paths are in this <strong>draft source checkout</strong> and are not yet a published update to the public Demo Studio.</p>
  </div>
  <div class="goal-grid">
   <details class="goal-card" id="goal-api" name="developer-goal" open>
@@ -54,9 +54,17 @@
    <div class="goal-body">
     <p>Example: a database field declared as text receives a number. Our existing <code>aws_sdk_preview</code> MCP tool can explain expected field types <em>before</em> an AWS-style request runs. The CLI below only prints a VS Code Copilot connection configuration; it does <strong>not</strong> validate the request or connect a client.</p>
     <p class="goal-requirements"><strong>Use:</strong> unmerged <code>release/agent-team-preview-r3-20261118</code> branch · Node.js 20+ and Git. The <code>aws_sdk_preview</code> tool is <strong>not in beta.15</strong>. Docker is <strong>not</strong> needed to print the configuration. An actual local MCP tool call later needs Linux-container Docker, a signed emulator-image build if uncached, and storage review. No AWS account.</p>
-    <div class="mission-terminal"><pre id="goal-api-commands" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-api
-cd aws-mcp-api
-node bin/aws-emulator-mcp.mjs config copilot</code></pre><button class="copy-button" type="button" data-copy="goal-api-commands">Copy API setup</button></div>
+    <div class="goal-safe-steps">
+<div class="goal-step"><h4>Step 1 · Clone only</h4><p>Clone into the named directory. If it already exists, Git refuses the clone. Stop; do not use old files.</p>
+<div class="mission-terminal"><pre id="goal-api-clone" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-api</code></pre><button class="copy-button" type="button" data-copy="goal-api-clone" aria-label="Copy api clone command">Copy api clone command</button></div>
+</div>
+<div class="goal-step"><h4>Step 2 · Verify exact commit</h4><p>Compare the full printed commit ID with <code>d577c490f7c6d92c9ac9040913728bf700b52244</code>. If it differs, is missing, or you made local edits, stop. The Run command checks again automatically.</p>
+<div class="mission-terminal"><pre id="goal-api-verify" tabindex="0"><code>git -C aws-mcp-api rev-parse HEAD</code></pre><button class="copy-button" type="button" data-copy="goal-api-verify" aria-label="Copy api verify command">Copy api verify command</button></div>
+</div>
+<div class="goal-step"><h4>Step 3 · Run only if verified</h4><p>One shell line. The built-in Node wrapper verifies the exact pinned commit, top-level directory, and clean working tree <strong>before launching any repository code</strong>. It refuses failed clones, modified files, and stale checkouts.</p>
+<div class="mission-terminal"><pre id="goal-api-run" tabindex="0"><code>node -e "const c=require('node:child_process'),p=require('node:path'),d='aws-mcp-api',h='d577c490f7c6d92c9ac9040913728bf700b52244';const g=a=>c.execFileSync('git',['-C',d,...a],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();try{if(g(['rev-parse','HEAD'])!==h||p.resolve(g(['rev-parse','--show-toplevel']))!==p.resolve(d)||g(['status','--porcelain','--untracked-files=all'])!=='')throw Error('wrong commit, location, or modified checkout');const r=c.spawnSync(process.execPath,[p.resolve(d,'bin/aws-emulator-mcp.mjs'),'config','copilot'],{cwd:p.resolve(d),stdio:'inherit'});process.exit(r.status===null?1:r.status)}catch(e){console.error('Refusing unverified checkout: '+e.message);process.exit(2)}"</code></pre><button class="copy-button" type="button" data-copy="goal-api-run" aria-label="Copy api run command">Copy api run command</button></div>
+</div>
+</div>
     <p class="goal-next"><strong>Next:</strong> Review and install the generated Copilot config, prepare local Docker and its signed image, then ask the connected assistant to use <code>aws_sdk_preview</code> on <code>dynamodb.PutItem</code> with a malformed <code>Item.id.S</code> value. A preview checks SDK parameter shape, not resource existence or emulator fidelity. <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/release/agent-team-preview-r3-20261118/docs/COVERAGE.md">Read the request example</a>.</p>
    </div>
   </details>
@@ -65,9 +73,17 @@ node bin/aws-emulator-mcp.mjs config copilot</code></pre><button class="copy-but
    <div class="goal-body">
     <p>Start with a bundled example that scans a Python file without executing it. The <code>app-guide</code> command identifies literal SDK calls and suggests a <strong>non-runnable</strong> test case. This first step does <strong>not</strong> test your application.</p>
     <p class="goal-requirements"><strong>Use:</strong> unmerged <code>release/agent-team-preview-r3-20261118</code> branch · Node.js 20+, Python 3.10+, Git. Inspection needs no Docker or AWS account. Actual trusted-app execution requires Linux-container Docker, signed image and reviewed disk capacity.</p>
-    <div class="mission-terminal"><pre id="goal-app-commands" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-app
-cd aws-mcp-app
-node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json</code></pre><button class="copy-button" type="button" data-copy="goal-app-commands">Copy safe app scan</button></div>
+    <div class="goal-safe-steps">
+<div class="goal-step"><h4>Step 1 · Clone only</h4><p>Clone into the named directory. If it already exists, Git refuses the clone. Stop; do not use old files.</p>
+<div class="mission-terminal"><pre id="goal-app-clone" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-app</code></pre><button class="copy-button" type="button" data-copy="goal-app-clone" aria-label="Copy app clone command">Copy app clone command</button></div>
+</div>
+<div class="goal-step"><h4>Step 2 · Verify exact commit</h4><p>Compare the full printed commit ID with <code>d577c490f7c6d92c9ac9040913728bf700b52244</code>. If it differs, is missing, or you made local edits, stop. The Run command checks again automatically.</p>
+<div class="mission-terminal"><pre id="goal-app-verify" tabindex="0"><code>git -C aws-mcp-app rev-parse HEAD</code></pre><button class="copy-button" type="button" data-copy="goal-app-verify" aria-label="Copy app verify command">Copy app verify command</button></div>
+</div>
+<div class="goal-step"><h4>Step 3 · Run only if verified</h4><p>One shell line. The built-in Node wrapper verifies the exact pinned commit, top-level directory, and clean working tree <strong>before launching any repository code</strong>. It refuses failed clones, modified files, and stale checkouts.</p>
+<div class="mission-terminal"><pre id="goal-app-run" tabindex="0"><code>node -e "const c=require('node:child_process'),p=require('node:path'),d='aws-mcp-app',h='d577c490f7c6d92c9ac9040913728bf700b52244';const g=a=>c.execFileSync('git',['-C',d,...a],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();try{if(g(['rev-parse','HEAD'])!==h||p.resolve(g(['rev-parse','--show-toplevel']))!==p.resolve(d)||g(['status','--porcelain','--untracked-files=all'])!=='')throw Error('wrong commit, location, or modified checkout');const r=c.spawnSync(process.execPath,[p.resolve(d,'bin/aws-emulator-mcp.mjs'),'app-guide','examples/app-case/s3-upload.py','--json'],{cwd:p.resolve(d),stdio:'inherit'});process.exit(r.status===null?1:r.status)}catch(e){console.error('Refusing unverified checkout: '+e.message);process.exit(2)}"</code></pre><button class="copy-button" type="button" data-copy="goal-app-run" aria-label="Copy app run command">Copy app run command</button></div>
+</div>
+</div>
     <p class="goal-next"><strong>Next:</strong> Substitute your <em>own reviewed</em> <code>handle(clients, inputs)</code> Python file, complete independently observable assertions and cleanup, then choose whether to authorize a local Docker run using the <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/release/agent-team-preview-r3-20261118/docs/GUIDED_APP_PROOF.md">trusted-app review guide</a>. Never execute untrusted PR source; Docker is not a hostile-code sandbox or proof of production AWS behavior.</p>
    </div>
   </details>
@@ -76,9 +92,17 @@ node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json</c
    <div class="goal-body">
     <p>The offline architecture generator creates an editable diagram, CloudFormation drafts, and an <strong>unexecuted</strong> test plan. It does not create a cloud service, change an AWS account or run an emulator.</p>
     <p class="goal-requirements"><strong>Use:</strong> released <code>v0.4.0-beta.15</code> · Node.js 20+ and Git. No AWS account, Docker image or AWS API calls. This command writes generated files to a local reports folder.</p>
-    <div class="mission-terminal"><pre id="goal-architecture-commands" tabindex="0"><code>git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-architecture
-cd aws-mcp-architecture
-node bin/aws-emulator-mcp.mjs architecture demo</code></pre><button class="copy-button" type="button" data-copy="goal-architecture-commands">Copy offline demo</button></div>
+    <div class="goal-safe-steps">
+<div class="goal-step"><h4>Step 1 · Clone only</h4><p>Clone into the named directory. If it already exists, Git refuses the clone. Stop; do not use old files.</p>
+<div class="mission-terminal"><pre id="goal-architecture-clone" tabindex="0"><code>git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-architecture</code></pre><button class="copy-button" type="button" data-copy="goal-architecture-clone" aria-label="Copy architecture clone command">Copy architecture clone command</button></div>
+</div>
+<div class="goal-step"><h4>Step 2 · Verify exact commit</h4><p>Compare the full printed commit ID with <code>12bae624be4cd9d428844dcfd17d24ea38cbc788</code>. If it differs, is missing, or you made local edits, stop. The Run command checks again automatically.</p>
+<div class="mission-terminal"><pre id="goal-architecture-verify" tabindex="0"><code>git -C aws-mcp-architecture rev-parse HEAD</code></pre><button class="copy-button" type="button" data-copy="goal-architecture-verify" aria-label="Copy architecture verify command">Copy architecture verify command</button></div>
+</div>
+<div class="goal-step"><h4>Step 3 · Run only if verified</h4><p>One shell line. The built-in Node wrapper verifies the exact pinned commit, top-level directory, and clean working tree <strong>before launching any repository code</strong>. It refuses failed clones, modified files, and stale checkouts.</p>
+<div class="mission-terminal"><pre id="goal-architecture-run" tabindex="0"><code>node -e "const c=require('node:child_process'),p=require('node:path'),d='aws-mcp-architecture',h='12bae624be4cd9d428844dcfd17d24ea38cbc788';const g=a=>c.execFileSync('git',['-C',d,...a],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();try{if(g(['rev-parse','HEAD'])!==h||p.resolve(g(['rev-parse','--show-toplevel']))!==p.resolve(d)||g(['status','--porcelain','--untracked-files=all'])!=='')throw Error('wrong commit, location, or modified checkout');const r=c.spawnSync(process.execPath,[p.resolve(d,'bin/aws-emulator-mcp.mjs'),'architecture','demo'],{cwd:p.resolve(d),stdio:'inherit'});process.exit(r.status===null?1:r.status)}catch(e){console.error('Refusing unverified checkout: '+e.message);process.exit(2)}"</code></pre><button class="copy-button" type="button" data-copy="goal-architecture-run" aria-label="Copy architecture run command">Copy architecture run command</button></div>
+</div>
+</div>
     <p class="goal-next"><strong>Next:</strong> Open <code>reports/architecture-studio/diagram.svg</code> on your own computer to review the proposed services. It is a design, not a deployed stack. <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/docs/ARCHITECTURE_STUDIO.md">See artifact meanings</a>.</p>
    </div>
   </details>
@@ -87,11 +111,22 @@ node bin/aws-emulator-mcp.mjs architecture demo</code></pre><button class="copy-
    <div class="goal-body">
     <p>Use a <strong>read-only</strong> service probe to see whether a selected API returns successfully in the local emulator. An SDK model or a successful list response is <strong>not</strong> full service support or proof that real AWS behaves the same.</p>
     <p class="goal-requirements"><strong>Use:</strong> unmerged <code>release/agent-team-preview-r3-20261118</code> branch · Node.js 20+, Git and local Linux-container Docker for the probe. Review <code>preflight --json</code> and real Docker storage first. <code>coverage s3 --json</code> can automatically download/build a substantial signed emulator image if missing or stale. No AWS account.</p>
-    <div class="mission-terminal"><pre id="goal-gaps-preflight" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-gaps
-cd aws-mcp-gaps
-node bin/aws-emulator-mcp.mjs preflight --json</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-preflight">Copy read-only preflight</button></div>
-    <p><strong>Optional: only after reviewing Docker capacity and accepting the signed image build.</strong> This next command launches one local emulator probe (not production AWS):</p>
-    <div class="mission-terminal"><pre id="goal-gaps-probe" tabindex="0"><code>node bin/aws-emulator-mcp.mjs coverage s3 --json</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-probe">Copy opt-in probe</button></div>
+    <div class="goal-safe-steps">
+<div class="goal-step"><h4>Step 1 · Clone only</h4><p>Clone into the named directory. If it already exists, Git refuses the clone. Stop; do not use old files.</p>
+<div class="mission-terminal"><pre id="goal-gaps-clone" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-gaps</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-clone" aria-label="Copy gaps clone command">Copy gaps clone command</button></div>
+</div>
+<div class="goal-step"><h4>Step 2 · Verify exact commit</h4><p>Compare the full printed commit ID with <code>d577c490f7c6d92c9ac9040913728bf700b52244</code>. If it differs, is missing, or you made local edits, stop. The Run command checks again automatically.</p>
+<div class="mission-terminal"><pre id="goal-gaps-verify" tabindex="0"><code>git -C aws-mcp-gaps rev-parse HEAD</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-verify" aria-label="Copy gaps verify command">Copy gaps verify command</button></div>
+</div>
+<div class="goal-step"><h4>Step 3 · Run only if verified</h4><p>One shell line. The built-in Node wrapper verifies the exact pinned commit, top-level directory, and clean working tree <strong>before launching any repository code</strong>. It refuses failed clones, modified files, and stale checkouts.</p>
+<div class="mission-terminal"><pre id="goal-gaps-run" tabindex="0"><code>node -e "const c=require('node:child_process'),p=require('node:path'),d='aws-mcp-gaps',h='d577c490f7c6d92c9ac9040913728bf700b52244';const g=a=>c.execFileSync('git',['-C',d,...a],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();try{if(g(['rev-parse','HEAD'])!==h||p.resolve(g(['rev-parse','--show-toplevel']))!==p.resolve(d)||g(['status','--porcelain','--untracked-files=all'])!=='')throw Error('wrong commit, location, or modified checkout');const r=c.spawnSync(process.execPath,[p.resolve(d,'bin/aws-emulator-mcp.mjs'),'preflight','--json'],{cwd:p.resolve(d),stdio:'inherit'});process.exit(r.status===null?1:r.status)}catch(e){console.error('Refusing unverified checkout: '+e.message);process.exit(2)}"</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-run" aria-label="Copy gaps run command">Copy gaps run command</button></div>
+</div>
+<div class="goal-step"><h4>Step 4 · Optional emulator probe</h4><p>Optional, after Docker disk and signed-build review. This command repeats the exact revision and clean-tree checks before any CLI or Docker work. It may download/build a large image.</p>
+<div class="mission-terminal"><pre id="goal-gaps-probe" tabindex="0"><code>node -e "const c=require('node:child_process'),p=require('node:path'),d='aws-mcp-gaps',h='d577c490f7c6d92c9ac9040913728bf700b52244';const g=a=>c.execFileSync('git',['-C',d,...a],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();try{if(g(['rev-parse','HEAD'])!==h||p.resolve(g(['rev-parse','--show-toplevel']))!==p.resolve(d)||g(['status','--porcelain','--untracked-files=all'])!=='')throw Error('wrong commit, location, or modified checkout');const r=c.spawnSync(process.execPath,[p.resolve(d,'bin/aws-emulator-mcp.mjs'),'coverage','s3','--json'],{cwd:p.resolve(d),stdio:'inherit'});process.exit(r.status===null?1:r.status)}catch(e){console.error('Refusing unverified checkout: '+e.message);process.exit(2)}"</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-probe" aria-label="Copy gaps probe command">Copy gaps probe command</button></div>
+</div>
+</div>
+    <p><strong>Optional: only after reviewing Docker capacity and accepting the signed image build.</strong> The optional Step 4 above may launch a local emulator probe (not production AWS) only after repeating checkout verification. Review Docker disk capacity and accept any signed-image build before copying it.</p>
+
     <p class="goal-next"><strong>Next:</strong> Compare the exact operation and emulator version with <a href="https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html">AWS's official compatibility guidance</a>, then optionally submit a <a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">sanitized field report</a>. Distinguish an MCP adapter problem from a verified upstream emulator gap; GitHub sign-in is required to submit an issue. Never include credentials, account IDs or customer data.</p>
    </div>
   </details>
