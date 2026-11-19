@@ -102,12 +102,11 @@ servers. Claude Desktop's configuration file is
 `%APPDATA%\Claude\claude_desktop_config.json` on Windows and
 `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS.
 See the [MCP client's configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
-for the current setup interface. **Before restarting Claude Desktop**, follow the explicit connection check below and review the Docker image build requirements; the normal MCP launcher can build an image when needed.
+for the current setup interface. **Before restarting Claude Desktop**, follow the explicit connection check below and review Docker image build requirements. The older beta.15 and round-three MCP launchers can build when an image is missing; the round-four experimental launcher fails closed instead and requires an intentional build.
 
 **Before enabling the connection**, run `preflight` and check Docker Desktop/
-Engine in Linux-container mode. The `mcp` launcher can **build the large,
-upstream-signed emulator image** when an image is missing or stale; this is
-not a no-Docker offline check. If you do not want that build during client
+Engine in Linux-container mode. In the published beta.15 and round-three preview, the `mcp` launcher can **build the large,
+upstream-signed emulator image** when an image is missing or stale. The experimental round-four launcher **does not** build on MCP client startup; it exits with a clear error until a reviewed, explicit `build` completes. Neither version is a no-Docker offline check. If you do not want that build during client
 startup, review disk capacity and explicitly run `build` and `doctor` from
 the same CLI first. The generated JSON **does not edit Claude settings,
 install Docker, run containers, download images or call AWS**. It is not a
@@ -116,6 +115,30 @@ it does **not** prove that Claude Desktop loaded the server. After a real
 connection, ask Claude to call `emulator_doctor`; inspect actual tool output
 and local STS-account verification rather than assuming readiness. No
 independent Claude Desktop connection is claimed here.
+
+### Round-four experiment: connecting must not trigger a build
+
+This **unmerged** change affects only `mcp` startup, the command used by
+Claude Desktop and Copilot. If its source-matched local image is missing,
+stale or unverified, it exits nonzero, writes a clear setup message **only to
+stderr**, and neither builds nor pulls an image. This avoids unexpectedly
+downloading the large signed upstream emulator during GUI startup. The
+caller must opt in separately:
+
+```sh
+node bin/aws-emulator-mcp.mjs preflight --json
+docker system df
+node bin/aws-emulator-mcp.mjs build
+node bin/aws-emulator-mcp.mjs connect-check --json
+```
+
+Read and inspect the preflight report and actual Docker storage before
+selecting `build`. These are **separate commands**, not an automatic script.
+The existing `doctor`, `demo` and app-case CLI flows may still build on
+explicit invocation; this change deliberately targets desktop startup only.
+The round-four branch is experimental, not the published beta.15 release or
+existing round-three preview. `connect-check` only verifies a terminal
+handshake, not a working Claude Desktop graphical client session.
 
 ### Before your first MCP reply: explicitly check the local connection (round 3 draft)
 
@@ -174,6 +197,27 @@ will succeed, or that any AWS API, production IAM policy or application was
 tested. Once the check passes, restart/connect your actual desktop client and
 request `emulator_doctor`. Inspect and report **that client's actual tool
 reply**. The only verified GUI result comes from the GUI, not this check.
+
+### Failed preflight or connect-check? Read the saved report without probing again
+
+`rescue` exists in the **R4 integrated development preview** only; it is **not** in the R3 checkout above, default `master`, or released `v0.4.0-beta.15`. R4 is **mutable**, and a previously recorded commit SHA is **not** a safe default after release-blocker fixes. No document can embed its own future release commit SHA.
+
+**Step 1 - standalone clone command; do not run project code here:**
+
+```sh
+git clone --depth 1 --branch release/agent-team-preview-r4-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r4
+```
+
+**Step 2 - standalone read-only revision checks, without running Node:**
+
+```sh
+git -C aws-emulator-mcp-r4 rev-parse HEAD
+git ls-remote https://github.com/B11-Health/aws-emulator-mcp.git refs/heads/release/agent-team-preview-r4-20261118
+```
+
+If clone fails or HEAD differs from the **current** branch SHA, **STOP**. Independently review [PR #91](https://github.com/B11-Health/aws-emulator-mcp/pull/91) and confirm its current integration HEAD matches the branch and checkout before executing any source. If PR #91 points elsewhere, stop and request updated reviewed instructions. The [fully gated shell-specific flow](REPORT_RESCUE.md#safe-r4-clone-verify-and-rescue) also verifies the Git origin, repository root, and clean tracked files, then requires you to type the exact reviewed SHA. It refuses to run Node from a stale checkout even if the branch advances during review.
+
+With that flow, the interpreter consumes **already saved** preflight/connect-check JSON and provides up to three manual actions. It makes no Docker or AWS calls, installs nothing, and never changes settings. The conservative 3 GiB / 10 GiB host disk thresholds are not verified Docker VM capacity; a signed-image build remains a separate opt-in. A terminal MCP handshake never proves a desktop GUI or real AWS API test.
 
 ## 3. How do I know I tested my application?
 

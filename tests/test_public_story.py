@@ -221,8 +221,14 @@ class ProductStoryTests(unittest.TestCase):
         self.assertEqual(expected["before"]["sdkCalls"][1]["attempts"],2)
         self.assertEqual(expected["after"]["sdkCalls"][1]["attempts"],1)
         self.assertEqual(expected["emulatorVersion"],"Version: 1.0.506")
-        self.assertIn("NEW ON MASTER",page)
-        self.assertIn("NOT IN THE BETA.15 TAG",page)
+        # The executable steps now pin an R3 preview checkout, rather than
+        # assuming the moving master branch or claiming a beta.15 release.
+        self.assertIn("PINNED R3 APP PROOF",page)
+        self.assertIn("DEVELOPER PREVIEW",page)
+        self.assertIn("NOT IN BETA.15",page)
+        self.assertNotIn("NEW ON MASTER",page)
+        self.assertIn("release/agent-team-preview-r3-20261118",page)
+        self.assertIn("d577c490f7c6d92c9ac9040913728bf700b52244",page)
         self.assertIn('id="app-proof"',page)
         self.assertIn('id="app-proof-command"',page)
         self.assertIn("app-case-compare",page)

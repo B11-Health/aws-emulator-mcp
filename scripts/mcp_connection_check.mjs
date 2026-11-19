@@ -25,12 +25,14 @@ const IMAGE_FORMAT = `{{.Id}}|{{index .Config.Labels "${SOURCE_LABEL}"}}`;
  */
 export function dockerChildEnv(source=process.env, pinned=false) {
   const env={...source};
-  for(const key of Object.keys(env)) if(key.startsWith('AWS_')) delete env[key];
-  if(pinned) {
-    delete env.DOCKER_HOST;
-    delete env.DOCKER_CONTEXT;
-    delete env.DOCKER_TLS_VERIFY;
-    delete env.DOCKER_CERT_PATH;
+  // Windows environment-variable names are case-insensitive. A cloned plain
+  // JS object is not: deleting only AWS_SECRET_ACCESS_KEY/DOCKER_HOST would
+  // leave their lowercase aliases in the Docker child's environment.
+  for(const key of Object.keys(env)) {
+    if(/^AWS_/i.test(key) ||
+       (pinned && /^DOCKER_(?:HOST|CONTEXT|TLS_VERIFY|CERT_PATH)$/i.test(key))) {
+      delete env[key];
+    }
   }
   return env;
 }
@@ -42,7 +44,7 @@ function dockerCommand(args, input, {pinned=false, timeout=6000}={}) {
 }
 
 /** Unix paths can contain spaces (including macOS user names); never use a shell. */
-function localSocket(endpoint) {
+export function localSocket(endpoint) {
   if(typeof endpoint!=='string' || endpoint.length>512 ||
       /[\x00-\x1f\x7f]/.test(endpoint)) return false;
   if(endpoint.startsWith('unix:///')) {

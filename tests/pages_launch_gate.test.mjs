@@ -155,34 +155,71 @@ test('local release gate catches both missing video poster bytes and missing pos
   assert.ok(omitted.errors.some(x=>x.includes('MISSING VIDEO POSTER ATTRIBUTE')),omitted.errors.join('\n'));
 });
 
-test('app proof copy has separate portable preflight, optional build, and trusted compare steps',()=>{
+test('App Proof copy is five separate pinned commands and each action verifies committed bytes',()=>{
   const html=text('index.html');
   assert.deepEqual(appProofCopyErrors(html),[]);
-  const ids=['app-proof-preflight-command','app-proof-build-command','app-proof-command'];
-  const blocks=ids.map(id=> {
-    const match=html.match(new RegExp('<pre id="'+id+'"[^>]*><code>([\\s\\S]*?)<\\/code><\\/pre>'));
-    assert.ok(match,'missing copyable block '+id);
+  const ids=['app-proof-clone','app-proof-verify','app-proof-preflight-command',
+             'app-proof-build-command','app-proof-command'];
+  const blocks=ids.map(id=>{
+    const found=html.match(new RegExp('<pre id="'+id+'"[^>]*><code>([\\s\\S]*?)<\\/code><\\/pre>'));
+    assert.ok(found,'missing copyable block '+id);
     assert.ok(html.includes('data-copy="'+id+'"'));
-    return match[1];
+    return found[1];
   });
-  const [preflight,build,compare]=blocks;
-  assert.match(preflight,/node bin\/aws-emulator-mcp\.mjs preflight --json/);
-  assert.doesNotMatch(preflight,/\bapp-case-compare\b|\baws-emulator-mcp\.mjs build\b/);
-  assert.equal(build,'node bin/aws-emulator-mcp.mjs build');
-  assert.match(compare,/app-case-compare .* --json/);
-  for(const script of blocks){
-    assert.doesNotMatch(script,/\\\r?\n/,'PowerShell-incompatible shell continuations');
-    assert.ok(script.trim().split(/\r?\n/).every(line=>line.trim().length>0));
+  const [clone,verify,preflight,build,compare]=blocks;
+  const SHA='d577c490f7c6d92c9ac9040913728bf700b52244';
+  assert.equal(clone,'git clone --config core.autocrlf=false --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-proof');
+  assert.equal(verify,'git -C aws-mcp-proof rev-parse HEAD');
+  for(const line of blocks){
+    assert.ok(!line.includes('\n') && !line.includes('\r'));
+    assert.ok(!line.startsWith('cd '));
   }
-  assert.ok(html.indexOf('id="'+ids[0]+'"')<html.indexOf('id="'+ids[1]+'"'));
-  assert.ok(html.indexOf('id="'+ids[1]+'"')<html.indexOf('id="'+ids[2]+'"'));
+  for(const [id,cmd,args] of [
+    ['preflight',preflight,"['preflight','--json']"],
+    ['build',build,"['build']"],
+    ['compare',compare,"['app-case-compare','examples/app-case/buggy.py','examples/app-case/fixed.py','examples/app-case/sqs-idempotency.json','--json']"],
+  ]){
+    assert.ok(cmd.startsWith('node -e "') && cmd.endsWith('"'),id);
+    assert.ok(cmd.includes("d='aws-mcp-proof',h='"+SHA+"',a="+args),id);
+    for(const probe of [
+      "t(['rev-parse','HEAD'])!==h",
+      "z(['ls-tree','-rz','HEAD'])",
+      "z(['ls-files','--stage','-z'])",
+      "z(['ls-files','-v','-z'])",
+      "z(['ls-files','--others','-z'])",
+      "f.lstatSync(file).isSymbolicLink()",
+      "e.GIT_NO_REPLACE_OBJECTS='1'",
+      "'core.fsmonitor=false'",
+      "q.createHash('sha1')",
+      "digest!==m[2]",
+    ])assert.ok(cmd.includes(probe),id+': missing '+probe);
+  }
+  assert.ok(ids.every((name,i)=>i===0 || html.indexOf('id="'+ids[i-1]+'"')<html.indexOf('id="'+name+'"')));
   assert.match(html,/may automatically build/);
   assert.match(html,/not<\/strong> prove Docker Desktop VM capacity/);
   assert.match(html,/Docker is not a sandbox for hostile code/);
   assert.match(html,/available only after an approved Pages deployment/);
-  const weakened=html.replace('may automatically build','might do something');
-  assert.ok(appProofCopyErrors(weakened).some(e=>e.includes('APP PROOF WARNINGS')));
-  assert.equal(localWith({replace:{'index.html':weakened}}).passed,false);
+  for(const [original,replacement,expected] of [
+    ['git clone --config core.autocrlf=false --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-proof','git clone --depth 1 --branch master https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-proof','clone/verify pinned R3'],
+    ["d='aws-mcp-proof',h='"+SHA+"'","d='aws-mcp-proof',h='0000000000000000000000000000000000000000'",'verify pinned source bytes'],
+    ['digest!==m[2]','digest===m[2]','verify pinned source bytes'],
+    ['may automatically build','will not build','APP PROOF WARNINGS'],
+  ]){
+    const before=html.indexOf('id="app-proof-clone"');
+    const altered=html.slice(0,before)+html.slice(before).replace(original,replacement);
+    assert.ok(appProofCopyErrors(altered).some(x=>x.includes(expected)),expected);
+    assert.equal(localWith({replace:{'index.html':altered}}).passed,false);
+  }
+});
+
+test('public Pages release gate rejects unsafe App Proof run snippets',async()=>{
+  const original=text('index.html');
+  const i=original.indexOf('id="app-proof-preflight-command"');
+  const altered=original.slice(0,i)+original.slice(i).replace('digest!==m[2]','digest===m[2]');
+  const mock=publicMock({replace:{'index.html':altered}});
+  const report=await auditPublic({fetcher:mock.fetcher});
+  assert.equal(report.passed,false);
+  assert.ok(report.errors.some(e=>e.includes('PUBLIC APP PROOF COPY must verify pinned source bytes')),report.errors.join('\n'));
 });
 
 test('URL resolver honors Pages project prefix and never accepts traversal outside the published site',()=>{

@@ -131,3 +131,68 @@ else process.exit(77);
       assert.ok(good.commands.some(c=>c[0]==='run'));
     } finally {rmSync(temp,{recursive:true,force:true});}
   });
+
+test('desktop MCP startup never downloads, builds or pulls a missing or stale image',
+  {skip:process.platform==='win32'}, () => {
+    // A fake Docker executable makes this a pure CLI contract test. No daemon,
+    // image, container, network or AWS credentials are used.
+    const folder=mkdtempSync(path.join(tmpdir(),'aws-mcp-no-surprise-'));
+    const docker=path.join(folder,'docker');
+    const log=path.join(folder,'docker.log');
+    const stub=`#!/usr/bin/env node
+const fs=require('node:fs');
+const args=process.argv.slice(2);
+fs.appendFileSync(process.env.MOCK_DOCKER_LOG,JSON.stringify(args)+'\\n');
+const command=args[0]==='--host' ? args.slice(2) : args;
+if(command[0]==='context') console.log(JSON.stringify('unix:///var/run/docker.sock'));
+else if(command[0]==='info') console.log('linux');
+else if(command[0]==='image') {
+  if(process.env.MOCK_DOCKER_MISSING==='1') process.exit(1);
+  console.log('sha256:'+'f'.repeat(64)+'|'+(process.env.MOCK_DOCKER_LABEL || '<no value>'));
+} else if(command[0]==='build') process.exit(89);
+else if(command[0]==='run') console.log('SYNTHETIC_MCP_SERVER_RESPONSE');
+else process.exit(77);
+`;
+    writeFileSync(docker,stub);chmodSync(docker,0o755);
+    const invoke=({label='',missing=false,remote=false}={})=>{
+      writeFileSync(log,'');
+      const env={...process.env,
+        PATH:folder+path.delimiter+process.env.PATH,
+        MOCK_DOCKER_LOG:log,MOCK_DOCKER_LABEL:label,
+        MOCK_DOCKER_MISSING:missing?'1':'0'};
+      if(remote) env.DOCKER_HOST='tcp://192.0.2.22:2375';
+      else delete env.DOCKER_HOST;
+      const result=spawnSync(process.execPath,[BIN,'mcp'],{
+        env,encoding:'utf8',timeout:14000});
+      const commands=readFileSync(log,'utf8').trim().split('\n')
+        .filter(Boolean).map(line=>JSON.parse(line));
+      return {result,commands};
+    };
+    try {
+      const stale=invoke({label:'0'.repeat(64)});
+      const unverified=invoke();
+      const absent=invoke({missing:true});
+      for(const item of [stale,unverified,absent]) {
+        assert.equal(item.result.status,1,item.result.stderr);
+        assert.equal(item.result.stdout,'','MCP stdout must remain JSON-RPC-only');
+        assert.match(item.result.stderr,/no image build was attempted/);
+        assert.match(item.result.stderr,/preflight --json/);
+        assert.match(item.result.stderr,/explicitly run build/);
+        assert.equal(item.commands.some(args=>args.includes('build')||args.includes('run')),false);
+        assert.equal(item.commands.some(args=>args.includes('--pull')),false);
+      }
+      const remote=invoke({remote:true});
+      assert.equal(remote.result.status,1);
+      assert.equal(remote.result.stdout,'');
+      assert.equal(remote.commands.length,0,'remote Docker host must be refused before any command');
+      const matched=invoke({label:imageSourceDigest(ROOT)});
+      assert.equal(matched.result.status,0,matched.result.stderr);
+      assert.equal(matched.result.stdout.trim(),'SYNTHETIC_MCP_SERVER_RESPONSE');
+      assert.equal(matched.commands.some(args=>args.includes('build')),false);
+      const actualRun=matched.commands.find(args=>args.includes('run'));
+      assert.ok(actualRun,'existing matched image must still start MCP');
+      assert.deepEqual(actualRun.slice(0,9),
+        ['--host','unix:///var/run/docker.sock','run','--rm','-i','--pull','never','--network','none']);
+      assert.equal(actualRun.at(-2),'sha256:'+'f'.repeat(64));
+    } finally {rmSync(folder,{recursive:true,force:true});}
+  });

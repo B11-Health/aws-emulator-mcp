@@ -249,7 +249,7 @@ jobs:
     name: Docker bundle / real MCP SDK integration
     needs: npm-package-smoke
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -266,11 +266,40 @@ jobs:
           (cd "$temp_dir" && git apply "$GITHUB_WORKSPACE/examples/order-intake/reference.patch")
           cmp "$temp_dir/order_service.py" examples/order-intake/fixed/order_service.py
           rm -rf "$temp_dir"
-      - name: Build signed official emulator and run actual Docker MCP demo and SDK API calls
+      - name: Check Docker runner and signed-image disk advisory before explicit build
+        timeout-minutes: 2
         run: |
-          export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
-          python3 tests/docker_bundle_smoke.py
-      - name: Verify packed CLI read-only preflight matches the just-built signed image
+          # A missing image is EXPECTED before build: preflight emits JSON and exits 1.
+          # Reject CLI errors (>1) or invalid JSON; validate local Docker separately.
+          if node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs preflight --json > "$RUNNER_TEMP/docker-prebuild-preflight.json"; then
+            :
+          else
+            test "$?" -eq 1 || exit 1
+          fi
+          python3 - <<'PY_END'
+          import json
+          import os
+          from pathlib import Path
+          report=json.loads((Path(os.environ['RUNNER_TEMP'])/'docker-prebuild-preflight.json').read_text())
+          assert report['checks']['docker']['passed'] is True, 'LOCAL_DOCKER_REQUIRED'
+          assert report['hostWorkspaceDisk']['dockerDataCapacityVerified'] is False
+          for name, data in (('workspace', report['hostWorkspaceDisk']),
+                             ('host-visible Docker root', report.get('hostVisibleDockerRootDisk'))):
+              if data is None:
+                  print('DOCKER_PREBUILD_DISK_ADVISORY',name,'unavailable; daemon capacity not verified')
+                  continue
+              free=data.get('freeGiB')
+              print('DOCKER_PREBUILD_DISK_ADVISORY',name,free,'GiB; not authoritative for the daemon namespace')
+              if data.get('lowSpaceAdvisory') is True:
+                  print('::warning::Signed image may need additional layer/unpack space; review runner disk usage (no automatic cleanup).')
+          if report['imageBuildSpace']['status']=='critical':
+              raise SystemExit('DOCKER_PREBUILD_CRITICAL_SPACE: inspect runner capacity before the explicit signed build')
+          PY_END
+      - name: Explicitly build the signed official emulator image from the packed CLI
+        timeout-minutes: 15
+        run: node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs build
+      - name: Verify packed CLI read-only preflight matches the explicitly built image
+        timeout-minutes: 3
         run: |
           mkdir -p reports
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs preflight --json > reports/ci_preflight.json
@@ -289,7 +318,27 @@ jobs:
           assert "/var/lib/docker" not in json.dumps(result)
           print("DOCKER_READ_ONLY_PREFLIGHT_MATCH_PASS")
           PY_END
+      - name: No AWS credential env keys in built image
+        timeout-minutes: 1
+        run: |
+          # Parse only key names in memory; NEVER echo Docker image ENV values.
+          # The marker AWS_EMULATOR_MCP_ISOLATED_LAB=1 is checked in this gate.
+          docker image inspect aws-emulator-mcp:0.4.0-beta.15 --format '{{json .Config.Env}}' | python3 scripts/check_image_env_keys.py
+          docker image inspect aws-emulator-mcp:0.4.0-beta.15 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
+          expected_source_digest="$(node scripts/image_identity.mjs)"
+          observed_source_digest="$(docker image inspect aws-emulator-mcp:0.4.0-beta.15 --format '{{index .Config.Labels "dev.aws-emulator-mcp.source-sha256"}}')"
+          test "$observed_source_digest" = "$expected_source_digest"
+          echo "DOCKER_SOURCE_IDENTITY_PASS ${expected_source_digest:0:12}"
+      - name: Run real Docker MCP demos, SDK API assertions and scoped cleanup from prebuilt image
+        timeout-minutes: 20
+        env:
+          AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT: '1'
+        run: |
+          export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
+          python3 tests/docker_bundle_smoke.py
       - name: Publish actual read-only coverage results in the CI summary
+        env:
+          AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT: '1'
         run: |
           mkdir -p reports
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs coverage --json > reports/ci_coverage.json
@@ -323,14 +372,6 @@ jobs:
           print("- Regressions:",len(result["regressions"]))
           print("- Exact operation set matched; **no general AWS parity implied**.")
           PY_END
-      - name: Verify no production credentials are available to the image
-        run: |
-          docker run --rm --network none --entrypoint env aws-emulator-mcp:0.4.0-beta.15 | grep '^AWS_EMULATOR_MCP_ISOLATED_LAB=1$'
-          docker image inspect aws-emulator-mcp:0.4.0-beta.15 --format '{{.Size}}' | tee /tmp/aws-emulator-mcp-image-size
-          expected_source_digest="$(node scripts/image_identity.mjs)"
-          observed_source_digest="$(docker image inspect aws-emulator-mcp:0.4.0-beta.15 --format '{{index .Config.Labels "dev.aws-emulator-mcp.source-sha256"}}')"
-          test "$observed_source_digest" = "$expected_source_digest"
-          echo "DOCKER_SOURCE_IDENTITY_PASS ${expected_source_digest:0:12}"
 
   live-official-aws:
     name: Signed AWS Emulator / real E2E
