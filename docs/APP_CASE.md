@@ -57,6 +57,18 @@ validate against the existing case schema, and opt in with an exact
 source/case digest-bound approval token. This local command is **not** an MCP
 source-execution tool, and passing a single case is not proof of a bug fix.
 
+## Offline issue-triage capsule from a saved failed report
+
+If a developer-owned local app-case or app-guide run fails, use
+[`gap-capsule`](GAP_REPRO_CAPSULE.md) to turn its **existing JSON report** into
+a strict allowlisted, portable machine-readable triage record. This separate
+command does not re-run your handler, Docker or AWS. It records the observed
+operation, failed independent assertion, reported source/case hashes and
+reported emulator version, and supplies a review-and-replay command template.
+It **never** declares an emulator bug or production AWS parity. The recorded
+guided app-guide format does not contain an account-identity flag, so its
+capsule explicitly says `accountVerifiedInReport: "not_reported"`.
+
 ## A real failing/passing application scenario
 
 Requirements: Node.js 20+, local Docker (Linux containers), enough storage for

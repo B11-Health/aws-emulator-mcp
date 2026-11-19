@@ -79,6 +79,7 @@
     "scripts/app_case_compare.mjs",
     "scripts/app_guide.mjs",
     "scripts/agent_eval_handoff.mjs",
+    "scripts/gap_repro_capsule.mjs",
     "scripts/project_check.mjs",
     "scripts/preflight.mjs",
     "scripts/mcp_connection_check.mjs",
@@ -116,6 +117,7 @@
     "docs/APP_CASE.md",
     "docs/GUIDED_APP_PROOF.md",
     "docs/AGENT_EVALUATION.md",
+    "docs/GAP_REPRO_CAPSULE.md",
     "examples/agent-eval/sqs-idempotency-recorded.json",
     "docs/evidence/app-case-aws-emulator-1.0.506.json",
     "docs/evidence/app-case-s3-aws-emulator-1.0.506.json",
@@ -168,7 +170,7 @@
     "python-handler-testing"
   ],
   "scripts": {
-    "test": "node --test tests/node_cli.test.mjs tests/byo_compare.test.mjs tests/preflight.test.mjs tests/mcp_connection_check.test.mjs tests/official_session.test.mjs tests/onboard.test.mjs tests/image_identity.test.mjs tests/offline_trial.test.mjs tests/demo_studio.test.mjs tests/desktop_bundle.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs tests/project_check.test.mjs tests/app_case_compare.test.mjs tests/app_case_inspect.test.mjs tests/app_guide.test.mjs tests/app_proof_drafts.test.mjs tests/agent_eval_handoff.test.mjs tests/proof_explorer.test.mjs tests/official_skill_app_proof_handoff.test.mjs tests/pages_launch_gate.test.mjs",
+    "test": "node --test tests/node_cli.test.mjs tests/byo_compare.test.mjs tests/preflight.test.mjs tests/mcp_connection_check.test.mjs tests/official_session.test.mjs tests/onboard.test.mjs tests/image_identity.test.mjs tests/offline_trial.test.mjs tests/demo_studio.test.mjs tests/desktop_bundle.test.mjs tests/contract_gate.test.mjs tests/architecture_studio.test.mjs tests/architecture_review.test.mjs tests/project_check.test.mjs tests/app_case_compare.test.mjs tests/app_case_inspect.test.mjs tests/app_guide.test.mjs tests/app_proof_drafts.test.mjs tests/agent_eval_handoff.test.mjs tests/gap_repro_capsule.test.mjs tests/proof_explorer.test.mjs tests/official_skill_app_proof_handoff.test.mjs tests/pages_launch_gate.test.mjs",
     "pack:check": "npm pack --dry-run --json",
     "agent-eval:recorded": "node scripts/agent_eval_handoff.mjs --json",
     "qa": "npm test && npm run pack:check"
