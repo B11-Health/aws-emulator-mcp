@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "mode": "local_application_before_after",
+  "case": "external-receipt-utf8-content-length",
+  "caseSha256": "2aa9775ce97c0858670d640d20d3a860def3c919a437e3bd353d2b94a3e6827f",
+  "passed": true,
+  "bugReproduced": true,
+  "fixVerified": true,
+  "accountVerified": true,
+  "emulatorVersion": "Version: 1.0.523",
+  "regression": {
+    "stepId": "head-receipt",
+    "path": "ContentLength"
+  },
+  "before": {
+    "sourceSha256": "b39bcd4f4ecaeed670107de50f5a74a0180c34c897d41f75a572a9bc0e14133d",
+    "emulatorVersion": "Version: 1.0.523",
+    "invoked": true,
+    "applicationErrors": false,
+    "passed": false,
+    "cleanupPassed": true,
+    "sdkCalls": [
+      {
+        "service": "s3",
+        "operation": "PutObject",
+        "attempts": 1,
+        "successes": 1
+      }
+    ],
+    "setup": [
+      {
+        "id": "create-bucket",
+        "passed": true
+      }
+    ],
+    "checks": [
+      {
+        "id": "head-receipt",
+        "passed": false,
+        "assertions": [
+          {
+            "path": "ContentLength",
+            "passed": false
+          }
+        ]
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "remove-receipt",
+        "passed": true
+      },
+      {
+        "id": "remove-bucket",
+        "passed": true
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "s3",
+        "operation": "PutObject",
+        "passed": true,
+        "observed": 1
+      }
+    ]
+  },
+  "after": {
+    "sourceSha256": "c958ed69c857b0978ed5f4ec9d94bdb3577c8235541db7671ecdfb2efda04213",
+    "emulatorVersion": "Version: 1.0.523",
+    "invoked": true,
+    "applicationErrors": false,
+    "passed": true,
+    "cleanupPassed": true,
+    "sdkCalls": [
+      {
+        "service": "s3",
+        "operation": "PutObject",
+        "attempts": 1,
+        "successes": 1
+      }
+    ],
+    "setup": [
+      {
+        "id": "create-bucket",
+        "passed": true
+      }
+    ],
+    "checks": [
+      {
+        "id": "head-receipt",
+        "passed": true,
+        "assertions": [
+          {
+            "path": "ContentLength",
+            "passed": true
+          }
+        ]
+      }
+    ],
+    "cleanup": [
+      {
+        "id": "remove-receipt",
+        "passed": true
+      },
+      {
+        "id": "remove-bucket",
+        "passed": true
+      }
+    ],
+    "expectedCalls": [
+      {
+        "service": "s3",
+        "operation": "PutObject",
+        "passed": true,
+        "observed": 1
+      }
+    ]
+  },
+  "applicationBehaviorTested": true,
+  "productionAwsValidated": false,
+  "dataExposure": "Source, application inputs, private file paths, API parameters, API bodies, logs and exception messages omitted",
+  "limitations": "One selected trusted Python entrypoint, bounded synthetic case, independent local SDK checks and observed SDK call counts. Not hostile-code security, full codebase coverage, process-crash proof, AWS IAM or production fidelity."
+}
