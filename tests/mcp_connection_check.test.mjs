@@ -262,6 +262,30 @@ test('Docker child never inherits AWS secrets or ambient daemon redirects after 
   }
 });
 
+test('mixed-case AWS secrets and Docker redirect aliases never reach pinned children',()=>{
+  const synthetic={PATH:'/bin',HOME:'/tmp/developer',
+    aws_secret_access_key:'FAKE_LOWER_SECRET',
+    Aws_Access_Key_Id:'FAKE_MIXED_ACCESS',
+    aWs_Profile:'FAKE_PROFILE',
+    Aws_Session_Token:'FAKE_SESSION',
+    docker_host:'tcp://192.0.2.77:2375',
+    Docker_Context:'remote-context',
+    docker_tls_verify:'1',
+    Docker_CERT_PATH:'/tmp/fake-cert',
+    DOCKER_CONFIG:'/tmp/normal-config'
+  };
+  const contextEnv=dockerChildEnv(synthetic,false);
+  assert.equal(contextEnv.docker_host,'tcp://192.0.2.77:2375',
+    'read-only context selection retains Docker settings before binding');
+  for(const env of [contextEnv,dockerChildEnv(synthetic,true)]) {
+    assert.ok(Object.keys(env).every(key=>!/^AWS_/i.test(key)));
+    assert.doesNotMatch(JSON.stringify(env),/FAKE_LOWER_SECRET|FAKE_MIXED_ACCESS|FAKE_SESSION/);
+  }
+  const pinned=dockerChildEnv(synthetic,true);
+  assert.deepEqual(Object.keys(pinned).sort(),['DOCKER_CONFIG','HOME','PATH']);
+  assert.doesNotMatch(JSON.stringify(pinned),/192\.0\.2\.77|remote-context|fake-cert|FAKE_PROFILE/);
+});
+
 test('CLI with remote DOCKER_HOST exits 1 with sanitized JSON and no container',()=>{
   const r=spawnSync(process.execPath,[BIN,'connect-check','--json'],{
     encoding:'utf8',timeout:14000,

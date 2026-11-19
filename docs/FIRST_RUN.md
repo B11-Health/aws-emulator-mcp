@@ -102,12 +102,11 @@ servers. Claude Desktop's configuration file is
 `%APPDATA%\Claude\claude_desktop_config.json` on Windows and
 `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS.
 See the [MCP client's configuration guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers)
-for the current setup interface. **Before restarting Claude Desktop**, follow the explicit connection check below and review the Docker image build requirements; the normal MCP launcher can build an image when needed.
+for the current setup interface. **Before restarting Claude Desktop**, follow the explicit connection check below and review Docker image build requirements. The older beta.15 and round-three MCP launchers can build when an image is missing; the round-four experimental launcher fails closed instead and requires an intentional build.
 
 **Before enabling the connection**, run `preflight` and check Docker Desktop/
-Engine in Linux-container mode. The `mcp` launcher can **build the large,
-upstream-signed emulator image** when an image is missing or stale; this is
-not a no-Docker offline check. If you do not want that build during client
+Engine in Linux-container mode. In the published beta.15 and round-three preview, the `mcp` launcher can **build the large,
+upstream-signed emulator image** when an image is missing or stale. The experimental round-four launcher **does not** build on MCP client startup; it exits with a clear error until a reviewed, explicit `build` completes. Neither version is a no-Docker offline check. If you do not want that build during client
 startup, review disk capacity and explicitly run `build` and `doctor` from
 the same CLI first. The generated JSON **does not edit Claude settings,
 install Docker, run containers, download images or call AWS**. It is not a
@@ -116,6 +115,30 @@ it does **not** prove that Claude Desktop loaded the server. After a real
 connection, ask Claude to call `emulator_doctor`; inspect actual tool output
 and local STS-account verification rather than assuming readiness. No
 independent Claude Desktop connection is claimed here.
+
+### Round-four experiment: connecting must not trigger a build
+
+This **unmerged** change affects only `mcp` startup, the command used by
+Claude Desktop and Copilot. If its source-matched local image is missing,
+stale or unverified, it exits nonzero, writes a clear setup message **only to
+stderr**, and neither builds nor pulls an image. This avoids unexpectedly
+downloading the large signed upstream emulator during GUI startup. The
+caller must opt in separately:
+
+```sh
+node bin/aws-emulator-mcp.mjs preflight --json
+docker system df
+node bin/aws-emulator-mcp.mjs build
+node bin/aws-emulator-mcp.mjs connect-check --json
+```
+
+Read and inspect the preflight report and actual Docker storage before
+selecting `build`. These are **separate commands**, not an automatic script.
+The existing `doctor`, `demo` and app-case CLI flows may still build on
+explicit invocation; this change deliberately targets desktop startup only.
+The round-four branch is experimental, not the published beta.15 release or
+existing round-three preview. `connect-check` only verifies a terminal
+handshake, not a working Claude Desktop graphical client session.
 
 ### Before your first MCP reply: explicitly check the local connection (round 3 draft)
 
