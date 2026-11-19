@@ -55,6 +55,19 @@ a sanitized first-run report. This command was introduced in
 
 **Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification. The [Pages release gate](docs/PAGES_LAUNCH_GATE.md) validates draft links and evidence before merge and requires separate public verification after a reviewed Pages deployment.
 
+## Choose what you need to do (round-four source preview)
+
+**New to AWS?** These four goals map to commands already implemented in the specified tag or preview branch. The [accessible source-only goal chooser](docs/index.html) expands each path and provides copyable commands. **It is not yet deployed to the public GitHub Pages Demo Studio**; open the checked-in `docs/index.html` file locally in your browser until the reviewed Pages release gate passes. Viewing the page performs no analytics, account calls, Docker work or application-source execution.
+
+| Your problem | Real first command (from a checked-out repository) | Version and boundary | One next step |
+| --- | --- | --- | --- |
+| **“An AWS request says my input is wrong.”** | `node bin/aws-emulator-mcp.mjs config copilot` | **R3 preview** `release/agent-team-preview-r3-20261118`. Prints configuration only; no Docker for this step. The `aws_sdk_preview` MCP tool is **not in beta.15** and later needs a connected local Docker client. | Review/connect your local Copilot setup and ask `aws_sdk_preview` to inspect the SDK field type **without invoking AWS**. |
+| **“Did my trusted Python application change state?”** | `node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json` | **R3 preview**. Host Python 3.10+; static scan only, no source execution or Docker. Actual app verification requires synthetic state checks, approval, local Docker, signed image and disk review. | Replace the sample with your reviewed handler and complete the [state checks and cleanup guide](docs/GUIDED_APP_PROOF.md). |
+| **“Can I design infrastructure offline?”** | `node bin/aws-emulator-mcp.mjs architecture demo` | **Release `v0.4.0-beta.15`**. Node 20+; no Docker, AWS account, SDK calls or deployment. Writes local artifacts. | Open `reports/architecture-studio/diagram.svg` and inspect what was proposed. |
+| **“Is an emulator API missing or behaving differently?”** | `node bin/aws-emulator-mcp.mjs preflight --json` | **R3 preview**. Read-only local readiness, no build. The separately opted-in `coverage s3 --json` probes a narrow read-only API and **can build a large signed image**. Review actual Docker storage first. | After approving the local Docker/image cost, run `node bin/aws-emulator-mcp.mjs coverage s3 --json` and compare the precise result with [AWS's official fidelity information](https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html) before filing a sanitized report. |
+
+For the preview paths, clone the named `release/agent-team-preview-r3-20261118` branch rather than `master`; for offline architecture, clone the immutable `v0.4.0-beta.15` tag. Exact one-line Git/Bash/PowerShell checkout commands are in the source-only chooser. **No emulator API response alone establishes AWS production parity, IAM behavior, or independent user adoption.**
+
 ## See the proof in 90 seconds
 
 [![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
