@@ -809,9 +809,13 @@ async function main() {
       fail('Usage: aws-emulator-mcp connect-check [--json]', 2);
     const fromCheckout=path.resolve(process.cwd())===ROOT &&
       !ROOT.split(path.sep).includes('node_modules');
+    // Use one exact Docker-copy fingerprint for preflight and the pinned-ID check.
+    // If a source file cannot be fingerprinted, both checks fail closed.
+    let expectedImageDigest=null;
+    try {expectedImageDigest=imageSourceDigest(ROOT);} catch { /* incomplete bundle */ }
     const readiness=inspectPreflight({image:IMAGE,
-      expectedImageDigest:()=>imageSourceDigest(ROOT)});
-    const report=inspectMcpConnection({readiness,fromCheckout});
+      expectedImageDigest:()=>expectedImageDigest});
+    const report=inspectMcpConnection({readiness,expectedImageDigest,fromCheckout});
     stdout.write(args[0]==='--json' ? JSON.stringify(report,null,2)+'\n'
       : formatMcpConnection(report));
     if (!report.passed) process.exitCode=1;

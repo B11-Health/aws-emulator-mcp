@@ -6,7 +6,7 @@ import {mkdtempSync, readFileSync, writeFileSync, rmSync, existsSync, lstatSync,
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {parseAppGuideArgs,approvalToken,summarizeAppGuide,writeDraftExclusive,requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
+import {parseAppGuideArgs,approvalToken,summarizeAppGuide,writeDraftExclusive,writeProofDraftPairExclusive,requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CLI=path.join(ROOT,'bin/aws-emulator-mcp.mjs');
@@ -72,6 +72,89 @@ test('parse flags strictly without accepting arbitrary URLs or extra arguments',
     ['app.py','--approve','BAD_HASH','--run','case.json'],
     ['app.py','case.json','--json','--json'],['app.py','case.json','--unexpected']])
     assert.throws(()=>parseAppGuideArgs(bad));
+});
+
+test('UNC, device and network selectors are rejected before any read or write',()=>{
+  const badPaths=[
+    String.raw`\\attacker.invalid\share\case.json`,
+    '//attacker.invalid/share/case.json',
+    String.raw`\\?\C:\temp\case.json`,
+    '//?/C:/temp/case.json',
+    String.raw`\\.\C:\temp\case.json`,
+    '//./C:/temp/case.json',
+    String.raw`\??\C:\temp\case.json`,
+    String.raw`\Device\LanmanRedirector\case.json`,
+    String.raw`/\attacker.invalid/share/case.json`,
+    String.raw`\/attacker.invalid/share/case.json`,
+  ];
+  const token='f'.repeat(64);
+  const inertCase={reviewRequired:true};
+  for(const filename of badPaths){
+    const source=filename.replace(/\.json$/,'.py');
+    for(const args of [
+      [source], ['local.py',filename],
+      ['local.py','--draft',filename],
+      ['local.py','--draft-proof',filename],
+      ['local.py',filename,'--run','--approve',token],
+    ]){
+      withFailure(args);
+    }
+    assert.throws(()=>writeDraftExclusive(filename,{reviewRequired:true,checks:[],cleanup:[]}));
+    assert.throws(()=>writeProofDraftPairExclusive(filename,
+      {positive:inertCase,expectedRed:inertCase}));
+  }
+  function withFailure(args){
+    assert.throws(()=>parseAppGuideArgs(args),/Usage:/,JSON.stringify(args));
+  }
+});
+
+test('normal POSIX, relative and absolute Windows-drive selections remain accepted',()=>{
+  const positives=[
+    ['src/handler.py','cases/review.json'],
+    ['./trusted handler.py','./review folder/case.json'],
+    ['/tmp/my-python/handler.py','/tmp/my-python/case.json'],
+    ['C:\\Users\\Developer\\trusted handler.py','C:\\Users\\Developer\\reviewed case.json'],
+    ['D:/Work/trusted handler.py','D:/Work/reviewed case.json'],
+  ];
+  for(const [source,caseFile] of positives){
+    const parsed=parseAppGuideArgs([source,caseFile,'--json']);
+    assert.equal(parsed.source,source);
+    assert.equal(parsed.caseFile,caseFile);
+    assert.equal(parsed.json,true);
+    assert.equal(parseAppGuideArgs([source,'--draft',caseFile]).draft,caseFile);
+    assert.equal(parseAppGuideArgs([source,'--draft-proof',caseFile]).proofDraft,caseFile);
+    const explicit=parseAppGuideArgs([source,caseFile,'--run','--approve','f'.repeat(64)]);
+    assert.equal(explicit.run,true);
+    assert.equal(explicit.source,source);
+  }
+});
+
+test('walkthrough uses complete quoted checkout commands and separate review/run steps',()=>{
+  const guide=readFileSync(path.join(ROOT,'docs/GUIDED_APP_PROOF.md'),'utf8');
+  const powershell=[...guide.matchAll(/```powershell\n([\s\S]*?)\n```/g)]
+    .map(match=>match[1]);
+  assert.equal(powershell.length,6,'one PowerShell example for each walkthrough step');
+  const commands=powershell.flatMap(block=>block.split('\n').filter(line=>line.startsWith('node ')));
+  assert.equal(commands.length,9);
+  for(const command of commands){
+    assert.ok(command.startsWith(String.raw`node ".\bin\aws-emulator-mcp.mjs" `),
+      'PowerShell commands must address the checkout-local CLI');
+    assert.doesNotMatch(command,/\\\s*$/,'no Bash continuation characters');
+    if(command.includes(' app-guide '))
+      assert.ok(command.includes(String.raw`".\my-handler.py"`));
+  }
+  const review=commands.filter(line=>line.includes(' app-guide ') &&
+    line.includes('my-proof') && !line.includes('--draft-proof') && !line.includes('--run'));
+  const executions=commands.filter(line=>line.includes(' --run '));
+  assert.equal(review.length,2,'must approve positive and expected-red independently');
+  assert.equal(executions.length,2,'both runs must require explicit opt-in');
+  assert.ok(review.some(line=>line.includes(String.raw`".\my-proof.json"`)));
+  assert.ok(review.some(line=>line.includes(String.raw`".\my-proof.expected-red.json"`)));
+  assert.ok(executions.some(line=>line.includes('PASTE_POSITIVE_APPROVAL_TOKEN')));
+  assert.ok(executions.some(line=>line.includes('PASTE_EXPECTED_RED_APPROVAL_TOKEN')));
+  assert.match(guide,/approvalToken: null/);
+  assert.match(guide,/\*\*does not make it runnable\*\*/);
+  assert.match(guide,/Windows UNC\/network\/device paths/);
 });
 
 test('approval binds exact 64-character raw source and case hashes',()=>{

@@ -18,6 +18,8 @@ node scripts/pages_launch_gate.mjs --local
 
 This runs `node scripts/pages_launch_gate.mjs --local`. Exit **0** requires the homepage to link to its Proof Explorer **relative to the GitHub Pages project prefix**, the referenced HTML/CSS/JS/video/poster files to exist under docs, and the Explorer JS to reference both real SQS/DynamoDB and S3 evidence files. Both recorded JSON files must also pass the existing fail-closed red/green comparison validation (named regression, independent assertions, hashes, same emulator version and cleanup).
 
+The gate parses **active HTML elements**, not arbitrary attribute-like text: a Proof Explorer link inside an HTML comment or JavaScript string is not real navigation. It follows the video **poster** attribute and fails on a missing poster image or removed required poster attribute. It also checks that public copy buttons keep read-only preflight, separately opted-in signed-image build, and trusted-source comparison in distinct PowerShell-compatible single-line commands, with explicit disk-capacity and automatic-rebuild warnings. Source validation does not authorize Docker execution.
+
 **A local pass does not mean the site is published.** The Quality gates PR workflow runs the local test, with no deployment action.
 
 ## Step 2 — separate lead approval
@@ -34,7 +36,7 @@ After the reviewed Pages source deploys, in the full candidate source checkout r
 node scripts/pages_launch_gate.mjs --public
 ~~~
 
-This fixed-origin, read-only HTTPS smoke tests the public homepage, its relative Explorer link, both HTML pages, JavaScript/CSS/media links, and **both JSON evidence files**. It checks HTTP success and MIME types; bounded GET reads HTML/JS/JSON and HEAD probes large media without downloading MP4 files. Redirects fail closed. No credentials, external arbitrary hosts, AWS calls or writes.
+This fixed-origin, read-only HTTPS smoke tests the public homepage, its **active** relative Explorer link, both HTML pages, JavaScript/CSS/video poster/media links and app-proof safety warnings, and **both JSON evidence files**. It checks HTTP success and MIME types; bounded GET reads HTML/JS/JSON and HEAD probes large media without downloading MP4 files. Redirects fail closed. No credentials, external arbitrary hosts, AWS calls or writes.
 
 **Exit 0:** the deployed files are accessible and internally consistent, **not** proof of a new emulator test, production AWS fidelity, IAM or independent adoption.
 

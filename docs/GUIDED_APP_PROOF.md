@@ -12,10 +12,27 @@ execution. Select **your own trusted** self-contained Python handler with
 `clients['s3'].put_object(...)`. The AST scanner does not resolve aliases,
 dynamic client names, sibling imports, or runtime control flow.
 
+Run the examples **from the repository's source-checkout root** (where `bin/`
+and `docs/` exist). Replace `my-handler.py` with a Python handler you own and
+have reviewed; create that file yourself before inspecting it. Paths are
+quoted to accommodate spaces. Choose local paths only: **UNC network shares,
+Windows device paths, and remote URLs are rejected**, including when this
+CLI runs on Linux. Bash and PowerShell examples below are separate, not
+commands to paste together. None of the examples below runs your Python code
+unless you explicitly invoke the `--run --approve` step.
+
 ## 1. Inspect your own file, with no execution
 
+**Bash / POSIX shell**
+
 ```sh
-node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" --json
+```
+
+**Windows PowerShell (single command)**
+
+```powershell
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" --json
 ```
 
 Output: SHA-256 of the selected source bytes, direct SDK operation candidates,
@@ -25,9 +42,16 @@ credentials. Review the actual source yourself.
 
 ## 2. Create an incomplete draft without overwriting anything
 
+**Bash / POSIX shell**
+
 ```sh
-node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py \
-  --draft my-app-case.json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" --draft "./my-app-case.json" --json
+```
+
+**Windows PowerShell (single command)**
+
+```powershell
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" --draft ".\my-app-case.json" --json
 ```
 
 The draft contains `reviewRequired: true`, synthetic-input placeholders,
@@ -45,10 +69,16 @@ bridge for **one unambiguous literal** `clients[service].method(...)` write:
 `S3 PutObject`, `SQS SendMessage`, or `DynamoDB PutItem`. No dynamic clients,
 multi-operation handlers, URLs, or inferred business logic are accepted.
 
+**Bash / POSIX shell**
+
 ```sh
-# Replace this example path with your OWN reviewed local handler.
-node bin/aws-emulator-mcp.mjs app-guide ./my-handler.py \
-  --draft-proof ./my-proof.json --json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" --draft-proof "./my-proof.json" --json
+```
+
+**Windows PowerShell (single command)**
+
+```powershell
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" --draft-proof ".\my-proof.json" --json
 ```
 
 The read-only scan creates **two new files** (neither overwrites an existing
@@ -76,11 +106,14 @@ existing bucket, queue, table or customer data. Only after you have personally
 verified the full case should you remove `reviewRequired` and replace all
 review markers. **Creating drafts never approves or runs either case.**
 
-Then run `app-guide ./my-handler.py ./my-proof.json --json` to obtain an
-explicit approval token for the *exact reviewed positive case*, and separately
-inspect `./my-proof.expected-red.json` for its own token. The two tokens must
-differ. `--run --approve TOKEN` is always a separate intentional command and
-requires local Docker and the previously built signed emulator image.
+Creating either draft **does not make it runnable**. It cannot produce an
+approval token while `reviewRequired` or unresolved placeholders remain.
+Only after personally reviewing the handler, both cases, resource ownership,
+fixture mappings and cleanup should you remove `reviewRequired` from **each**
+JSON file and continue to Step 3. The positive case and the deliberately
+inverted expected-red case receive **different approval tokens**; do not
+reuse a token across files. `--run --approve TOKEN` is an additional,
+separate explicit action requiring local Docker and the signed emulator image.
 
 **Expected-red is a sensitivity control, not a bug-fix verdict.** After a
 passing positive baseline, run the independently reviewed negative case in a
@@ -97,48 +130,97 @@ This optional generator does not import your module, deduce application
 business intent, install dependencies, call AWS, run Docker, or add source
 execution through MCP/CI. The generated `exists` checks prove only the
 presence of an object/message/item; strengthen them with an exact synthetic
-expected value (`equals`) before making a business-level correctness claim. It is deliberately limited to one literal SDK call;
-for multi-service workflows author and review the existing declarative case
-format manually using [APP_CASE.md](APP_CASE.md).
+expected value (`equals`) before making a business-level correctness claim.
+It is deliberately limited to one literal SDK call; for multi-service workflows
+author and review the existing declarative case format manually using
+[APP_CASE.md](APP_CASE.md).
 
-## 3. Review the exact source and complete case
+## 3. Independently review both completed cases and obtain two tokens
+
+After editing and reviewing **both** generated cases, inspect the positive
+case and expected-red control **separately**. These commands perform static
+inspection and case-schema validation; they do **not** run source or Docker.
+
+**Bash / POSIX shell**
 
 ```sh
-node bin/aws-emulator-mcp.mjs app-guide \
-  examples/app-case/s3-upload.py examples/app-case/s3-object-write.json --json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" "./my-proof.json" --json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" "./my-proof.expected-red.json" --json
 ```
 
-For a recognized source plus valid case the status is
-`explicit_approval_required`, with `formalCaseSchemaValidated: true` and an
-empty `reviewGaps`. The CLI uses the runner's **actual declarative schema
-validator** locally, then checks the scanner's observed calls and inputs
-against the proposed case. Nothing is executed in the emulator at this step.
+**Windows PowerShell (each line is an independent, portable command)**
+
+```powershell
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" ".\my-proof.json" --json
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" ".\my-proof.expected-red.json" --json
+```
+
+For a recognized source with a separately reviewed valid case, **each**
+inspection must report `status: "explicit_approval_required"`,
+`readyForApproval: true`, `formalCaseSchemaValidated: true`, and empty
+`reviewGaps`. Copy the **64-character `approvalToken` for that exact case**
+from its own output. The positive and expected-red tokens must differ.
+The CLI uses the runner's actual declarative schema validator locally, then
+checks the scanner's observed calls and inputs against the proposed case.
+No emulator behavior has been established by these approvals.
 
 A draft with incomplete steps, unsupported fields, missing assertions,
-unknown SDK patterns, or `REVIEW_ME` markers is **not approved**. The report
-contains an `approvalToken` bound to the raw SHA-256 hashes of **both**
-selected files. The token is not authentication and cannot establish code
-safety; it simply prevents stale or accidental runs.
+unknown SDK patterns, or `REVIEW_ME` markers is **not approved** and has
+`approvalToken: null`. **Only after** the source and completed case pass
+static/schema review does the report contain an approval token bound to the
+raw SHA-256 hashes of **both selected files**. A token is not authentication
+or source-safety evidence; it prevents stale or accidental runs.
 
 ## 4. Run the test *only after personal review*
 
-First inspect Docker readiness, and optionally build the locally verified
-signed emulator image yourself:
+First, separately inspect Docker readiness. An explicit `build` is optional
+**only if a matching signed local image is absent**; it may require a large
+download and disk space. Do not launch a build merely to create or review a
+draft. No application code runs during preflight or build.
+
+**Bash / POSIX shell**
 
 ```sh
-node bin/aws-emulator-mcp.mjs preflight
-node bin/aws-emulator-mcp.mjs build
+node "./bin/aws-emulator-mcp.mjs" preflight --json
+# Optional, deliberate action after reviewing disk capacity and image provenance:
+node "./bin/aws-emulator-mcp.mjs" build
 ```
 
-The `app-guide` command **never automatically rebuilds an image**. A valid
+**Windows PowerShell (each command is one line)**
+
+```powershell
+node ".\bin\aws-emulator-mcp.mjs" preflight --json
+# Optional, deliberate build only if needed:
+node ".\bin\aws-emulator-mcp.mjs" build
+```
+
+The `app-guide` command **never automatically builds an image**. A valid
 approval without a matching cached image stops before executing user code.
-When ready, supply the token shown in Step 3:
+After confirming your trusted handler and both completed JSON cases, replace
+the placeholders below with the **distinct 64-character tokens** obtained in
+Step 3. The `--run` flag is the explicit opt-in for executing your trusted
+Python handler, and each command uses a separate disposable emulator lab.
+
+**Bash / POSIX shell — deliberately run positive first, then expected-red**
 
 ```sh
-node bin/aws-emulator-mcp.mjs app-guide \
-  examples/app-case/s3-upload.py examples/app-case/s3-object-write.json \
-  --run --approve YOUR_APPROVAL_TOKEN --json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" "./my-proof.json" --run --approve "PASTE_POSITIVE_APPROVAL_TOKEN" --json
+node "./bin/aws-emulator-mcp.mjs" app-guide "./my-handler.py" "./my-proof.expected-red.json" --run --approve "PASTE_EXPECTED_RED_APPROVAL_TOKEN" --json
 ```
+
+**Windows PowerShell (single-line commands; no Bash continuation characters)**
+
+```powershell
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" ".\my-proof.json" --run --approve "PASTE_POSITIVE_APPROVAL_TOKEN" --json
+node ".\bin\aws-emulator-mcp.mjs" app-guide ".\my-handler.py" ".\my-proof.expected-red.json" --run --approve "PASTE_EXPECTED_RED_APPROVAL_TOKEN" --json
+```
+
+Do not run the expected-red control unless the reviewed positive baseline
+passes. When the inverted control runs, **a nonzero exit is expected only
+because its named post-state assertion fails** while setup, observed SDK
+writes and scoped cleanup succeed. Inspect the evidence; startup failures,
+wrong SDK calls and failed cleanup are **not** a successful negative control.
+These examples do not auto-extract approval tokens or silently execute a draft.
 
 The run re-reads and verifies exact source/case bytes before selecting the
 existing one-shot, `--network none` Docker lab. The trusted Python function
@@ -173,6 +255,8 @@ source/case hashes and red/green interpretation.
 - Static inspection reports input **key names**, SDK call candidates and line
   numbers; review reports before sharing publicly.
 - Source must be a regular, non-symlink UTF-8 `.py` file, maximum 20 KiB.
+  Relative, POSIX absolute and Windows drive-absolute local paths are allowed;
+  Windows UNC/network/device paths and remote URLs are refused at parsing.
   Case must be a separate regular `.json` file up to 48 KiB with bounded
   setup, invocation, checks, cleanup and regression assertion.
 - Valid case schema does **not** establish that a given SDK operation exists
