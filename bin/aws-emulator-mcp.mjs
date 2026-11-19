@@ -155,6 +155,13 @@ function runDocker(args,{pinned=false}={}) {
   });
 }
 async function buildImage() {
+  // The signed Docker CI smoke must never perform a hidden rebuild inside a
+  // five-minute doctor/API timeout. CI explicitly builds and verifies first.
+  // This opt-in guard prevents an implicit rebuild if the tag changes after
+  // preflight. Legacy doctor/API commands still use the mutable image tag;
+  // this CI guard is not immutable-image pinning or a hostile-runner sandbox.
+  if (process.env.AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT === '1')
+    fail('DOCKER_SMOKE_PREBUILT_IMAGE_REQUIRED: implicit build disabled; run explicit signed build and read-only preflight first.',1);
   if (!existsSync(path.join(ROOT, 'docker', 'Dockerfile')) ||
       !existsSync(path.join(ROOT, 'scripts', 'install_wsl.sh'))) {
     fail('Bundled Docker source missing; reinstall from a verified source release.');
@@ -1212,7 +1219,10 @@ async function main() {
     return;
   }
   requireDocker();
-  if (command === 'build' || !imageExists()) await buildImage();
+  // In prebuilt-only CI smoke, a stale tag is an error, never an implicit
+  // rebuild. Suppress the legacy 'rebuilding' advisory for this guarded path.
+  const prebuiltOnly=process.env.AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT === '1';
+  if (command === 'build' || !imageExists({warnRebuild:!prebuiltOnly})) await buildImage();
   if (command === 'build') return;
   if (!wantsJson) stderr.write('AWS Emulator MCP: running verified local ' + command + '...\n');
   const result = await runCaptured(dockerArgs(command));
