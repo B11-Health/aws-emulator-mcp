@@ -17,6 +17,7 @@ import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onbo
 import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
+import {capabilityTruth, formatCapabilityTruth} from '../scripts/capability_truth.mjs';
 import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, buildProofDraftPair, writeProofDraftPairExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -56,6 +57,7 @@ Commands:
   catalog          List implemented MCP tools
   coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
+  capability SERVICE.OPERATION [--json]  Explain checked-in SDK, signed-local probe, app proof and UNKNOWN gaps (offline)
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
@@ -1056,6 +1058,19 @@ async function main() {
     else renderReport('app-debug', parsed);
     if (result.code !== 0 || !parsed.passed)
       fail('Order-intake application assertions or cleanup failed', result.code || 1);
+    return;
+  }
+  if (command === 'capability') {
+    if (args.length<1 || args.length>2 ||
+        (args.length===2 && args[1]!=='--json'))
+      fail('Usage: aws-emulator-mcp capability SERVICE.OPERATION [--json]', 2);
+    let report;
+    try { report=capabilityTruth(args[0]); }
+    catch {
+      fail('Invalid operation identifier or unverified bundled capability evidence; no success claimed', 2);
+    }
+    stdout.write(args[1]==='--json' ? JSON.stringify(report,null,2)+'\n' :
+      formatCapabilityTruth(report));
     return;
   }
   if (command === 'coverage-diff') {
