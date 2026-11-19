@@ -52,7 +52,7 @@ Commands:
   official-session [--port 9297] [--identity] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run 29 curated + 10 Docker-only tools via local MCP
+  mcp              Run 29 curated + 10 Docker-only tools via local MCP (prebuilt image; no auto-build)
   catalog          List implemented MCP tools
   coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
@@ -115,7 +115,7 @@ function requireDocker() {
   });
   if (info.status !== 0) fail('Docker daemon not running or inaccessible to this user.');
 }
-function imageExists() {
+function imageExists({warnRebuild=true}={}) {
   // A semver tag alone may point to an older checkout's Python bundle.
   // Only reuse a locally built image with matching Docker-copy inputs.
   const expected = imageSourceDigest(ROOT);
@@ -123,13 +123,13 @@ function imageExists() {
     '--format', '{{index .Config.Labels "dev.aws-emulator-mcp.source-sha256"}}'], {
     encoding: 'utf8', timeout: 10000, windowsHide: true, shell: false
   });
-  if (observed.status === 0 && observed.stdout.trim() !== expected) {
+  if (warnRebuild && observed.status === 0 && observed.stdout.trim() !== expected) {
     stderr.write('AWS Emulator MCP: cached image source differs or is unverified; rebuilding local image.\n');
   }
   return observed.status === 0 && observed.stdout.trim() === expected;
 }
 function dockerArgs(mode, extra = []) {
-  return ['run', '--rm', '-i', '--network', 'none',
+  return ['run', '--rm', '-i', '--pull', 'never', '--network', 'none',
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '256', '--memory', '2g', IMAGE, mode, ...extra];
 }
@@ -1137,13 +1137,21 @@ async function main() {
     fail('Unknown command/arguments. Run: aws-emulator-mcp help', 2);
   }
   requireDocker();
-  if (command === 'build' || !imageExists()) await buildImage();
-  if (command === 'build') return;
+  // A desktop MCP client can start this process during ordinary application
+  // launch. It must never surprise the developer with a large download/build.
+  // Unlike explicit Docker-backed CLI experiments, MCP startup is fail-closed.
   if (command === 'mcp') {
+    if (!imageExists({warnRebuild:false})) {
+      fail('MCP image missing, stale or unverified; no image build was attempted. ' +
+        'Run preflight --json, review Docker storage, then explicitly run build ' +
+        'before reconnecting your MCP client. Never send AWS credentials.', 1);
+    }
     const code = await runDocker(dockerArgs(command));
     if (code !== 0) fail('MCP server exited (exit ' + code + ')', code);
     return;
   }
+  if (command === 'build' || !imageExists()) await buildImage();
+  if (command === 'build') return;
   if (!wantsJson) stderr.write('AWS Emulator MCP: running verified local ' + command + '...\n');
   const result = await runCaptured(dockerArgs(command));
   let parsed;

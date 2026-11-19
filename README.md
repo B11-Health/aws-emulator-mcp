@@ -85,7 +85,7 @@ or AWS fidelity certification.
 
 ## Connect to an AI assistant
 
-**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client, since the MCP launcher can build an image if one is missing. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
+**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client. **In this experimental round-four branch**, the `mcp` launcher exits with a clear error if the local image is absent, stale or unverified; it does **not** build or pull an image on desktop startup. Earlier beta.15 and round-three builds can still auto-build. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
 
 **Unmerged round-three preview ([PR #85](https://github.com/B11-Health/aws-emulator-mcp/pull/85)):** to generate the Claude Desktop config and explicitly check the first MCP reply, use the **same round-three checkout**. The older round-two preview has `config claude` but not `connect-check`; the current default `master` and pinned beta.15 release do not provide this draft workflow.
 
@@ -95,6 +95,8 @@ cd aws-emulator-mcp-r3
 node bin/aws-emulator-mcp.mjs config claude
 node bin/aws-emulator-mcp.mjs connect-check --json
 ```
+
+**First connection without surprise downloads (round-four experiment):** after `preflight --json`, review actual Docker storage (for example, `docker system df`), then choose whether to run `node bin/aws-emulator-mcp.mjs build` **explicitly**. The regular `mcp` client startup will not do this for you in this experimental branch. A matching prebuilt image still launches normally; missing or stale images return a clean error on stderr with no JSON-RPC output. This is a draft behavior change, **not** a statement about the currently published beta.15 or unmerged round-three preview.
 
 `connect-check` never builds/pulls Docker images or edits client settings. It **fails closed** until an existing Linux Docker image matches the current source fingerprint, its local daemon endpoint and immutable image ID are reverified, and the read-only MCP `emulator_status` tool returns an exact healthy lowercase `body: "ok"` from loopback. It is a terminal-only handshake, **not** an AWS API test or proof that Claude Desktop/Copilot has connected. Review Docker storage and explicitly build the signed emulator separately if required; the `mcp` launcher can build on client startup if not prepared. [Step-by-step first-reply check](docs/FIRST_RUN.md#before-your-first-mcp-reply-explicitly-check-the-local-connection-round-3-draft) and [desktop safety guide](docs/DESKTOP_INSTALL.md).
 
