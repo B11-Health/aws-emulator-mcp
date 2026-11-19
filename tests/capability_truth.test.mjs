@@ -22,6 +22,19 @@ function alteredEvidence(target,change){
 }
 
 // Never need a running emulator, AWS keys, Docker or imported user source.
+test('beginner capability instructions require the actual Round 4 feature checkout',()=>{
+  const guide=readFileSync(path.join(ROOT,'docs/CAPABILITY_TRUTH.md'),'utf8');
+  const coverage=readFileSync(path.join(ROOT,'docs/COVERAGE.md'),'utf8');
+  const branch='feat/r4-capability-truth-20261118';
+  assert.match(guide,/git clone --depth 1 --branch feat\/r4-capability-truth-20261118/);
+  assert.match(guide,/cd aws-emulator-mcp-capability/);
+  assert.match(guide,/node bin\/aws-emulator-mcp\.mjs capability sts\.GetCallerIdentity/);
+  assert.ok(guide.includes('not') && guide.includes('v0.4.0-beta.15'));
+  assert.ok(guide.includes('release/agent-team-preview-r4-20261118'));
+  assert.ok(coverage.includes(branch));
+  assert.ok(coverage.includes('not available in published beta.15'));
+});
+
 test('20 named read-only probes are historical responses, not service-wide SDK proof',()=>{
   for(const key of ['sts.GetCallerIdentity','s3.ListBuckets','lambda.ListFunctions',
     'cloudformation.ListStacks','bedrock.ListFoundationModels']){
