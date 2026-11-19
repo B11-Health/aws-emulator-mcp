@@ -343,117 +343,225 @@ test('R4 rescue docs require current remote ref and explicit PR #91 review; neve
   assert.match(readmeRescue,/git ls-remote https:\/\/github\.com\/B11-Health\/aws-emulator-mcp\.git/);
   assert.match(firstRunRescue,/git ls-remote https:\/\/github\.com\/B11-Health\/aws-emulator-mcp\.git/);
   assert.match(guide,/git ls-remote --exit-code/);
-  assert.match(guide,/Read-Host 'Type the full PR #91 SHA/);
+  assert.match(guide,/Read-Host 'Type the entire PR #91 SHA/);
   assert.match(guide,/IFS= read -r reviewed/);
   assert.match(readmeRescue,/Quote local report paths/);
   assert.match(firstRunRescue,/already saved/);
 });
 
-test('R4 copyable shell steps use fail-stop clone and recheck remote SHA, origin, root and tracked files before Node',()=>{
+test('R4 shell instructions use a host-only inline guard with byte hashing and independent human review',()=>{
   const guide=readFileSync(new URL('../docs/REPORT_RESCUE.md',import.meta.url),'utf8');
   const shBlocks=[...guide.matchAll(/```sh\n([\s\S]*?)\n```/g)].map(m=>m[1]);
   const psBlocks=[...guide.matchAll(/```powershell\n([\s\S]*?)\n```/g)].map(m=>m[1]);
-  assert.equal(shBlocks.length,2,'POSIX clone and guarded run steps only');
-  assert.equal(psBlocks.length,2,'PowerShell clone and guarded run steps only');
+  assert.equal(shBlocks.length,2);
+  assert.equal(psBlocks.length,2);
   for(const script of shBlocks){
     const parsed=spawnSync('sh',['-n'],{input:script,encoding:'utf8',timeout:6000});
     assert.equal(parsed.status,0,parsed.stderr);
   }
+  for(const block of [shBlocks[0],psBlocks[0]]){
+    assert.match(block,/git clone --config core\.autocrlf=false --depth 1 --branch/);
+    assert.doesNotMatch(block,/\bnode\b/i,'clone stage must never load source');
+  }
   assert.match(shBlocks[0],/test ! -e "\$repo"/);
-  assert.match(shBlocks[0],/git clone --depth 1 --branch/);
-  assert.doesNotMatch(shBlocks[0],/\bnode\b/,'clone may never execute project source');
-  assert.match(shBlocks[1],/rev-parse --show-toplevel/);
-  assert.match(shBlocks[1],/remote get-url origin/);
-  assert.match(shBlocks[1],/grep -Fq 'function imageRowMatchesState\(r\)'/);
-  assert.match(shBlocks[1],/status --porcelain --untracked-files=no/);
-  assert.equal((shBlocks[1].match(/git ls-remote --exit-code/g)||[]).length,2,
-    'recheck R4 remote after human review');
-  assert.match(shBlocks[1],/test "\$remote_sha" = "\$head"/);
-  assert.match(shBlocks[1],/IFS= read -r reviewed/);
-  assert.match(shBlocks[1],/test "\$reviewed" = "\$head"/);
-  assert.ok(shBlocks[1].indexOf('IFS= read -r reviewed')<shBlocks[1].indexOf('node bin/'));
+  assert.match(psBlocks[0],/Test-Path -LiteralPath \$repo/);
+  assert.match(psBlocks[0],/\$LASTEXITCODE -ne 0/);
   assert.match(shBlocks[1],/test -t 0/);
-  assert.match(psBlocks[0],/if \(Test-Path -LiteralPath \$repo\)/);
-  assert.match(psBlocks[0],/if \(\$LASTEXITCODE -ne 0\) \{ throw/);
-  assert.doesNotMatch(psBlocks[0],/\bnode\b/);
-  assert.match(psBlocks[1],/rev-parse --show-toplevel/);
-  assert.match(psBlocks[1],/remote get-url origin/);
-  assert.match(psBlocks[1],/Select-String -LiteralPath/);
-  assert.match(psBlocks[1],/imageRowMatchesState\(r\)/);
-  assert.match(psBlocks[1],/status --porcelain --untracked-files=no/);
-  assert.equal((psBlocks[1].match(/git ls-remote --exit-code/g)||[]).length,2);
-  assert.match(psBlocks[1],/Read-Host 'Type the full PR #91 SHA/);
-  assert.match(psBlocks[1],/if \(\$reviewed -cne \$head\) \{ throw/);
-  assert.ok(psBlocks[1].indexOf('Read-Host')<psBlocks[1].indexOf('node bin/'));
-  assert.ok(psBlocks[1].indexOf('Push-Location')<psBlocks[1].indexOf('node bin/'));
+  assert.match(shBlocks[1],/IFS= read -r reviewed/);
+  assert.match(psBlocks[1],/Read-Host 'Type the entire PR #91 SHA/);
+  assert.match(shBlocks[1],/git ls-remote --exit-code/);
+  assert.match(psBlocks[1],/git ls-remote --exit-code/);
+  assert.ok(shBlocks[1].indexOf('IFS= read -r reviewed')<shBlocks[1].indexOf("node - \"$reviewed\""));
+  assert.ok(psBlocks[1].indexOf('Read-Host')<psBlocks[1].indexOf('$guard | node - $reviewed'));
+  const fromPosix=shBlocks[1].match(/<<'RESCUE_CHECKOUT_GUARD'\n([\s\S]*?)\nRESCUE_CHECKOUT_GUARD/);
+  const fromPowerShell=psBlocks[1].match(/  \$guard = @'\n([\s\S]*?)\n'@\n  \$guard \| node - \$reviewed \$repo \$report/);
+  assert.ok(fromPosix&&fromPowerShell,'inert verifier source must be inline, not loaded from checkout');
+  assert.equal(fromPosix[1],fromPowerShell[1], 'Bash and PowerShell must execute identical trusted guard bytes');
+  const code=fromPosix[1];
+  for(const fragment of [
+    "env.GIT_NO_REPLACE_OBJECTS='1'",'GIT_',
+    "['for-each-ref','--format=%(refname)','refs/replace']",
+    "['ls-files','-v','-z']", "flag.startsWith('H ')",
+    "['ls-files','--stage','-z']", "['ls-tree','-rz','HEAD']",
+    "['ls-remote','--exit-code',origin,ref]",
+    "['symbolic-ref','--quiet','--short','HEAD']",
+    "crypto.createHash('sha1')", 'bytes.length',
+    'digest!==match[2]','isSymbolicLink()','walk(root',
+    "process.argv[2]", "process.argv[3]", "process.argv[4]",
+    "'rescue',report",'spawnSync(process.execPath'
+  ])assert.ok(code.includes(fragment),'missing trust check '+fragment);
+  assert.ok(code.indexOf("['ls-tree','-rz','HEAD']")<code.indexOf('spawnSync(process.execPath'));
+  assert.doesNotMatch(code,/\b(docker|aws-sdk|codex)\b/i);
+  const syntax=spawnSync(process.execPath,['--check'],{input:code,encoding:'utf8',timeout:6000});
+  assert.equal(syntax.status,0,syntax.stderr);
+  assert.match(guide,/not third-party source attestation/);
+  assert.match(guide,/only allowed untracked files/);
 });
 
-test('POSIX documented R4 steps reject clone failure or a branch moving beyond checkout without running Node',()=>{
+// These tests run only the self-contained inline verifier and an inert Git
+// fixture. The 'git ls-remote' command is intercepted by a local fake executable
+// and no Docker, AWS, GitHub network, or repository application code is loaded.
+function rescueInlineGuard(){
   const guide=readFileSync(new URL('../docs/REPORT_RESCUE.md',import.meta.url),'utf8');
-  const [clone,guarded]=[...guide.matchAll(/```sh\n([\s\S]*?)\n```/g)].map(m=>m[1]);
-  const dir=mkdtempSync(path.join(tmpdir(),'r4 moving head safety '));
-  try {
-    const bin=path.join(dir,'inert-bin');
-    mkdirSync(bin);
-    const repo=path.join(dir,'aws-emulator-mcp-r4');
-    const invoked=path.join(dir,'DID_RUN_NODE');
-    const called=path.join(dir,'DID_RUN_CLONE');
-    const fakeGit=path.join(bin,'git');
-    const fakeNode=path.join(bin,'node');
-    const localSha='a'.repeat(40),newRemoteSha='b'.repeat(40);
-    writeFileSync(fakeGit,`#!/bin/sh
-if [ "$1" = "clone" ]; then printf 'clone\\n' >> "$FAKE_CLONE_MARKER"; exit 1; fi
-if [ "$1" = "-C" ]; then
-  shift 2
-  if [ "$1" = "rev-parse" ] && [ "$2" = "--show-toplevel" ]; then printf '%s\\n' "$FAKE_ROOT"; exit 0; fi
-  if [ "$1" = "rev-parse" ]; then printf '%s\\n' "$FAKE_LOCAL_SHA"; exit 0; fi
-  if [ "$1" = "remote" ]; then printf 'https://github.com/B11-Health/aws-emulator-mcp.git\\n'; exit 0; fi
-  if [ "$1" = "status" ]; then exit 0; fi
-fi
-if [ "$1" = "ls-remote" ]; then printf '%s\\t%s\\n' "$FAKE_REMOTE_SHA" 'refs/heads/release/agent-team-preview-r4-20261118'; exit 0; fi
-exit 97
+  const script=guide.match(/<<'RESCUE_CHECKOUT_GUARD'\n([\s\S]*?)\nRESCUE_CHECKOUT_GUARD/);
+  assert.ok(script);
+  return script[1];
+}
+function safeGit(cwd,args,extraEnv={}){
+  const res=spawnSync('git',args,{cwd,encoding:'utf8',timeout:8000,
+    env:{...process.env,GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null',...extraEnv}});
+  assert.equal(res.status,0,res.stderr+'; '+args.join(' '));
+  return res.stdout.trim();
+}
+function makeRescueGitFixture(){
+  const root=mkdtempSync(path.join(tmpdir(),'r4 rescue guard with spaces '));
+  const repo=path.join(root,'aws-emulator-mcp-r4');
+  const marker=path.join(root,'INERT_SOURCE_RAN');
+  const fakeBin=path.join(root,'stub-bin');
+  mkdirSync(repo);mkdirSync(fakeBin);
+  safeGit(root,['init','--initial-branch=release/agent-team-preview-r4-20261118',repo]);
+  safeGit(root,['-C',repo,'config','user.email','fixture@example.invalid']);
+  safeGit(root,['-C',repo,'config','user.name','Isolated Fixture']);
+  safeGit(root,['-C',repo,'remote','add','origin','https://github.com/B11-Health/aws-emulator-mcp.git']);
+  mkdirSync(path.join(repo,'bin'));
+  const dummy="import {writeFileSync} from 'node:fs';import {resolve} from 'node:path';writeFileSync(resolve('..','INERT_SOURCE_RAN'),'inert');\n";
+  writeFileSync(path.join(repo,'bin','aws-emulator-mcp.mjs'),dummy);
+  writeFileSync(path.join(repo,'scripts.txt'),'Versioned fixture content\n');
+  safeGit(root,['-C',repo,'add','.']);
+  safeGit(root,['-C',repo,'commit','-m','inert fixture']);
+  const script=path.join(fakeBin,'git');
+  writeFileSync(script,`#!/bin/sh
+for argument in "$@"; do
+  if [ "$argument" = "ls-remote" ]; then
+    if [ "$TEST_REMOTE_SHA" = "same" ]; then
+      SHA="$($TEST_REAL_GIT -C "$TEST_REPO" rev-parse HEAD)"
+    else
+      SHA="$TEST_REMOTE_SHA"
+    fi
+    printf '%s\\t%s\\n' "$SHA" 'refs/heads/release/agent-team-preview-r4-20261118'
+    exit 0
+  fi
+done
+exec "$TEST_REAL_GIT" "$@"
 `);
-    writeFileSync(fakeNode,`#!/bin/sh\nprintf 'UNEXPECTED_NODE\\n' >> "$FAKE_NODE_MARKER"\nexit 0\n`);
-    chmodSync(fakeGit,0o755);chmodSync(fakeNode,0o755);
-    const env={...process.env,PATH:bin+':/usr/bin:/bin',FAKE_ROOT:repo,
-      FAKE_CLONE_MARKER:called,FAKE_NODE_MARKER:invoked,
-      FAKE_LOCAL_SHA:localSha,FAKE_REMOTE_SHA:newRemoteSha};
-    // Clone failure with an absent directory does not produce a checkout.
-    const cloneFailed=spawnSync('sh',['-c',clone],{cwd:dir,env,encoding:'utf8',timeout:6000});
-    assert.notEqual(cloneFailed.status,0);
-    assert.equal(existsSync(invoked),false,'clone failure must not call Node');
-    // A pre-existing stale checkout cannot be cloned into and must not run Node.
-    mkdirSync(repo);
-    const source=path.join(repo,'scripts');
-    mkdirSync(source);
-    writeFileSync(path.join(source,'report_rescue.mjs'),'function imageRowMatchesState(r) { return true; }\n');
-    const existing=spawnSync('sh',['-c',clone],{cwd:dir,env,encoding:'utf8',timeout:6000});
-    assert.notEqual(existing.status,0);
-    assert.equal(existsSync(invoked),false);
-    // Simulate an old checkout and a NEW remote branch HEAD. No real git or
-    // application is executed: fake git supplies two inert SHA strings.
-    const stale=spawnSync('sh',['-c',guarded],{cwd:dir,env,encoding:'utf8',timeout:6000});
-    assert.notEqual(stale.status,0);
-    assert.match(stale.stderr,/STOP: checkout differs from current R4 remote HEAD/);
-    assert.equal(existsSync(invoked),false,'never use old code after branch advances');
-    // The old source must be rejected even if its SHA matches remote.
-    writeFileSync(path.join(source,'report_rescue.mjs'),'// no corrected image guard\n');
-    const oldSource=spawnSync('sh',['-c',guarded],{
-      cwd:dir,env:{...env,FAKE_REMOTE_SHA:localSha},encoding:'utf8',timeout:6000
+  chmodSync(script,0o755);
+  const realGit=safeGit(root,['--exec-path']); // Git subprocess above confirms Git available.
+  // Resolve executable instead of guessing /usr/bin/git; PATH is untouched
+  // outside this disposable fixture environment.
+  const gitPath=spawnSync('which',['git'],{encoding:'utf8',timeout:5000});
+  assert.equal(gitPath.status,0);
+  const env={...process.env,PATH:fakeBin+':'+process.env.PATH,
+    TEST_REAL_GIT:gitPath.stdout.trim(),TEST_REPO:repo,TEST_REMOTE_SHA:'same'};
+  const head=safeGit(root,['-C',repo,'rev-parse','HEAD']);
+  writeFileSync(path.join(repo,'preflight-report.json'),'{}');
+  function attempt(overrides={}){
+    return spawnSync(process.execPath,['-',overrides.reviewed||head,repo,'./preflight-report.json'],{
+      cwd:root,encoding:'utf8',input:rescueInlineGuard(),timeout:9000,
+      env:{...env,...overrides.env}
     });
-    assert.notEqual(oldSource.status,0);
-    assert.match(oldSource.stderr,/STOP: old R4 interpreter lacks image-state fix/);
-    assert.equal(existsSync(invoked),false);
-    writeFileSync(path.join(source,'report_rescue.mjs'),'function imageRowMatchesState(r) { return true; }\n');
-    // Even a currently matching remote does not silently approve execution;
-    // without an interactive human PR review, the gate stops before Node.
-    const noninteractive=spawnSync('sh',['-c',guarded],{
-      cwd:dir,env:{...env,FAKE_REMOTE_SHA:localSha},encoding:'utf8',timeout:6000
-    });
-    assert.notEqual(noninteractive.status,0);
-    assert.match(noninteractive.stderr,/STOP: interactive review required/);
-    assert.equal(existsSync(invoked),false);
-  } finally {rmSync(dir,{recursive:true,force:true});}
+  }
+  return {root,repo,marker,head,env,attempt,cleanup:()=>rmSync(root,{force:true,recursive:true})};
+}
+
+test('inert fixture verifies a clean reviewed tree and launches only a harmless marker',{
+  skip:process.platform==='win32'?'POSIX Git shim only':false
+},()=>{
+  const f=makeRescueGitFixture();
+  try{
+    const out=f.attempt();
+    assert.equal(out.status,0,out.stderr);
+    assert.equal(readFileSync(f.marker,'utf8'),'inert');
+  }finally{f.cleanup();}
+});
+
+test('hidden assume-unchanged and skip-worktree flags never launch altered fixture code',{
+  skip:process.platform==='win32'?'POSIX Git shim only':false
+},()=>{
+  for(const flag of ['--assume-unchanged','--skip-worktree']){
+    const f=makeRescueGitFixture();
+    try{
+      writeFileSync(path.join(f.repo,'bin/aws-emulator-mcp.mjs'),"// changed tracked executable source\n");
+      safeGit(f.root,['-C',f.repo,'update-index',flag,'bin/aws-emulator-mcp.mjs']);
+      assert.equal(safeGit(f.root,['-C',f.repo,'status','--porcelain','--untracked-files=no']),'',
+        'demonstrate Git status missed the hidden change');
+      const flags=safeGit(f.root,['-C',f.repo,'ls-files','-v']);
+      assert.match(flags,flag==='--assume-unchanged'?/^h /m:/^S /m);
+      const out=f.attempt();
+      assert.equal(out.status,2,out.stderr);
+      assert.match(out.stderr,/index flag/);
+      assert.equal(existsSync(f.marker),false);
+    }finally{f.cleanup();}
+  }
+});
+
+test('inert guard blocks altered tracked bytes, staged index changes and stale R4 remote head',{
+  skip:process.platform==='win32'?'POSIX Git shim only':false
+},()=>{
+  const scenarios=[
+    f=>writeFileSync(path.join(f.repo,'scripts.txt'),'tampered file bytes\n'),
+    f=>{writeFileSync(path.join(f.repo,'scripts.txt'),'staged tampering\n');safeGit(f.root,['-C',f.repo,'add','scripts.txt']);},
+    f=>{f.env.TEST_REMOTE_SHA='b'.repeat(40);}
+  ];
+  for(const change of scenarios){
+    const f=makeRescueGitFixture();
+    try{
+      change(f);
+      const out=f.attempt();
+      assert.equal(out.status,2,out.stderr);
+      assert.equal(existsSync(f.marker),false);
+    }finally{f.cleanup();}
+  }
+});
+
+test('inert guard rejects Git replacement objects, symlink entries, submodules and unexpected extra files',{
+  skip:process.platform==='win32'?'POSIX Git shim only':false
+},()=>{
+  const cases=[
+    f=>{
+      const before=f.head;
+      writeFileSync(path.join(f.repo,'scripts.txt'),'Second commit\n');
+      safeGit(f.root,['-C',f.repo,'add','scripts.txt']);
+      safeGit(f.root,['-C',f.repo,'commit','-m','second commit']);
+      const now=safeGit(f.root,['-C',f.repo,'rev-parse','HEAD']);
+      safeGit(f.root,['-C',f.repo,'replace',now,before]);
+    },
+    f=>{
+      symlinkSync('scripts.txt',path.join(f.repo,'tracked-link'));
+      safeGit(f.root,['-C',f.repo,'add','tracked-link']);
+      safeGit(f.root,['-C',f.repo,'commit','-m','symlink entry']);
+    },
+    f=>{
+      safeGit(f.root,['-C',f.repo,'update-index','--add','--cacheinfo','160000,'+f.head+',fake-submodule']);
+      safeGit(f.root,['-C',f.repo,'commit','-m','gitlink entry']);
+    },
+    f=>writeFileSync(path.join(f.repo,'untracked-evil.js'),'// unexpected extra file\n')
+  ];
+  for(const modify of cases){
+    const f=makeRescueGitFixture();
+    try{
+      modify(f);
+      const out=f.attempt({reviewed:safeGit(f.root,['-C',f.repo,'rev-parse','HEAD'])});
+      assert.equal(out.status,2,out.stderr);
+      assert.equal(existsSync(f.marker),false);
+    }finally{f.cleanup();}
+  }
+});
+
+test('non-reviewed SHA, unexpected Git origin and missing remote cannot execute inert code',{
+  skip:process.platform==='win32'?'POSIX Git shim only':false
+},()=>{
+  for(const change of [
+    f=>({reviewed:'c'.repeat(40)}),
+    f=>{safeGit(f.root,['-C',f.repo,'remote','set-url','origin','https://bad.example.invalid/repo.git']);return{};},
+    f=>({env:{TEST_REMOTE_SHA:'d'.repeat(40)}})
+  ]){
+    const f=makeRescueGitFixture();
+    try{
+      const out=f.attempt(change(f));
+      assert.equal(out.status,2,out.stderr);
+      assert.equal(existsSync(f.marker),false);
+    }finally{f.cleanup();}
+  }
 });
 
 test('report selector accepts local paths with spaces and Windows drive paths; rejects URLs, UNC, devices and traversal',()=>{

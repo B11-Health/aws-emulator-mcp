@@ -171,15 +171,75 @@ async function buildImage() {
   const storageWarning = buildSpaceWarning(readiness);
   if (storageWarning) stderr.write('AWS Emulator MCP: BUILD RISK: ' + storageWarning + '\n');
   stderr.write('AWS Emulator MCP: building a local image with the signed official AWS Emulator.\n');
+  // On POSIX, run the explicit build in its own process group so interrupts
+  // terminate descendants that remain in that group. On
+  // Windows, taskkill.exe /T /F is the bounded native process-tree fallback.
+  // No shell, user-supplied command or ambient credential values are involved.
   const child = spawn('docker', ['build', '--pull', '--build-arg',
     'AWS_MCP_SOURCE_SHA256=' + digest, '-t', IMAGE, '-f', 'docker/Dockerfile', ROOT], {
-    stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false
+    stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true, shell: false,
+    detached: process.platform !== 'win32'
   });
-  child.stdout.pipe(stderr); // Docker build output must never corrupt MCP stdout.
-  const code = await new Promise((resolve, reject) => {
-    child.on('error', reject);
-    child.on('close', value => resolve(value ?? 1));
-  });
+  child.stdout.pipe(stderr); // Preserve visible build progress on stderr, not JSON stdout.
+  let interrupted = null;
+  let cleanupDone = Promise.resolve();
+  // Avoid waiting indefinitely on the child's close event after an external
+  // signal (for example if an unrelated process inherited its output pipe).
+  // The shutdown deadline is set only by the interruption handler.
+  let releaseAfterTermination;
+  const terminationDeadline = new Promise(resolve => { releaseAfterTermination = resolve; });
+  // A successful child exit cannot prove that its grandchildren exited.
+  // Always allow the bounded escalation to inspect/terminate the group.
+  const terminateTree = signal => {
+    if (interrupted) return;
+    interrupted = signal;
+    if (process.platform === 'win32') {
+      // PID is supplied by Node's own spawn(), not by the user. The native
+      // tool kills the tree; if unavailable, kill at least the immediate child.
+      let result = null;
+      try {
+        if (Number.isInteger(child.pid) && child.pid > 0)
+          result = spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], {
+            stdio: 'ignore', windowsHide: true, shell: false, timeout: 2500
+          });
+      } catch { /* local taskkill unavailable; only immediate child fallback */ }
+      if (result?.status !== 0) {
+        try { child.kill('SIGKILL'); } catch { /* already exited */ }
+      }
+      releaseAfterTermination(null);
+    } else {
+      try { process.kill(-child.pid, signal); }
+      catch { try { child.kill(signal); } catch { /* already exited */ } }
+      cleanupDone = new Promise(resolve => {
+        setTimeout(() => {
+          // Even if the Docker CLI already exited, descendants may remain
+          // in its original group. ESRCH is an expected clean outcome.
+          try { process.kill(-child.pid, 'SIGKILL'); }
+          catch { try { child.kill('SIGKILL'); } catch { /* already exited */ } }
+          resolve();
+          releaseAfterTermination(null);
+        }, 1500);
+      });
+    }
+  };
+  const onTerm = () => terminateTree('SIGTERM');
+  const onInt = () => terminateTree('SIGINT');
+  process.on('SIGTERM', onTerm);
+  process.on('SIGINT', onInt);
+  let code;
+  try {
+    const childClosed = new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', value => resolve(value ?? 1));
+    });
+    code = await Promise.race([childClosed, terminationDeadline]);
+    await cleanupDone;
+  } finally {
+    process.off('SIGTERM', onTerm);
+    process.off('SIGINT', onInt);
+  }
+  if (interrupted) fail('Signed image build interrupted; child process tree termination requested.',
+    interrupted === 'SIGINT' ? 130 : 143);
   if (code !== 0) fail('Image build failed; check signed download, Docker storage and the preflight capacity advisory. No automatic cleanup was performed.', code);
 }
 function renderReport(command, result) {
@@ -1146,7 +1206,10 @@ async function main() {
       fail('Usage: aws-emulator-mcp coverage [service] [--json]', 2);
     }
     requireDocker();
-    if (!imageExists()) await buildImage();
+    // Hosted coverage summary is prebuilt-only, just like the preceding smoke.
+    // A missing/stale image must fail without a misleading rebuild advisory.
+    const prebuiltOnly=process.env.AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT === '1';
+    if (!imageExists({warnRebuild:!prebuiltOnly})) await buildImage();
     const result = await runCaptured(dockerArgs('coverage', [rest[0] || 'all']));
     let parsed;
     try { parsed = JSON.parse(result.raw); }

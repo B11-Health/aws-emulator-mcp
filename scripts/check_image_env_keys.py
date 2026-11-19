@@ -19,6 +19,12 @@ SAFE_AWS_ENV_NAMES = frozenset({
     "AWS_EMULATOR_MCP_ISOLATED_LAB",
     "AWS_EMULATOR_PORT",
 })
+# Botocore's legacy Boto2Config provider reads BOTO_CONFIG. Legacy Boto
+# clients also honor BOTO_PATH. Neither variable begins with AWS_/AMAZON_,
+# so those prefixes alone do not cover credential-provider configuration.
+# Reserve the BOTO_ namespace for explicit security review, not a generic
+# environment allowlist. Compare uppercase to reject aliases in any casing.
+CREDENTIAL_PROVIDER_PREFIXES = ("AWS_", "AMAZON_", "BOTO_")
 MARKER = "AWS_EMULATOR_MCP_ISOLATED_LAB"
 
 
@@ -27,11 +33,11 @@ class UnsafeImageEnvironment(ValueError):
 
 
 def verify_env_keys(raw: bytes) -> None:
-    """Reject credential-bearing AWS/AMAZON env names and missing marker.
+    """Reject credential-provider environment aliases and missing marker.
 
     Deliberately allow only the known fixed AWS_EMULATOR_* image variables.
-    Adding a new AWS_ variable requires explicit review: AWS SDKs support many
-    credential-provider aliases, not just AWS_ACCESS_KEY_ID/SECRET_ACCESS_KEY.
+    Any AWS_, AMAZON_, or BOTO_ name outside that allowlist requires review.
+    The BOTO_CONFIG / BOTO_PATH names can select credential-bearing config.
     """
     if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_BYTES:
         raise UnsafeImageEnvironment()
@@ -57,7 +63,7 @@ def verify_env_keys(raw: bytes) -> None:
         # isolation marker does not satisfy the runtime's uppercase contract.
         if canonical in SAFE_AWS_ENV_NAMES and key != canonical:
             raise UnsafeImageEnvironment()
-        if canonical.startswith(("AWS_", "AMAZON_")) and canonical not in SAFE_AWS_ENV_NAMES:
+        if canonical.startswith(CREDENTIAL_PROVIDER_PREFIXES) and canonical not in SAFE_AWS_ENV_NAMES:
             raise UnsafeImageEnvironment()
         if canonical == MARKER:
             if value != "1":

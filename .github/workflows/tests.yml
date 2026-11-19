@@ -337,6 +337,8 @@ jobs:
           export AWS_EMULATOR_MCP_QA_CLI="$(pwd)/.qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs"
           python3 tests/docker_bundle_smoke.py
       - name: Publish actual read-only coverage results in the CI summary
+        env:
+          AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT: '1'
         run: |
           mkdir -p reports
           node .qa-npm/node_modules/aws-emulator-mcp/bin/aws-emulator-mcp.mjs coverage --json > reports/ci_coverage.json

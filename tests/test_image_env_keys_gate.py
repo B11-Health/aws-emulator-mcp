@@ -14,6 +14,11 @@ MARKER = 'AWS_EMULATOR_MCP_ISOLATED_LAB=1'
 SECRET = 'PRIVATE_SYNTHETIC_SECRET_MUST_NOT_APPEAR_IN_OUTPUT'
 
 
+def normalize_console_line_endings(output: bytes) -> bytes:
+    """Normalize CRLF only; do not trim or alter output tokens/content."""
+    return output.replace(b'\r\n', b'\n')
+
+
 class ImageEnvKeyGateTests(unittest.TestCase):
     def inspect_inert(self, entries):
         return subprocess.run([sys.executable, str(SCRIPT)], input=json.dumps(entries),
@@ -77,7 +82,27 @@ class ImageEnvKeyGateTests(unittest.TestCase):
                                          capture_output=True, timeout=10)
                 self.assertEqual(outcome.returncode, 1)
                 self.assertEqual(outcome.stdout, b'')
-                self.assertEqual(outcome.stderr, b'DOCKER_IMAGE_ENV_KEYS_GATE_FAILED\n')
+                self.assertEqual(normalize_console_line_endings(outcome.stderr),
+                                 b'DOCKER_IMAGE_ENV_KEYS_GATE_FAILED\n')
+                self.assertNotIn(SECRET.encode(), outcome.stderr)
+
+    def test_artificial_lf_and_crlf_are_only_allowed_console_variants(self):
+        expected_error = b'DOCKER_IMAGE_ENV_KEYS_GATE_FAILED\n'
+        expected_success = (b'DOCKER_IMAGE_CREDENTIAL_ENV_KEYS_ABSENT\n'
+                            b'DOCKER_IMAGE_ISOLATED_MARKER_PRESENT\n')
+        for expected in (expected_error, expected_success):
+            with self.subTest(token=expected):
+                self.assertEqual(normalize_console_line_endings(expected), expected)
+                self.assertEqual(normalize_console_line_endings(
+                    expected.replace(b'\n', b'\r\n')), expected)
+                # Everything other than line endings must still match exactly.
+                for tampered in (expected.rstrip(b'\n'), expected + b'\n',
+                                 expected + SECRET.encode(), b'EXTRA\n' + expected,
+                                 expected.replace(b'\n', b'\r'),
+                                 expected.replace(b'\n', b'\r\r\n')):
+                    self.assertNotEqual(normalize_console_line_endings(tampered),
+                                        expected)
+
 
 
 if __name__ == '__main__':

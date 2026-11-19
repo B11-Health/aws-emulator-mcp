@@ -7,6 +7,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import uuid
@@ -16,14 +17,84 @@ CLI = Path(os.environ.get("AWS_EMULATOR_MCP_QA_CLI", str(ROOT / "bin" / "aws-emu
 assert CLI.exists()
 
 
+# Linux hosted CI only. Use a fresh session so the owned Node CLI and any
+# descendant docker/docker-buildx helpers share one bounded process group.
+# No process-name scanning, global Docker cleanup, or broad PID targeting.
+GROUP_TERM_GRACE_SECONDS = 2
+GROUP_KILL_REAP_SECONDS = 2
+
+
+def _terminate_owned_group(process):
+    """Terminate only this subprocess group; reap with finite timeouts.
+
+    The CLI may spawn a Docker helper. subprocess.run(timeout=...) kills only
+    the Node parent, which can orphan the helper and its inherited pipes.
+    Never display raw stdout/stderr or TimeoutExpired's command/data.
+    """
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.communicate(timeout=GROUP_TERM_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        pass
+    # Escalate even if Node has exited: an orphan may ignore SIGTERM, close
+    # its pipes, and otherwise survive a parent-only timeout.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        process.communicate(timeout=GROUP_KILL_REAP_SECONDS)
+    except subprocess.TimeoutExpired:
+        try:
+            process.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            process.wait(timeout=GROUP_KILL_REAP_SECONDS)
+        except subprocess.TimeoutExpired:
+            pass
+
+
 def run(command, input_data=None, timeout=300, json_mode=False, extra=None):
+    if sys.platform != "linux":
+        raise RuntimeError("DOCKER_SMOKE_LINUX_RUNNER_REQUIRED")
     args=["node", str(CLI), command] + (extra or []) + (["--json"] if json_mode else [])
     # CI smoke runs only against the separately built, source-matched image.
-    # Every subprocess inherits this guard, so a tag change after preflight
-    # cannot trigger a hidden signed-image build inside an API timeout.
+    # Every subprocess inherits this guard, so an image change after preflight
+    # cannot trigger a hidden signed-image build inside the API timeout.
     env = dict(os.environ, AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT="1")
-    return subprocess.run(args, cwd=ROOT, input=input_data, env=env,
-                          text=True, capture_output=True, timeout=timeout)
+
+    def cancel_on_sigterm(_signum, _frame):
+        # GitHub can terminate the Python wrapper at the 20m job-step cap.
+        # Raise so the owned process group is cleaned before this runner exits.
+        raise RuntimeError("DOCKER_SMOKE_CLI_CANCELLED")
+
+    previous_sigterm = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, cancel_on_sigterm)
+    process = None
+    try:
+        process = subprocess.Popen(
+            args, cwd=ROOT, env=env, text=True, stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            stdout, stderr = process.communicate(input=input_data, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Never include subprocess output or its command/path in the error.
+            raise subprocess.TimeoutExpired("owned-cli-process", timeout) from None
+        if process.returncode != 0:
+            _terminate_owned_group(process)
+        return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
+    except BaseException:
+        # Ignore a repeated external SIGTERM while bounded cleanup runs.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        if process is not None:
+            _terminate_owned_group(process)
+        raise
+    finally:
+        signal.signal(signal.SIGTERM, previous_sigterm)
 
 
 class PrebuiltImageRequired(RuntimeError):
@@ -580,17 +651,24 @@ def verify():
     print("VERIFIED: no host mounts, ports, AWS account or container external network required", flush=True)
 
 
-if __name__ == "__main__":
+def main():
     try:
         verify()
     except PrebuiltImageRequired as exc:
         # A known, bounded reason is all maintainers need. Never expose runner
         # paths, Docker stdout/stderr, or credential-bearing environment data.
         print("DOCKER_SMOKE_FAILED", str(exc), file=sys.stderr)
-        sys.exit(1)
+        return 1
     except subprocess.TimeoutExpired:
         print("DOCKER_SMOKE_FAILED SDK_OR_DOCKER_COMMAND_TIMEOUT_AFTER_PREBUILD", file=sys.stderr)
-        sys.exit(1)
-    except Exception as exc:
-        print("DOCKER_SMOKE_FAILED", repr(exc), file=sys.stderr)
-        sys.exit(1)
+        return 1
+    except Exception:
+        # Failed assertions can contain SDK responses or developer paths.
+        # Keep the hosted failure reason constant and never echo that data.
+        print("DOCKER_SMOKE_FAILED APPLICATION_ASSERTION_OR_COMMAND_FAILED", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

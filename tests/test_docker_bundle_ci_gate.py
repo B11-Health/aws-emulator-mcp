@@ -1,7 +1,9 @@
 """Inert CI prebuilt-image gate regressions: no Docker, AWS or app execution."""
 from pathlib import Path
 import json
+import io
 import subprocess
+from contextlib import redirect_stderr
 import sys
 import unittest
 from types import SimpleNamespace
@@ -91,12 +93,32 @@ class DockerBundleCiGateTests(unittest.TestCase):
                 self.assertEqual(str(raised.exception), expected)
                 self.assertNotIn(private_path, str(raised.exception))
 
-    def test_every_smoke_subprocess_sets_prebuilt_only_env(self):
-        with patch.object(smoke.subprocess, 'run', return_value=completed({})) as mocked:
-            smoke.run('doctor', json_mode=True)
+    def test_every_smoke_subprocess_sets_prebuilt_only_env_and_own_session(self):
+        fake_process = SimpleNamespace(
+            pid=17777, returncode=0,
+            communicate=lambda input=None, timeout=None: ('{}', ''))
+        with patch.object(smoke.subprocess, 'Popen', return_value=fake_process) as mocked:
+            result = smoke.run('doctor', json_mode=True)
             self.assertEqual(mocked.call_args.args[0][2], 'doctor')
-            self.assertEqual(mocked.call_args.kwargs['timeout'], 300)
+            self.assertTrue(mocked.call_args.kwargs['start_new_session'])
             self.assertEqual(mocked.call_args.kwargs['env']['AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT'], '1')
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, '{}')
+
+    def test_main_sanitizes_sensitive_assertion_and_timeout_exceptions(self):
+        secret = 'PRIVATE_SYNTHETIC_PAYLOAD_MUST_NOT_REACH_CI_LOGS'
+        cases = [
+            (ValueError(secret), 'APPLICATION_ASSERTION_OR_COMMAND_FAILED'),
+            (subprocess.TimeoutExpired(['node', secret], 12, output=secret.encode()),
+             'SDK_OR_DOCKER_COMMAND_TIMEOUT_AFTER_PREBUILD'),
+        ]
+        for error, expected_code in cases:
+            with self.subTest(expected_code=expected_code):
+                output = io.StringIO()
+                with patch.object(smoke, 'verify', side_effect=error), redirect_stderr(output):
+                    self.assertEqual(smoke.main(), 1)
+                self.assertEqual(output.getvalue(), 'DOCKER_SMOKE_FAILED ' + expected_code + '\n')
+                self.assertNotIn(secret, output.getvalue())
 
     def test_explicit_signed_build_and_preflight_before_full_smoke(self):
         text = (ROOT / '.github/workflows/tests.yml').read_text(encoding='utf8')
@@ -123,6 +145,12 @@ class DockerBundleCiGateTests(unittest.TestCase):
         self.assertIn('hostWorkspaceDisk', section)
         self.assertIn('hostVisibleDockerRootDisk', section)
         self.assertIn('coverage --json', section)
+        coverage_section = section.split(
+            '      - name: Publish actual read-only coverage results in the CI summary\n', 1)[1].split(
+            '      - name: Compare current API smoke results against last published baseline\n', 1)[0]
+        self.assertIn("AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT: '1'", coverage_section)
+        self.assertIn('coverage --json > reports/ci_coverage.json', coverage_section)
+        self.assertIn('coverage-diff', section)
         self.assertIn('coverage-diff', section)
         self.assertIn('DOCKER_SOURCE_IDENTITY_PASS', section)
         self.assertIn('aws-emulator-mcp:0.4.0-beta.15', section)
