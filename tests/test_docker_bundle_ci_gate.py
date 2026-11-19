@@ -97,13 +97,31 @@ class DockerBundleCiGateTests(unittest.TestCase):
         fake_process = SimpleNamespace(
             pid=17777, returncode=0,
             communicate=lambda input=None, timeout=None: ('{}', ''))
-        with patch.object(smoke.subprocess, 'Popen', return_value=fake_process) as mocked:
+        # Exercise the Linux-only runner contract on every host with inert
+        # subprocess and signal mocks; never change the actual platform guard.
+        with patch.object(smoke.sys, 'platform', 'linux'), \
+                patch.object(smoke.subprocess, 'Popen', return_value=fake_process) as mocked, \
+                patch.object(smoke.signal, 'getsignal', return_value=smoke.signal.SIG_DFL), \
+                patch.object(smoke.signal, 'signal') as set_signal:
             result = smoke.run('doctor', json_mode=True)
             self.assertEqual(mocked.call_args.args[0][2], 'doctor')
             self.assertTrue(mocked.call_args.kwargs['start_new_session'])
             self.assertEqual(mocked.call_args.kwargs['env']['AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT'], '1')
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout, '{}')
+            self.assertEqual(set_signal.call_count, 2)
+            set_signal.assert_called_with(smoke.signal.SIGTERM, smoke.signal.SIG_DFL)
+
+    def test_non_linux_runner_refuses_before_process_or_signal_changes(self):
+        for platform in ('win32', 'darwin'):
+            with self.subTest(platform=platform), \
+                    patch.object(smoke.sys, 'platform', platform), \
+                    patch.object(smoke.subprocess, 'Popen') as spawn, \
+                    patch.object(smoke.signal, 'signal') as set_signal:
+                with self.assertRaisesRegex(RuntimeError, '^DOCKER_SMOKE_LINUX_RUNNER_REQUIRED$'):
+                    smoke.run('doctor', json_mode=True)
+                spawn.assert_not_called()
+                set_signal.assert_not_called()
 
     def test_main_sanitizes_sensitive_assertion_and_timeout_exceptions(self):
         secret = 'PRIVATE_SYNTHETIC_PAYLOAD_MUST_NOT_REACH_CI_LOGS'

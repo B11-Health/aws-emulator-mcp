@@ -3,6 +3,7 @@
 The synthetic 'node' here is Python. Never invokes Node, Docker, AWS or network.
 Each subprocess is owned; the test kills any live leftover in finally.
 """
+import errno
 import os
 from pathlib import Path
 import signal
@@ -30,8 +31,48 @@ def process_active(pid):
         # Parse after the parenthesized executable name, which may have spaces.
         state = status.read_text().rsplit(')', 1)[-1].strip().split()[0]
         return state not in ('Z', 'X')
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
+        # The process can exit after kill(pid, 0), including during stat.read().
+        # Linux may report either ENOENT or ESRCH for this disappearance race.
         return False
+
+
+class ProcessActiveProbeTests(unittest.TestCase):
+    """Deterministic probe races; no real process, signal, or /proc access."""
+
+    def test_missing_kill_probe_does_not_read_stat(self):
+        with patch.object(os, 'kill', side_effect=ProcessLookupError(errno.ESRCH, 'exited')), \
+                patch.object(Path, 'read_text') as read_stat:
+            self.assertFalse(process_active(17777))
+            read_stat.assert_not_called()
+
+    def test_disappearing_stat_is_inactive(self):
+        for error in (FileNotFoundError(errno.ENOENT, 'exited'),
+                      ProcessLookupError(errno.ESRCH, 'exited')):
+            with self.subTest(error=type(error).__name__), \
+                    patch.object(os, 'kill', return_value=None) as probe, \
+                    patch.object(Path, 'read_text', side_effect=error) as read_stat:
+                self.assertFalse(process_active(17777))
+                probe.assert_called_once_with(17777, 0)
+                read_stat.assert_called_once_with()
+
+    def test_alive_and_exited_process_states(self):
+        for state, expected in [('R', True), ('S', True), ('Z', False), ('X', False)]:
+            with self.subTest(state=state), \
+                    patch.object(os, 'kill', return_value=None), \
+                    patch.object(Path, 'read_text', return_value=f'17777 (synthetic (child) name) {state} 1 2'):
+                self.assertEqual(process_active(17777), expected)
+
+    def test_unrelated_probe_and_stat_errors_are_not_absence(self):
+        for stage in ('probe', 'stat'):
+            for error in (PermissionError(errno.EACCES, 'denied'),
+                          OSError(errno.EIO, 'synthetic I/O error')):
+                with self.subTest(stage=stage, error=type(error).__name__), \
+                        patch.object(os, 'kill', side_effect=error if stage == 'probe' else None), \
+                        patch.object(Path, 'read_text', side_effect=error if stage == 'stat' else None):
+                    with self.assertRaises(type(error)) as raised:
+                        process_active(17777)
+                    self.assertIs(raised.exception, error)
 
 
 @unittest.skipUnless(sys.platform == 'linux', 'Hosted Docker bundle runs on Linux')
