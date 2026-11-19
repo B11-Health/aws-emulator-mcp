@@ -51,6 +51,20 @@ The original normalized evidence is stored in [docs/evidence/coverage-aws-emulat
 
 **Interpretation matters:** A successful Lambda `ListFunctions` call does not establish that function invocation or event triggers work. Likewise, `bedrock.ListFoundationModels` does not prove local model inference, and `iam.ListRoles` does not test real IAM enforcement. Empty list responses may be perfectly valid, but do not imply a service lifecycle is supported.
 
+## Offline operation-specific confidence (new preview)
+
+For an individual `SERVICE.OPERATION`, the source-only `capability` command
+reads only the pinned 1.0.343 smoke report and independently checked raw
+1.0.506 application evidence. It reports `UNKNOWN` rather than inferring
+support for arbitrary operations from the 436-model aggregate. The command
+never runs Docker, probes an endpoint or validates a current SDK catalog.
+See [Capability Confidence / Gap Radar](CAPABILITY_TRUTH.md).
+
+```sh
+node bin/aws-emulator-mcp.mjs capability sqs.SendMessage --json
+node bin/aws-emulator-mcp.mjs capability lambda.Invoke --json
+```
+
 ## Run a fresh audit yourself
 
 ~~~bash

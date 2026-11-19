@@ -55,6 +55,19 @@ a sanitized first-run report. This command was introduced in
 
 **Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification. The [Pages release gate](docs/PAGES_LAUNCH_GATE.md) validates draft links and evidence before merge and requires separate public verification after a reviewed Pages deployment.
 
+## Choose what you need to do (round-four source preview)
+
+**New to AWS?** These four goals map to commands already implemented in the specified tag or preview branch. The [accessible source-only goal chooser](docs/index.html) expands each path and provides copyable commands. **It is not yet deployed to the public GitHub Pages Demo Studio**; open the checked-in `docs/index.html` file locally in your browser until the reviewed Pages release gate passes. Viewing the page performs no analytics, account calls, Docker work or application-source execution.
+
+| Your problem | Real first command (from a checked-out repository) | Version and boundary | One next step |
+| --- | --- | --- | --- |
+| **“An AWS request says my input is wrong.”** | `node bin/aws-emulator-mcp.mjs config copilot` | **R3 preview** `release/agent-team-preview-r3-20261118`. Prints configuration only; no Docker for this step. The `aws_sdk_preview` MCP tool is **not in beta.15** and later needs a connected local Docker client. | Review/connect your local Copilot setup and ask `aws_sdk_preview` to inspect the SDK field type **without invoking AWS**. |
+| **“Did my trusted Python application change state?”** | `node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json` | **R3 preview**. Host Python 3.10+; static scan only, no source execution or Docker. Actual app verification requires synthetic state checks, approval, local Docker, signed image and disk review. | Replace the sample with your reviewed handler and complete the [state checks and cleanup guide](docs/GUIDED_APP_PROOF.md). |
+| **“Can I design infrastructure offline?”** | `node bin/aws-emulator-mcp.mjs architecture demo` | **Release `v0.4.0-beta.15`**. Node 20+; no Docker, AWS account, SDK calls or deployment. Writes local artifacts. | Open `reports/architecture-studio/diagram.svg` and inspect what was proposed. |
+| **“Is an emulator API missing or behaving differently?”** | `node bin/aws-emulator-mcp.mjs preflight --json` | **R3 preview**. Read-only local readiness, no build. The separately opted-in `coverage s3 --json` probes a narrow read-only API and **can build a large signed image**. Review actual Docker storage first. | After approving the local Docker/image cost, run `node bin/aws-emulator-mcp.mjs coverage s3 --json` and compare the precise result with [AWS's official fidelity information](https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html) before filing a sanitized report. |
+
+For the preview paths, clone the named `release/agent-team-preview-r3-20261118` branch rather than `master`; for offline architecture, clone the immutable `v0.4.0-beta.15` tag. Exact one-line Git/Bash/PowerShell checkout commands are in the source-only chooser. **No emulator API response alone establishes AWS production parity, IAM behavior, or independent user adoption.**
+
 ## See the proof in 90 seconds
 
 [![Narrated beta.15 overview](docs/assets/demos/proof-first-beta15-poster.jpg)](docs/assets/demos/proof-first-beta15.mp4)
@@ -85,7 +98,7 @@ or AWS fidelity certification.
 
 ## Connect to an AI assistant
 
-**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client, since the MCP launcher can build an image if one is missing. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
+**VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client. **In this experimental round-four branch**, the `mcp` launcher exits with a clear error if the local image is absent, stale or unverified; it does **not** build or pull an image on desktop startup. Earlier beta.15 and round-three builds can still auto-build. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
 
 **Unmerged round-three preview ([PR #85](https://github.com/B11-Health/aws-emulator-mcp/pull/85)):** to generate the Claude Desktop config and explicitly check the first MCP reply, use the **same round-three checkout**. The older round-two preview has `config claude` but not `connect-check`; the current default `master` and pinned beta.15 release do not provide this draft workflow.
 
@@ -96,7 +109,11 @@ node bin/aws-emulator-mcp.mjs config claude
 node bin/aws-emulator-mcp.mjs connect-check --json
 ```
 
+**First connection without surprise downloads (round-four experiment):** after `preflight --json`, review actual Docker storage (for example, `docker system df`), then choose whether to run `node bin/aws-emulator-mcp.mjs build` **explicitly**. The regular `mcp` client startup will not do this for you in this experimental branch. A matching prebuilt image still launches normally; missing or stale images return a clean error on stderr with no JSON-RPC output. This is a draft behavior change, **not** a statement about the currently published beta.15 or unmerged round-three preview.
+
 `connect-check` never builds/pulls Docker images or edits client settings. It **fails closed** until an existing Linux Docker image matches the current source fingerprint, its local daemon endpoint and immutable image ID are reverified, and the read-only MCP `emulator_status` tool returns an exact healthy lowercase `body: "ok"` from loopback. It is a terminal-only handshake, **not** an AWS API test or proof that Claude Desktop/Copilot has connected. Review Docker storage and explicitly build the signed emulator separately if required; the `mcp` launcher can build on client startup if not prepared. [Step-by-step first-reply check](docs/FIRST_RUN.md#before-your-first-mcp-reply-explicitly-check-the-local-connection-round-3-draft) and [desktop safety guide](docs/DESKTOP_INSTALL.md).
+
+**Failed the first check? (round-four draft)** Save an existing `preflight --json` or `connect-check --json` result and run `node bin/aws-emulator-mcp.mjs rescue "./preflight-report.json"`. The interpreter provides 1–3 platform-aware next actions **without executing Docker, AWS calls, downloads or configuration changes**. It never reproduces report-supplied commands or credentials. [Copyable steps, storage warnings and exact limits](docs/REPORT_RESCUE.md).
 
 ## Help build and test it
 
@@ -134,6 +151,8 @@ The files require explicit manual editing and independent approval; the scanner
 never imports your code or starts Docker.
 
 [**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
+
+**Offline issue handoff:** `node bin/aws-emulator-mcp.mjs gap-capsule "./failed-report.json"` exports a [redacted reproduction capsule](docs/GAP_REPRO_CAPSULE.md) from a previously saved failed local app-case report, without Docker, AWS, credentials, or executing code. This is triage evidence, not a confirmed emulator incompatibility.
 
 The feature is a **draft**, not the pinned beta.15 release.
 ## Share bounded app-proof evidence with independent agent evaluators

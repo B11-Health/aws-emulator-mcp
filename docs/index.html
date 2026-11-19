@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0b111d">
-<meta name="description" content="Six evidence-backed AWS Emulator MCP demos: from zero-Docker setup to repeatable application failure tests and PR architecture review.">
+<meta name="description" content="Choose one of four developer goals: explain SDK input errors, inspect a trusted app, design offline, or report local AWS emulator gaps. Includes six evidence-backed demos.">
 <link rel="canonical" href="https://b11-health.github.io/aws-emulator-mcp/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AWS Emulator MCP | See the proof">
@@ -16,14 +16,14 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#app-proof">App proof</a><a href="#missions">Demos</a><a href="#install">Try offline</a><a href="#connect">Connect</a><a href="#evidence">Evidence</a><a href="#community">Community</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
+<header class="topbar"><a class="brand" href="#top"><span class="brand-mark">B<span>11</span></span><span>AWS Emulator <strong>MCP</strong></span></a><nav aria-label="Main navigation"><a href="#goals">Choose a goal</a><a href="#app-proof">App proof</a><a href="#missions">Demos</a><a href="#install">Try offline</a><a href="#connect">Connect</a><a href="#evidence">Evidence</a><a href="#community">Community</a><a class="github-link" href="https://github.com/B11-Health/aws-emulator-mcp">GitHub ↗</a></nav></header>
 <main id="main">
 <section class="hero wrap" id="top">
  <div class="hero-copy">
   <div class="eyebrow"><span class="signal"></span> OPEN SOURCE · v0.4.0-beta.15</div>
   <h1>Don’t just ask if it works.<em>Make your agent show the proof.</em></h1>
   <p class="lead">Reproduce a bug, inspect the evidence, verify the fix. An isolated AWS development lab your AI assistant can operate—without deploying to AWS.</p>
-  <div class="hero-actions"><a class="button primary" href="#install">Try it without Docker ↘</a><a class="button outline" href="#watch">Watch the walkthrough ▶</a></div>
+  <div class="hero-actions"><a class="button primary" href="#goals">Choose a starting point ↘</a><a class="button outline" href="#watch">Watch the walkthrough ▶</a></div>
   <p class="fineprint">No AWS account for these demonstrations. Docker is only needed for actual emulator-backed tests. The offline preview does not execute AWS APIs.</p>
   <div class="stats"><div><strong>38</strong><span>MCP tools</span></div><div><strong>7</strong><span>offline files verified</span></div><div><strong>3</strong><span>sample AWS services</span></div></div>
  </div>
@@ -41,6 +41,62 @@
   </svg>
   <div class="diagram-bottom"><span>Bounded synthetic SDK fault</span><span>Not a production outage</span></div>
  </div>
+</section>
+<section class="section wrap goal-router" id="goals" aria-labelledby="goals-heading">
+ <div class="section-header">
+  <p class="eyebrow">FOUR DEVELOPER GOALS · STATIC PREVIEW · NO TELEMETRY</p>
+  <h2 id="goals-heading">What are you trying to do?</h2>
+  <p>No AWS vocabulary needed to start. Choose a goal to see one real command path, what it checks, what it <strong>does not</strong> prove, and one next step. Every command line works independently in Bash and PowerShell; copying text never runs it. These paths are in this <strong>draft source checkout</strong> and are not yet a published update to the public Demo Studio.</p>
+ </div>
+ <div class="goal-grid">
+  <details class="goal-card" id="goal-api" name="developer-goal" open>
+   <summary><span class="goal-number" aria-hidden="true">01</span><span class="goal-summary"><strong>Why is my API request rejected?</strong><small>Check that a request's fields have the right types</small></span><span class="goal-pill">Config: no Docker</span></summary>
+   <div class="goal-body">
+    <p>Example: a database field declared as text receives a number. Our existing <code>aws_sdk_preview</code> MCP tool can explain expected field types <em>before</em> an AWS-style request runs. The CLI below only prints a VS Code Copilot connection configuration; it does <strong>not</strong> validate the request or connect a client.</p>
+    <p class="goal-requirements"><strong>Use:</strong> unmerged <code>release/agent-team-preview-r3-20261118</code> branch · Node.js 20+ and Git. The <code>aws_sdk_preview</code> tool is <strong>not in beta.15</strong>. Docker is <strong>not</strong> needed to print the configuration. An actual local MCP tool call later needs Linux-container Docker, a signed emulator-image build if uncached, and storage review. No AWS account.</p>
+    <div class="mission-terminal"><pre id="goal-api-commands" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-api
+cd aws-mcp-api
+node bin/aws-emulator-mcp.mjs config copilot</code></pre><button class="copy-button" type="button" data-copy="goal-api-commands">Copy API setup</button></div>
+    <p class="goal-next"><strong>Next:</strong> Review and install the generated Copilot config, prepare local Docker and its signed image, then ask the connected assistant to use <code>aws_sdk_preview</code> on <code>dynamodb.PutItem</code> with a malformed <code>Item.id.S</code> value. A preview checks SDK parameter shape, not resource existence or emulator fidelity. <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/release/agent-team-preview-r3-20261118/docs/COVERAGE.md">Read the request example</a>.</p>
+   </div>
+  </details>
+  <details class="goal-card" id="goal-app" name="developer-goal">
+   <summary><span class="goal-number" aria-hidden="true">02</span><span class="goal-summary"><strong>Does my own app actually work?</strong><small>Check saved file, queue, or database state—not just a call count</small></span><span class="goal-pill">Inspect: no Docker</span></summary>
+   <div class="goal-body">
+    <p>Start with a bundled example that scans a Python file without executing it. The <code>app-guide</code> command identifies literal SDK calls and suggests a <strong>non-runnable</strong> test case. This first step does <strong>not</strong> test your application.</p>
+    <p class="goal-requirements"><strong>Use:</strong> unmerged <code>release/agent-team-preview-r3-20261118</code> branch · Node.js 20+, Python 3.10+, Git. Inspection needs no Docker or AWS account. Actual trusted-app execution requires Linux-container Docker, signed image and reviewed disk capacity.</p>
+    <div class="mission-terminal"><pre id="goal-app-commands" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-app
+cd aws-mcp-app
+node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json</code></pre><button class="copy-button" type="button" data-copy="goal-app-commands">Copy safe app scan</button></div>
+    <p class="goal-next"><strong>Next:</strong> Substitute your <em>own reviewed</em> <code>handle(clients, inputs)</code> Python file, complete independently observable assertions and cleanup, then choose whether to authorize a local Docker run using the <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/release/agent-team-preview-r3-20261118/docs/GUIDED_APP_PROOF.md">trusted-app review guide</a>. Never execute untrusted PR source; Docker is not a hostile-code sandbox or proof of production AWS behavior.</p>
+   </div>
+  </details>
+  <details class="goal-card" id="goal-architecture" name="developer-goal">
+   <summary><span class="goal-number" aria-hidden="true">03</span><span class="goal-summary"><strong>Can I sketch a system without cloud setup?</strong><small>Generate a local diagram and proposed infrastructure files</small></span><span class="goal-pill">No Docker</span></summary>
+   <div class="goal-body">
+    <p>The offline architecture generator creates an editable diagram, CloudFormation drafts, and an <strong>unexecuted</strong> test plan. It does not create a cloud service, change an AWS account or run an emulator.</p>
+    <p class="goal-requirements"><strong>Use:</strong> released <code>v0.4.0-beta.15</code> · Node.js 20+ and Git. No AWS account, Docker image or AWS API calls. This command writes generated files to a local reports folder.</p>
+    <div class="mission-terminal"><pre id="goal-architecture-commands" tabindex="0"><code>git clone --depth 1 --branch v0.4.0-beta.15 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-architecture
+cd aws-mcp-architecture
+node bin/aws-emulator-mcp.mjs architecture demo</code></pre><button class="copy-button" type="button" data-copy="goal-architecture-commands">Copy offline demo</button></div>
+    <p class="goal-next"><strong>Next:</strong> Open <code>reports/architecture-studio/diagram.svg</code> on your own computer to review the proposed services. It is a design, not a deployed stack. <a href="https://github.com/B11-Health/aws-emulator-mcp/blob/v0.4.0-beta.15/docs/ARCHITECTURE_STUDIO.md">See artifact meanings</a>.</p>
+   </div>
+  </details>
+  <details class="goal-card" id="goal-gaps" name="developer-goal">
+   <summary><span class="goal-number" aria-hidden="true">04</span><span class="goal-summary"><strong>What if an emulated AWS feature is missing?</strong><small>Capture a specific result and report it without overclaiming</small></span><span class="goal-pill">Docker for probe</span></summary>
+   <div class="goal-body">
+    <p>Use a <strong>read-only</strong> service probe to see whether a selected API returns successfully in the local emulator. An SDK model or a successful list response is <strong>not</strong> full service support or proof that real AWS behaves the same.</p>
+    <p class="goal-requirements"><strong>Use:</strong> unmerged <code>release/agent-team-preview-r3-20261118</code> branch · Node.js 20+, Git and local Linux-container Docker for the probe. Review <code>preflight --json</code> and real Docker storage first. <code>coverage s3 --json</code> can automatically download/build a substantial signed emulator image if missing or stale. No AWS account.</p>
+    <div class="mission-terminal"><pre id="goal-gaps-preflight" tabindex="0"><code>git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-mcp-gaps
+cd aws-mcp-gaps
+node bin/aws-emulator-mcp.mjs preflight --json</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-preflight">Copy read-only preflight</button></div>
+    <p><strong>Optional: only after reviewing Docker capacity and accepting the signed image build.</strong> This next command launches one local emulator probe (not production AWS):</p>
+    <div class="mission-terminal"><pre id="goal-gaps-probe" tabindex="0"><code>node bin/aws-emulator-mcp.mjs coverage s3 --json</code></pre><button class="copy-button" type="button" data-copy="goal-gaps-probe">Copy opt-in probe</button></div>
+    <p class="goal-next"><strong>Next:</strong> Compare the exact operation and emulator version with <a href="https://docs.aws.amazon.com/emulator/latest/userguide/check-project.html">AWS's official compatibility guidance</a>, then optionally submit a <a href="https://github.com/B11-Health/aws-emulator-mcp/issues/new?template=field_report.yml">sanitized field report</a>. Distinguish an MCP adapter problem from a verified upstream emulator gap; GitHub sign-in is required to submit an issue. Never include credentials, account IDs or customer data.</p>
+   </div>
+  </details>
+ </div>
+ <p class="goal-footer"><strong>No automatic action:</strong> these are static instructions and copy buttons. No analytics, account calls, or remote execution. These are options for local development, not claims of AWS endorsement, general API fidelity, or proven outside-user adoption.</p>
 </section>
 <section class="section wrap app-proof" id="app-proof" aria-labelledby="app-proof-heading">
  <div class="section-header"><p class="eyebrow">NEW ON MASTER · DEVELOPER PREVIEW · NOT IN THE BETA.15 TAG</p>

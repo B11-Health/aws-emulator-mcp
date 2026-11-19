@@ -15,8 +15,11 @@ import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onboard.mjs';
 import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
+import {readLocalReport, interpretReport, formatRescue} from '../scripts/report_rescue.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
+import {capabilityTruth, formatCapabilityTruth} from '../scripts/capability_truth.mjs';
+import {createGapReproCapsule,readGapReport} from '../scripts/gap_repro_capsule.mjs';
 import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, buildProofDraftPair, writeProofDraftPairExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -49,13 +52,15 @@ Commands:
   project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
   connect-check [--json]  Explicit local MCP handshake and read-only tool reply (prebuilt image only)
+  rescue REPORT.json [--json]  OFFLINE failure guidance from saved preflight/connect-check JSON (no probes)
   official-session [--port 9297] [--identity] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
-  mcp              Run 29 curated + 10 Docker-only tools via local MCP
+  mcp              Run 29 curated + 10 Docker-only tools via local MCP (prebuilt image; no auto-build)
   catalog          List implemented MCP tools
   coverage [svc]   Probe 20 allowlisted read-only AWS operations; distinguish modeled vs observed
   coverage-diff     Compare two saved coverage snapshots and fail on regressions
+  capability SERVICE.OPERATION [--json]  Explain checked-in SDK, signed-local probe, app proof and UNKNOWN gaps (offline)
   experiments      Discover repeatable AWS lab missions (no Docker needed)
   experiment <id>  Run one allowlisted mission with proof and scoped cleanup
   contract demo|fault-demo|<file>  Replay an isolated AWS SDK test plan
@@ -73,6 +78,7 @@ Commands:
   app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
   app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
                    Explicit local-only code execution; never callable through MCP/PR Actions
+  gap-capsule <failed-report.json>  Offline redacted JSON triage from an existing report; NO app/Docker/AWS execution
   app-verify <file> Verify YOUR trusted Python order handler in local Docker
   app-compare <before.py> <after.py>  Reproduce a bug and verify your own fix
                    JSON or PR-ready Markdown evidence; trusted local files only
@@ -115,7 +121,7 @@ function requireDocker() {
   });
   if (info.status !== 0) fail('Docker daemon not running or inaccessible to this user.');
 }
-function imageExists() {
+function imageExists({warnRebuild=true}={}) {
   // A semver tag alone may point to an older checkout's Python bundle.
   // Only reuse a locally built image with matching Docker-copy inputs.
   const expected = imageSourceDigest(ROOT);
@@ -123,13 +129,13 @@ function imageExists() {
     '--format', '{{index .Config.Labels "dev.aws-emulator-mcp.source-sha256"}}'], {
     encoding: 'utf8', timeout: 10000, windowsHide: true, shell: false
   });
-  if (observed.status === 0 && observed.stdout.trim() !== expected) {
+  if (warnRebuild && observed.status === 0 && observed.stdout.trim() !== expected) {
     stderr.write('AWS Emulator MCP: cached image source differs or is unverified; rebuilding local image.\n');
   }
   return observed.status === 0 && observed.stdout.trim() === expected;
 }
 function dockerArgs(mode, extra = []) {
-  return ['run', '--rm', '-i', '--network', 'none',
+  return ['run', '--rm', '-i', '--pull', 'never', '--network', 'none',
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--pids-limit', '256', '--memory', '2g', IMAGE, mode, ...extra];
 }
@@ -575,6 +581,14 @@ function runPythonReadOnly(scriptName, args) {
 async function main() {
   const [command = 'help', ...args] = process.argv.slice(2);
   if (['help', '--help', '-h'].includes(command)) return help();
+  if (command === 'gap-capsule') {
+    if (args.length!==1) fail('Usage: aws-emulator-mcp gap-capsule <local-failed-report.json>',2);
+    let result;
+    try {result=createGapReproCapsule(readGapReport(args[0]));}
+    catch {fail('Invalid or unsupported local app-case report; no capsule produced',2);}
+    stdout.write(JSON.stringify(result,null,2)+'\n');
+    return;
+  }
   if (command === 'app-guide') {
     let options;
     try { options = parseAppGuideArgs(args); }
@@ -821,6 +835,30 @@ async function main() {
     if (!report.passed) process.exitCode=1;
     return;
   }
+  if (command === 'rescue') {
+    if(args.length<1 || args.length>2 || (args.length===2 && args[1]!=='--json') ||
+        args[0]==='--json')
+      fail('Usage: aws-emulator-mcp rescue LOCAL_REPORT.json [--json]', 2);
+    // Only the saved file is read. No Docker/AWS subprocesses or settings changes.
+    let interpretation;
+    try {
+      const report=readLocalReport(args[0]);
+      const fromCheckout=path.resolve(process.cwd())===ROOT &&
+        !ROOT.split(path.sep).includes('node_modules');
+      const localPackage=!fromCheckout &&
+        existsSync(path.join(process.cwd(),'node_modules','aws-emulator-mcp','package.json'));
+      const invocation=fromCheckout?'checkout':localPackage ?
+        (process.platform==='win32'?'local-package-win32':'local-package-posix') : 'global';
+      interpretation=interpretReport(report,{invocation});
+    } catch {
+      fail('Could not interpret saved report: select a regular local .json file created by preflight or connect-check; unsupported or unsafe reports are refused.', 2);
+    }
+    stdout.write(args[1]==='--json'? JSON.stringify(interpretation,null,2)+'\n' :
+      formatRescue(interpretation));
+    // A successfully INTERPRETED failure exits zero; do not claim the underlying
+    // preflight, MCP tool call or desktop GUI succeeded.
+    return;
+  }
   if (command === 'preflight') {
     if (args.length > 1 || (args.length === 1 && args[0] !== '--json'))
       fail('Usage: aws-emulator-mcp preflight [--json]', 2);
@@ -1058,6 +1096,19 @@ async function main() {
       fail('Order-intake application assertions or cleanup failed', result.code || 1);
     return;
   }
+  if (command === 'capability') {
+    if (args.length<1 || args.length>2 ||
+        (args.length===2 && args[1]!=='--json'))
+      fail('Usage: aws-emulator-mcp capability SERVICE.OPERATION [--json]', 2);
+    let report;
+    try { report=capabilityTruth(args[0]); }
+    catch {
+      fail('Invalid operation identifier or unverified bundled capability evidence; no success claimed', 2);
+    }
+    stdout.write(args[1]==='--json' ? JSON.stringify(report,null,2)+'\n' :
+      formatCapabilityTruth(report));
+    return;
+  }
   if (command === 'coverage-diff') {
     const wantsJson = args.includes('--json');
     const rest = args.filter(x => x !== '--json');
@@ -1137,13 +1188,21 @@ async function main() {
     fail('Unknown command/arguments. Run: aws-emulator-mcp help', 2);
   }
   requireDocker();
-  if (command === 'build' || !imageExists()) await buildImage();
-  if (command === 'build') return;
+  // A desktop MCP client can start this process during ordinary application
+  // launch. It must never surprise the developer with a large download/build.
+  // Unlike explicit Docker-backed CLI experiments, MCP startup is fail-closed.
   if (command === 'mcp') {
+    if (!imageExists({warnRebuild:false})) {
+      fail('MCP image missing, stale or unverified; no image build was attempted. ' +
+        'Run preflight --json, review Docker storage, then explicitly run build ' +
+        'before reconnecting your MCP client. Never send AWS credentials.', 1);
+    }
     const code = await runDocker(dockerArgs(command));
     if (code !== 0) fail('MCP server exited (exit ' + code + ')', code);
     return;
   }
+  if (command === 'build' || !imageExists()) await buildImage();
+  if (command === 'build') return;
   if (!wantsJson) stderr.write('AWS Emulator MCP: running verified local ' + command + '...\n');
   const result = await runCaptured(dockerArgs(command));
   let parsed;
