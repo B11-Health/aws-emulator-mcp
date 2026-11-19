@@ -53,7 +53,7 @@ a sanitized first-run report. This command was introduced in
 
 [**Newcomer walkthrough, Windows/macOS/Linux paths and next steps**](docs/FIRST_RUN.md)
 
-**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification.
+**Preview recorded application proof (draft):** [Application Proof Explorer source](docs/proof-explorer.html) and [local preview instructions](docs/PROOF_WORKFLOW.md#preview-the-proof-explorer-before-github-pages-publishes-it) let you inspect two recorded Python before/after comparisons, independent assertions, source hashes and cleanup. **The public GitHub Pages Proof Explorer is not deployed until its changes are merged and Pages is rebuilt.** The preview is a static evidence reader, never a live AWS emulator or compatibility certification. The [Pages release gate](docs/PAGES_LAUNCH_GATE.md) validates draft links and evidence before merge and requires separate public verification after a reviewed Pages deployment.
 
 ## See the proof in 90 seconds
 
@@ -87,17 +87,16 @@ or AWS fidelity certification.
 
 **VS Code Copilot:** run **node bin/aws-emulator-mcp.mjs config copilot** for a native mcpServers definition. **Claude Desktop (new draft CLI):** use **node bin/aws-emulator-mcp.mjs config claude** for a manual, paste-ready config; the optional unsigned [MCPB developer preview](docs/DESKTOP_INSTALL.md) is another route. Review Docker image requirements **before** enabling either client, since the MCP launcher can build an image if one is missing. No AWS account is required, and no route creates a public MCP endpoint. [Manual Claude Desktop setup](docs/FIRST_RUN.md#connect-claude-desktop-without-an-unsigned-extension).
 
-**Draft branch detail:** `config claude` exists in [round-two preview PR #80](https://github.com/B11-Health/aws-emulator-mcp/pull/80), **not** the earlier `release/agent-team-preview-20261118` branch used by the offline-first example above, the default `master`, or the pinned beta.15 release. To try the Claude config from a fresh checkout:
+**Unmerged round-three preview ([PR #85](https://github.com/B11-Health/aws-emulator-mcp/pull/85)):** to generate the Claude Desktop config and explicitly check the first MCP reply, use the **same round-three checkout**. The older round-two preview has `config claude` but not `connect-check`; the current default `master` and pinned beta.15 release do not provide this draft workflow.
 
 ```sh
-git clone --depth 1 --branch release/agent-team-preview-r2-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r2
-cd aws-emulator-mcp-r2
+git clone --depth 1 --branch release/agent-team-preview-r3-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-r3
+cd aws-emulator-mcp-r3
 node bin/aws-emulator-mcp.mjs config claude
+node bin/aws-emulator-mcp.mjs connect-check --json
 ```
 
-This only prints configuration; it does not prove a live Claude Desktop MCP connection.
-
-[**Current desktop install guide and safety limits**](docs/DESKTOP_INSTALL.md)
+`connect-check` never builds/pulls Docker images or edits client settings. It **fails closed** until an existing Linux Docker image matches the current source fingerprint, its local daemon endpoint and immutable image ID are reverified, and the read-only MCP `emulator_status` tool returns an exact healthy lowercase `body: "ok"` from loopback. It is a terminal-only handshake, **not** an AWS API test or proof that Claude Desktop/Copilot has connected. Review Docker storage and explicitly build the signed emulator separately if required; the `mcp` launcher can build on client startup if not prepared. [Step-by-step first-reply check](docs/FIRST_RUN.md#before-your-first-mcp-reply-explicitly-check-the-local-connection-round-3-draft) and [desktop safety guide](docs/DESKTOP_INSTALL.md).
 
 ## Help build and test it
 
@@ -127,6 +126,12 @@ It never turns selected code into an MCP source-execution endpoint.
 ```sh
 node bin/aws-emulator-mcp.mjs app-guide examples/app-case/s3-upload.py --json
 ```
+
+For a single literal S3, SQS or DynamoDB write in **your own trusted Python
+handler**, optional `--draft-proof ./my-proof.json` creates a review-required
+positive case **and** a separate deliberately inverted expected-red control.
+The files require explicit manual editing and independent approval; the scanner
+never imports your code or starts Docker.
 
 [**Four-step guide: inspect, author, review, explicitly test**](docs/GUIDED_APP_PROOF.md)
 

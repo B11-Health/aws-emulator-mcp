@@ -14,9 +14,10 @@ import { inspectOfficialSession, parseOfficialSessionArgs, formatOfficialSession
 import { imageSourceDigest } from '../scripts/image_identity.mjs';
 import { runOfflineTrial, formatOfflineTrial } from '../scripts/offline_trial.mjs';
 import {parseOnboardArgs, runOnboarding, formatOnboarding} from '../scripts/onboard.mjs';
+import {inspectMcpConnection, formatMcpConnection} from '../scripts/mcp_connection_check.mjs';
 import { summarizeProjectProbes, formatProjectCheck, buildAssertionChallenge, assessContractChallenge, planSha256 } from '../scripts/project_check.mjs';
 import { verifyAppCaseProof, compareAppCaseEvidence, appCaseMarkdown } from '../scripts/app_case_compare.mjs';
-import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
+import {parseAppGuideArgs, summarizeAppGuide, formatAppGuide, writeDraftExclusive, buildProofDraftPair, writeProofDraftPairExclusive, requiredOperationsSucceeded} from '../scripts/app_guide.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '0.4.0-beta.15';
@@ -47,6 +48,7 @@ Commands:
   project-plan PATH [--json | --contract SERVICE]  Find Python SDK calls and draft local tests
   project-check PATH [--run] [--challenge] [--json]  Scan app, run SDK probes, challenge an assertion
   preflight [--json]  Check Node and local Docker without building an image
+  connect-check [--json]  Explicit local MCP handshake and read-only tool reply (prebuilt image only)
   official-session [--port 9297] [--identity] [--json]  Inspect an existing official AWS Emulator loopback session (no Docker)
   doctor           Verify Docker and the isolated emulator account
   demo             Execute a real S3 + DynamoDB + SQS order workflow
@@ -65,8 +67,9 @@ Commands:
                    recover-before-send, recover-lost-ack, partial-compare
                    (before/after a synthetic S3 receipt-upload failure)
   app-case-inspect APP.py [CASE.json] [--entrypoint NAME] [--json]  Read-only onboarding
-  app-guide APP.py [CASE.json] [--json | --draft NEW.json | --run --approve TOKEN]
-                   Scan trusted Python code, draft a NON-runnable case; require a matching hash token before any local execution
+  app-guide APP.py [CASE.json] [--json | --draft NEW.json | --draft-proof NEW.json | --run --approve TOKEN]
+                   Scan trusted Python code; draft a NON-runnable case or reviewed state/expected-red pair for one S3/SQS/DDB write
+                   Requires a matching hash token before any local execution
   app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
   app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
                    Explicit local-only code execution; never callable through MCP/PR Actions
@@ -575,7 +578,7 @@ async function main() {
   if (command === 'app-guide') {
     let options;
     try { options = parseAppGuideArgs(args); }
-    catch { fail('Usage: aws-emulator-mcp app-guide FILE.py [CASE.json] [--json | --draft NEW_CASE.json | --run --approve TOKEN]', 2); }
+    catch { fail('Usage: aws-emulator-mcp app-guide FILE.py [CASE.json] [--json | --draft NEW.json | --draft-proof NEW.json | --run --approve TOKEN]', 2); }
     // The AST scanner never imports or executes the selected module. Its
     // stdout is parsed only, not forwarded blindly to a remote MCP client.
     const scan = runPythonReadOnly('app_case_inspect.py',
@@ -606,6 +609,25 @@ async function main() {
       const result = {...review, draftWritten:true};
       stdout.write(options.json ? JSON.stringify(result,null,2)+'\n' :
         formatAppGuide(result,{draftWritten:true}));
+      return;
+    }
+    if (options.proofDraft) {
+      if (review.status !== 'draft_available')
+        fail('Selected source cannot produce a review-required proof draft; resolve static inspection gaps first', 2);
+      let pair, written;
+      try {
+        pair = buildProofDraftPair(inspected);
+        written = writeProofDraftPairExclusive(options.proofDraft,pair);
+      } catch {
+        fail('Cannot create proof drafts: choose ONE literal S3 PutObject, SQS SendMessage or DynamoDB PutItem; both NEW .json output paths must be available', 2);
+      }
+      const result = {...review, draftCase:pair.positive, expectedRedDraft:pair.expectedRed,
+        proofDraftWritten:true, expectedRedDraftWritten:true,
+        templateOperation:pair.operation, independentAssertion:pair.assertion,
+        readyForApproval:false, approvalToken:null,
+        nextStep:'Review setup, synthetic inputs, independent assertion, cleanup and BOTH case files. Resolve every REVIEW_ME placeholder, remove reviewRequired after personal review, then separately inspect each case for a source+case approval token. A healthy baseline should make the deliberately inverted expected-red case fail its named assertion.'};
+      stdout.write(options.json ? JSON.stringify(result,null,2)+'\n' :
+        formatAppGuide(result,{proofDraftWritten:true}));
       return;
     }
     if (!options.run) {
@@ -780,6 +802,23 @@ async function main() {
     stdout.write(parsed.json ? JSON.stringify(report, null, 2) + '\n'
       : formatOfficialSession(report) + '\n');
     if (!report.localHealthPassed || (parsed.identity && !report.accountIdentityVerified)) process.exitCode = 1;
+    return;
+  }
+  if (command === 'connect-check') {
+    if (args.length > 1 || (args.length===1 && args[0]!=='--json'))
+      fail('Usage: aws-emulator-mcp connect-check [--json]', 2);
+    const fromCheckout=path.resolve(process.cwd())===ROOT &&
+      !ROOT.split(path.sep).includes('node_modules');
+    // Use one exact Docker-copy fingerprint for preflight and the pinned-ID check.
+    // If a source file cannot be fingerprinted, both checks fail closed.
+    let expectedImageDigest=null;
+    try {expectedImageDigest=imageSourceDigest(ROOT);} catch { /* incomplete bundle */ }
+    const readiness=inspectPreflight({image:IMAGE,
+      expectedImageDigest:()=>expectedImageDigest});
+    const report=inspectMcpConnection({readiness,expectedImageDigest,fromCheckout});
+    stdout.write(args[0]==='--json' ? JSON.stringify(report,null,2)+'\n'
+      : formatMcpConnection(report));
+    if (!report.passed) process.exitCode=1;
     return;
   }
   if (command === 'preflight') {
