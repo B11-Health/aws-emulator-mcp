@@ -1,14 +1,27 @@
 # Capability Confidence / Gap Radar (offline preview)
 
-**This is evidence navigation, not a new API probe or SDK model scanner.** Run
-from a checkout or npm package containing this preview:
+**This is evidence navigation, not a new API probe or SDK model scanner.**
+This command exists only on the **unmerged experimental** branch
+`feat/r4-capability-truth-20261118` (also in the draft Round 4 integration
+branch `release/agent-team-preview-r4-20261118`). It is **not** included in
+published `v0.4.0-beta.15`, the current `master`, or the Round 3 preview.
+For reproducible first use, clone the feature branch and run from its root:
 
 ```sh
+git clone --depth 1 --branch feat/r4-capability-truth-20261118 https://github.com/B11-Health/aws-emulator-mcp.git aws-emulator-mcp-capability
+cd aws-emulator-mcp-capability
 node bin/aws-emulator-mcp.mjs capability sts.GetCallerIdentity
 node bin/aws-emulator-mcp.mjs capability sqs.SendMessage --json
 node bin/aws-emulator-mcp.mjs capability dynamodb.GetItem --json
 node bin/aws-emulator-mcp.mjs capability lambda.Invoke --json
 ```
+
+Each copied command is a separate step: confirm the clone succeeded and that
+you are in the intended new checkout before running the next line. Do not
+execute Node from an old directory if clone fails. If a future **published**
+package includes the feature, the installed equivalent will be
+`aws-emulator-mcp capability SERVICE.Operation [--json]`. Do not assume the
+currently published beta.15 package provides it.
 
 One exact Botocore SDK identifier (`service.Operation`) is required. The
 command reads **fixed repo-owned files only** and returns the SHA-256 of each

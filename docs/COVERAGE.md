@@ -53,8 +53,12 @@ The original normalized evidence is stored in [docs/evidence/coverage-aws-emulat
 
 ## Offline operation-specific confidence (new preview)
 
-For an individual `SERVICE.OPERATION`, the source-only `capability` command
-reads only the pinned 1.0.343 smoke report and independently checked raw
+For an individual `SERVICE.OPERATION`, the **unmerged Round 4 feature branch**
+`feat/r4-capability-truth-20261118` provides the source-only `capability`
+command. It is not available in published beta.15, the current `master`, or
+Round 3. Use the complete checkout instructions in
+[Capability Confidence / Gap Radar](CAPABILITY_TRUTH.md) before the examples
+below. It reads only the pinned 1.0.343 smoke report and independently checked raw
 1.0.506 application evidence. It reports `UNKNOWN` rather than inferring
 support for arbitrary operations from the 436-model aggregate. The command
 never runs Docker, probes an endpoint or validates a current SDK catalog.

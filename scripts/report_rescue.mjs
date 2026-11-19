@@ -62,7 +62,10 @@ function safeOpaque(v) {
 }
 function row(v,reasonAllowlist) {
   return valid(v,CHECK_ROW_KEYS,['passed','reason']) &&
-    typeof v.passed==='boolean' && reasonAllowlist.has(v.reason);
+    typeof v.passed==='boolean' && reasonAllowlist.has(v.reason) &&
+    // A success with a failure reason (or a failure with no reason) is forged
+    // or contradictory. This applies equally to Node, Docker, and image rows.
+    v.passed === (v.reason === '');
 }
 function disk(v,keys,expectedScope,verifiedKey) {
   return valid(v,keys,['scope','freeGiB','advisoryThresholdGiB','lowSpaceAdvisory',verifiedKey]) &&
@@ -155,18 +158,33 @@ export function parseReport(report,{platform=process.platform}={}) {
   return validatePreflight(report);
 }
 
-/** Refuse URLs, UNC shares, device names, drive-relative paths, traversal, and symlinks. */
+/** Refuse URLs, UNC shares, drive-relative paths, NTFS alternate streams,
+ * Windows device names (on every host), traversal, and symlinks.
+ * Only the single absolute Windows drive prefix may contain a colon.
+ */
+const WINDOWS_DEVICES=/^(?:CON|PRN|AUX|NUL|COM[1-9\u00b9\u00b2\u00b3]|LPT[1-9\u00b9\u00b2\u00b3]|CONIN\$|CONOUT\$|CLOCK\$)$/i;
+function reservedWindowsPart(part) {
+  // Windows treats device names as reserved even before extensions; e.g.
+  // NUL.json and COM1.backup.json are devices, not ordinary JSON files.
+  const stem=part.split('.')[0].replace(/ +$/,'');
+  return WINDOWS_DEVICES.test(stem);
+}
 export function safeReportPath(value,{platform=process.platform}={}) {
   if(typeof value!=='string' || !value || value.length>512 || value.startsWith('-') ||
      !/\.json$/i.test(value) || /[\x00-\x1f\x7f]/.test(value) ||
      /^[/\\]{2}/.test(value) || /^(?:[a-z][a-z0-9+.-]*):\/\//i.test(value) ||
-     value.split(/[\\/]/).includes('..')) return false;
-  if(platform==='win32') {
-    if(value.startsWith('\\') || /^(?:\\\\\?|\\\\\.)/.test(value)) return false;
-    if(/^[a-z]:/i.test(value)) return /^[a-z]:[\\/]/i.test(value);
-    return !value.includes(':');
+     value.split(/[\\/]/).includes('..') ||
+     value.split(/[\\/]/).some(reservedWindowsPart) ||
+     (platform==='win32' && value.startsWith('\\'))) return false;
+  const drive=/^[a-z]:[\\/]/i.test(value);
+  if(drive) {
+    // Drive-absolute C:\\folder\\report.json is legitimate on Windows;
+    // C:\\folder\\report.txt:secret.json is an NTFS alternate data stream.
+    return platform==='win32' && !value.slice(2).includes(':');
   }
-  return !value.includes('\\') && !value.includes(':');
+  // Any other colon is unsafe on every host, including Windows drive-relative
+  // C:report.json and ADS on relative paths. Block backslashes on POSIX.
+  return !value.includes(':') && (platform==='win32' || !value.includes('\\'));
 }
 export function readLocalReport(filename,{platform=process.platform}={}) {
   if(!safeReportPath(filename,{platform})) throw Error('invalid local report path');

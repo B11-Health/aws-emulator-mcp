@@ -107,7 +107,7 @@ h1,h2,h3,h4,p{margin-top:0}h1{font-size:clamp(2.7rem,4.8vw,4.6rem);line-height:1
 .app-proof-run .mission-terminal pre{font-size:.73rem;line-height:1.8;overflow-wrap:anywhere}
 @media(max-width:950px){.app-proof-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.app-proof-case,.app-proof-run{padding:18px}.app-proof-comparison{gap:8px}.app-proof-comparison>div{padding:13px}.app-proof-comparison strong{font-size:2.9rem}.app-proof-label{font-size:.61rem}.app-proof-run .mission-terminal pre{font-size:.66rem}}
-\n
+
 /* Native disclosure controls keep the goal chooser useful without JavaScript. */
 .goal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
 .goal-card{min-width:0;background:#101f2e;border:1px solid #385365;border-radius:14px;align-self:start}
@@ -135,3 +135,14 @@ h1,h2,h3,h4,p{margin-top:0}h1{font-size:clamp(2.7rem,4.8vw,4.6rem);line-height:1
 @media(max-width:850px){.goal-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.goal-card>summary{flex-wrap:wrap;gap:10px;padding:15px}.goal-pill{margin-left:28px}.goal-card>summary::after{margin-left:auto}.goal-body{padding:15px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Three separate, opt-in copy controls; never paste a clone/verify/run script as one unit. */
+.goal-safe-steps{display:grid;gap:13px;margin:15px 0 20px}
+.goal-step{border:1px solid #3b5767;background:#101f2a;border-radius:10px;padding:14px;min-width:0}
+.goal-step h4{font-size:.87rem;line-height:1.35;color:#b8f5df;margin:0 0 7px}
+.goal-step p{font-size:.8rem;line-height:1.55;margin:0 0 10px;color:#d1e0ec}
+.goal-step .mission-terminal{margin:0}
+.goal-step .mission-terminal pre{font-size:.69rem;line-height:1.65;overflow-wrap:anywhere;white-space:pre-wrap;word-break:break-word}
+.goal-step .copy-button{width:auto;max-width:100%;min-height:44px}
+.goal-step code{overflow-wrap:anywhere;word-break:break-word}
+@media(max-width:600px){.goal-step{padding:12px}.goal-step .copy-button{width:100%}}
