@@ -118,14 +118,14 @@ a zero preflight exit code alone is insufficient.
 The direct comparator has **no approval-token option**. Entering it explicitly
 executes the current selected source and case bytes. Repeat review if those
 files change. This Bash invocation prevents an implicit build; the complete
-guide includes the equivalent temporary setting for PowerShell:
+guide includes the equivalent `--prebuilt-only` flag for PowerShell:
 
 ```sh
-AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT=1 node "$REPO/bin/aws-emulator-mcp.mjs" app-case-compare "$STAGE/before/receipt_handler.py" "$STAGE/after/receipt_handler.py" "$STAGE/receipt-case.json" --json
+node "$REPO/bin/aws-emulator-mcp.mjs" app-case-compare "$STAGE/before/receipt_handler.py" "$STAGE/after/receipt_handler.py" "$STAGE/receipt-case.json" --json --prebuilt-only
 ```
 
 Without this setting the existing comparator can build an absent or mismatched
-image. The setting prevents that build; it does not pin an immutable image ID.
+image. The flag prevents that build; it does not pin an immutable image ID.
 
 The command **executes trusted Python** in separate isolated emulator labs.
 A successful comparison must show the broken source failing only the named

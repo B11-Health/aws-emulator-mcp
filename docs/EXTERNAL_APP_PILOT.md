@@ -170,16 +170,15 @@ if ($LASTEXITCODE -ne 0) { throw 'Image build failed; stop before execution.' }
 
 Only after personal source/case review and matching-image preflight, run the
 chosen shell block below. It **executes both trusted Python modules**, each in
-its own disposable local lab, against the **same case file**. The temporary
-`AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT=1` setting disables an implicit build if
-the image becomes unavailable or mismatched. Without that guard, the existing
-comparison command can build an image. This guard does not pin an immutable
-image ID or make untrusted source safe.
+its own disposable local lab, against the **same case file**. The explicit
+`--prebuilt-only` flag refuses a missing or source-mismatched image **without
+building**. Without that flag, the comparison command may build an image.
+This flag does not pin an immutable image ID or make untrusted source safe.
 
 **Bash**
 
 ```bash
-AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT=1 node "$CLI" app-case-compare "$PILOT/before/receipt_handler.py" "$PILOT/after/receipt_handler.py" "$PILOT/receipt-case.json" --json
+node "$CLI" app-case-compare "$PILOT/before/receipt_handler.py" "$PILOT/after/receipt_handler.py" "$PILOT/receipt-case.json" --json --prebuilt-only
 COMPARE_EXIT=$?
 printf 'Comparison exit: %s\n' "$COMPARE_EXIT"
 ```
@@ -187,14 +186,8 @@ printf 'Comparison exit: %s\n' "$COMPARE_EXIT"
 **Windows PowerShell**
 
 ```powershell
-$PreviousPrebuilt = $env:AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT
-try {
-  $env:AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT = '1'
-  & node $Cli app-case-compare "$Pilot/before/receipt_handler.py" "$Pilot/after/receipt_handler.py" "$Pilot/receipt-case.json" --json
-  $ComparisonExit = $LASTEXITCODE
-} finally {
-  $env:AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT = $PreviousPrebuilt
-}
+& node $Cli app-case-compare "$Pilot/before/receipt_handler.py" "$Pilot/after/receipt_handler.py" "$Pilot/receipt-case.json" --json --prebuilt-only
+$ComparisonExit = $LASTEXITCODE
 "Comparison exit: $ComparisonExit"
 ```
 
@@ -210,6 +203,9 @@ a nonzero command exit by itself is not a reproduced bug.
 | Only `head-receipt.ContentLength` fails before; it passes after | The same independent byte-length invariant detects this defect and its repair. |
 | Distinct `before.sourceSha256` / `after.sourceSha256`, one shared `caseSha256`, matching emulator version | The report binds the two revisions to the reviewed case and emulator. |
 | Both `cleanupPassed` values are `true` | Declared owned cleanup completed on both sides. |
+
+The same `--prebuilt-only` option is available for a single `app-case` run.
+Unknown or repeated flags are rejected before any Docker command.
 
 The comparator hashes the canonical JSON case. Its `caseSha256` need not equal
 the raw-file digest used by `app-guide` approval; keep each report's digest

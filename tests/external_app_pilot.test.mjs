@@ -236,7 +236,7 @@ test('README distinguishes static review, explicit execution and recorded eviden
  assert.match(guide,/app-case-compare/);
  assert.match(guide,/--draft/);
  assert.match(guide,/reviewRequired: true/);
- assert.match(guide,/AWS_EMULATOR_MCP_QA_REQUIRE_PREBUILT=1/);
+ assert.match(guide,/--prebuilt-only/);
  assert.match(guide,/imageReusable: true/);
  assert.match(guide,/no approval-token option/);
  assert.match(guide,/Any executed result must be recorded separately/);
