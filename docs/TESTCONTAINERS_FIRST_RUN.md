@@ -96,13 +96,20 @@ signing or AWS API compatibility.
    emulator instance. Scope `AWS_SHARED_CREDENTIALS_FILE`, `AWS_CONFIG_FILE`,
    region and endpoint to the **host test process only**. Clear preexisting
    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` and
-   `AWS_PROFILE`; prevent fallback to instance metadata. Do not print any
-   secrets or copy the credential file into another service.
+   `AWS_PROFILE`; prevent fallback to instance metadata. For AWS CLI and Boto3 host-run
+   tests, set `AWS_ENDPOINT_URL=https://127.0.0.1:9297`,
+   `AWS_EC2_METADATA_DISABLED=true`, and
+   `AWS_DISABLE_HOST_PREFIX_INJECTION=true` in that process. Other SDKs may
+   need explicit endpoint or host-prefix settings; consult the linked per-SDK
+   documentation. Never carry emulator-only settings into a real AWS
+   deployment. Do not print any secrets or copy the credential file into
+   another service.
 6. **Prove the endpoint before invoking a trusted app.** From the host,
    use the current CA with a normal TLS-verified loopback health check, and
    confirm SDK identity is the emulator's **synthetic** account (`000000000000`)
-   before executing state-changing tests. If identity, TLS, endpoint or
-   credentials cannot be verified, **stop** rather than fall back to AWS.
+   before executing state-changing tests. If the SDK ignores the configured
+   endpoint or identity, TLS or credentials cannot be verified, **stop**
+   rather than fall back to AWS.
 7. **Then and only then run app assertions.** Prefer unique synthetic buckets,
    queues and tables, independent SDK readback, and scoped resource cleanup.
    A 200 response or successful handshake alone does not prove the app is

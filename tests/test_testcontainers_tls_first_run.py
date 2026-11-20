@@ -85,6 +85,9 @@ class TestcontainersFirstRunDoc(unittest.TestCase):
             "127.0.0.1", "https://aws:9297", "hostname verification",
             "CA", "SAN", "emulator_credentials", "ca.pem", "truststore.p12",
             "localhost-only", "fresh", "SIGV4", "no ports", "--network none",
+            "AWS_ENDPOINT_URL=https://127.0.0.1:9297",
+            "AWS_EC2_METADATA_DISABLED=true",
+            "AWS_DISABLE_HOST_PREFIX_INJECTION=true",
             "python3 -m unittest", "aws/aws-emulator/issues/23",
             "aws/aws-emulator/issues/566", "not an emulator integration test",
         ):
