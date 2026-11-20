@@ -55,6 +55,21 @@ test('npm package and CLI identify AWS Emulator MCP, not an unrelated organizati
   assert.doesNotMatch(result.stdout + result.stderr, /Code Gym|CodeGym|codegym-aws/);
 });
 
+test('npm documentation allowlist includes linked Testcontainers TLS first-run guide', () => {
+  const pkg = JSON.parse(requirePackage());
+  const guide = 'docs/TESTCONTAINERS_FIRST_RUN.md';
+  const readme = readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  const dockerGuide = readFileSync(path.join(ROOT, 'docs/DOCKER_NPM_BETA.md'), 'utf8');
+  assert.match(readme, /\]\(docs\/TESTCONTAINERS_FIRST_RUN\.md\)/);
+  assert.match(dockerGuide, /\]\(TESTCONTAINERS_FIRST_RUN\.md\)/);
+  assert.equal(readme.includes('docs/TESTCONTAINERS_FIRST_RUN.md'), true);
+  assert.ok(pkg.files.includes('docs/DOCKER_NPM_BETA.md'));
+  assert.ok(pkg.files.includes(guide),
+    'a guide linked from bundled docs must itself be present in npm files allowlist');
+  assert.match(readFileSync(path.join(ROOT, guide), 'utf8'),
+    /host-run Testcontainers/);
+});
+
 test('experiment list works without Docker and includes clear coverage caveats', () => {
   const result = cli('experiments', '--json');
   assert.equal(result.status, 0, result.stderr);
