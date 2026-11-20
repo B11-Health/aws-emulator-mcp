@@ -505,7 +505,7 @@ The Docker integration uses local-only, network-isolated runtime containers and 
 
 ## Documentation and contributing
 
-[Guided onboarding](docs/ONBOARDING.md) · [Demo gallery](docs/DEMO_GALLERY.md) · [Application debugging](docs/APP_DEBUGGING.md) · [Your Python handler](docs/BYO_HANDLER.md) · [Failure Lab](docs/FAILURE_LAB.md) · [Service coverage](docs/COVERAGE.md) · [Architecture and setup](docs/DOCKER_NPM_BETA.md) · [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/B11-Health/aws-emulator-mcp/issues)
+[Guided onboarding](docs/ONBOARDING.md) · [Demo gallery](docs/DEMO_GALLERY.md) · [Application debugging](docs/APP_DEBUGGING.md) · [Your Python handler](docs/BYO_HANDLER.md) · [Failure Lab](docs/FAILURE_LAB.md) · [Service coverage](docs/COVERAGE.md) · [Architecture and setup](docs/DOCKER_NPM_BETA.md) · [Testcontainers TLS first-run](docs/TESTCONTAINERS_FIRST_RUN.md) · [Contributing](CONTRIBUTING.md) · [Issues](https://github.com/B11-Health/aws-emulator-mcp/issues)
 
 ---
 
