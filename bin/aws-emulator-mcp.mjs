@@ -77,8 +77,9 @@ Commands:
   app-guide APP.py [CASE.json] [--json | --draft NEW.json | --draft-proof NEW.json | --run --approve TOKEN]
                    Scan trusted Python code; draft a NON-runnable case or reviewed state/expected-red pair for one S3/SQS/DDB write
                    Requires a matching hash token before any local execution
-  app-case <app.py> <case.json>  Verify YOUR trusted Python function with independent SDK assertions
-  app-case-compare <before.py> <after.py> <case.json>  Verify an app regression and its fix
+  app-case <app.py> <case.json> [--prebuilt-only]  Verify YOUR trusted Python function with independent SDK assertions
+  app-case-compare <before.py> <after.py> <case.json> [--prebuilt-only]  Verify an app regression and its fix
+                   --prebuilt-only refuses an absent or source-mismatched image; never builds
                    Explicit local-only code execution; never callable through MCP/PR Actions
   gap-capsule <failed-report.json>  Offline redacted JSON triage from an existing report; NO app/Docker/AWS execution
   app-verify <file> Verify YOUR trusted Python order handler in local Docker
@@ -1094,13 +1095,13 @@ async function main() {
     const wantsCompare = command === 'app-case-compare';
     const wantsJson = args.includes('--json');
     const wantsMarkdown = args.includes('--markdown');
-    const files = args.filter(x => x !== '--json' && x !== '--markdown');
+    const prebuiltOnly = args.includes('--prebuilt-only');
+    const files = args.filter(x => !['--json','--markdown','--prebuilt-only'].includes(x));
     const expectedCount = wantsCompare ? 3 : 2;
-    if (files.length !== expectedCount || args.length > expectedCount + 1 ||
-        (wantsJson && wantsMarkdown) || (wantsMarkdown && !wantsCompare) ||
-        args.filter(x=>x==='--json').length > 1 ||
-        args.filter(x=>x==='--markdown').length > 1) {
-      fail('Usage: aws-emulator-mcp app-case APP.py CASE.json [--json] | app-case-compare BEFORE.py AFTER.py CASE.json [--json|--markdown]', 2);
+    const allowedFlags = (wantsJson ? 1 : 0) + (wantsMarkdown ? 1 : 0) + (prebuiltOnly ? 1 : 0);
+    if (files.length !== expectedCount || args.length !== expectedCount + allowedFlags ||
+        (wantsJson && wantsMarkdown) || (wantsMarkdown && !wantsCompare)) {
+      fail('Usage: aws-emulator-mcp app-case APP.py CASE.json [--json] [--prebuilt-only] | app-case-compare BEFORE.py AFTER.py CASE.json [--json|--markdown] [--prebuilt-only]', 2);
     }
     const reviewed = readSelectedCase(files[expectedCount-1]);
     const left = readSelectedHandler(files[0]).envelope;
@@ -1108,7 +1109,12 @@ async function main() {
     if (wantsCompare && left.sourceSha256 === right.sourceSha256)
       fail('Before and after must be distinct source revisions', 2);
     requireDocker();
-    if (!imageExists()) await buildImage();
+    // A first-run user may explicitly refuse image builds. This checks source
+    // identity, not merely the mutable tag; it does not pin an immutable ID.
+    const imageMatched = imageExists({warnRebuild:!prebuiltOnly});
+    if (!imageMatched && prebuiltOnly)
+      fail('Prebuilt image required: local signed emulator image is missing or source-mismatched. Run explicit build, then preflight before retrying.', 2);
+    if (!imageMatched) await buildImage();
     const before = await runSelectedAppCase(left, reviewed);
     if (!wantsCompare) {
       try { verifyAppCaseProof(before.proof,left.sourceSha256,reviewed,before.code); }
